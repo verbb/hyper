@@ -1,0 +1,33 @@
+{% import '_includes/forms' as forms %}
+
+{% set selectId = 'link-url-' ~ random() %}
+{% set siteId = 'link-siteid-' ~ random() %}
+
+{{ forms.elementSelect({
+    id: selectId,
+    name: 'linkValue',
+    elementType: link.elementType,
+    limit: 1,
+    showSiteMenu: true,
+    sources: link.getAvailableSources(),
+    storageKey: 'hyper.' ~ field.handle ~ '.' ~ lowerElementType,
+    elements: link.getElements(),
+    selectionLabel: link.selectionLabel,
+    criteria: {
+        status: null,
+        uri: ':notempty:',
+    },
+}) }}
+
+{{ forms.hidden({
+    id: siteId,
+    name: 'linkSiteId',
+    value: link.linkSiteId,
+}) }}
+
+{# Native element selects don't record the chosen site id, so we add that handling here #}
+{% js %}
+
+new Craft.Hyper.ElementSelect('#{{ selectId | namespaceInputId }}', '#{{ siteId | namespaceInputId }}')
+
+{% endjs %}

@@ -1,0 +1,96 @@
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set linkTypeOptions = [] %}
+
+{% for linkType in linkTypes %}
+    {% set linkTypeOptions = linkTypeOptions | merge([{ label: linkType.label, value: linkType.handle }]) %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: 'Default Link Type' | t('hyper'),
+    instructions: 'Select the default link type.' | t('hyper'),
+    name: 'defaultLinkType',
+    value: field.defaultLinkType,
+    options: linkTypeOptions,
+    errors: field.getErrors('defaultLinkType'),
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Enable New Window' | t('hyper'),
+    instructions: 'Whether to show the "Open in New Window" option for links.' | t('hyper'),
+    name: 'newWindow',
+    on: field.newWindow,
+    errors: field.getErrors('newWindow'),
+    toggle: 'new-window-options',
+}) }}
+
+<div id="new-window-options" class="{{ not field.newWindow ? 'hidden' }}">
+    {{ forms.lightswitchField({
+        label: 'Default New Window' | t('hyper'),
+        instructions: 'Select the default new window state.' | t('hyper'),
+        name: 'defaultNewWindow',
+        on: field.defaultNewWindow,
+        errors: field.getErrors('defaultNewWindow'),
+    }) }}
+</div>
+
+{{ forms.lightswitchField({
+    label: 'Enable Multiple Links' | t('hyper'),
+    instructions: 'Whether users can create multiple links in a single field, or just a single link.' | t('hyper'),
+    name: 'multipleLinks',
+    on: field.multipleLinks,
+    errors: field.getErrors('multipleLinks'),
+    toggle: 'multiple-links',
+}) }}
+
+<div id="multiple-links" class="{{ not field.multipleLinks ? 'hidden' }}">
+    {{ forms.textField({
+        label: 'Min Links' | t('hyper'),
+        instructions: 'The minimum number of links that can be created.' | t('hyper'),
+        name: 'minLinks',
+        value: field.minLinks,
+        size: 2,
+        errors: field.getErrors('minLinks'),
+    }) }}
+
+    {{ forms.textField({
+        label: 'Max Links' | t('hyper'),
+        instructions: 'The maximum number of links that can be created.' | t('hyper'),
+        name: 'maxLinks',
+        value: field.maxLinks,
+        size: 2,
+        errors: field.getErrors('maxLinks'),
+    }) }}
+</div>
+
+<div class="field" aria-describedby="configurator">
+    <div class="heading">
+        <label id="label">{{ 'Link Types' | t('hyper') }}</label>
+    </div>
+
+    <div id="configurator" class="instructions">
+        <p>{{ 'Configure the types of links available for users to pick from.' | t('hyper') }}</p>
+    </div>
+
+    <div class="hyper-configurator {{ idPrefix }}-hyper-configurator">
+        <hyper-settings
+            :field-id="{{ field.id ?: 'null' }}"
+            :link-types="{{ linkTypes | json_encode }}"
+            :registered-link-types="{{ registeredLinkTypes | json_encode }}"
+            :namespaced-name="{{ namespacedName | json_encode }}"
+            :namespaced-id="{{ namespacedId | json_encode }}"
+        >
+        </hyper-settings>
+    </div>
+
+    {% set errors = field.getErrors('linkTypes') %}
+
+    {% if errors %}
+        <ul class="errors">
+            {% for error in errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>

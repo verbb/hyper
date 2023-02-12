@@ -1,0 +1,7 @@
+{% import '_includes/forms' as forms %}
+
+{{ forms.select({
+    name: 'linkValue',
+    value: link.linkValue,
+    options: link.getSiteOptions(),
+}) }}

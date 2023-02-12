@@ -1,0 +1,12 @@
+{% import '_includes/forms' as forms %}
+
+{{ forms.checkboxSelectField({
+    label: 'Sites' | t('hyper'),
+    instructions: 'Select the available sites.' | t('hyper'),
+    name: 'sites',
+    required: true,
+    showAllOption: true,
+    values: linkType.sites,
+    options: linkType.siteOptions,
+    errors: linkType.getErrors('sites'),
+}) }}

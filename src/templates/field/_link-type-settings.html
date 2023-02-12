@@ -1,0 +1,28 @@
+{% import '_includes/forms' as forms %}
+
+<h4>{{ '{name} Link' | t('hyper', { name: linkType.displayName() }) }}</h4>
+
+{% set isCustom = isCustom ?? false %}
+
+{% namespace 'linkTypes[__LINK_TYPE__]' %}
+    {{ hiddenInput('type', className(linkType)) }}
+    {{ hiddenInput('handle', '__LINK_TYPE__') }}
+
+    {% if isCustom %}
+        {{ hiddenInput('isCustom', true) }}
+    {% endif %}
+
+    {{ forms.textField({
+        label: 'Label' | t('hyper'),
+        instructions: 'The label for this link type in the control panel.' | t('hyper'),
+        name: 'label',
+        required: true,
+        value: linkType.label,
+        errors: linkType.getErrors('label'),
+        inputAttributes: {
+            'data-label-field': true,
+        },
+    }) }}
+
+    {{ linkType.getSettingsHtml() | raw }}
+{% endnamespace %}

@@ -1,0 +1,46 @@
+[
+    {
+        "title": "Get Started",
+        "collapsable": false,
+        "children": [
+            "get-started/installation-setup",
+            "get-started/requirements"
+        ]
+    },
+    {
+        "title": "Feature Tour",
+        "collapsable": false,
+        "children": [
+            "feature-tour/links",
+            "feature-tour/link-types",
+            "feature-tour/cache"
+        ]
+    },
+    {
+        "title": "Template Guides",
+        "collapsable": false,
+        "children": [
+            "template-guides/available-variables",
+            "template-guides/rendering-links"
+        ]
+    },
+    {
+        "title": "Developers",
+        "collapsable": false,
+        "children": [
+            "developers/link",
+            "developers/link-type",
+            "developers/events",
+            "developers/graphql"
+        ]
+    },
+    {
+        "title": "Guides",
+        "collapsable": false,
+        "children": [
+            "guides/migrating-from-typed-link",
+            "guides/migrating-from-linkit",
+            "guides/migrating-from-link"
+        ]
+    }
+]

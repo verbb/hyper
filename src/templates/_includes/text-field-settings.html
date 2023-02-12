@@ -1,0 +1,11 @@
+{% import '_includes/forms' as forms %}
+
+{% include '_includes/forms/fld/field-settings' %}
+
+{{ forms.textField({
+    label: 'Placeholder' | t('app'),
+    id: 'placeholder',
+    name: 'placeholder',
+    value: field.placeholder,
+    placeholder: defaultPlaceholder,
+}) }}

@@ -1,0 +1,14 @@
+{
+  "field/src/js/hyper.css": {
+    "file": "assets/hyper-a885f3ee.css",
+    "src": "field/src/js/hyper.css"
+  },
+  "field/src/js/hyper.js": {
+    "file": "assets/hyper-3d40d62e.js",
+    "src": "field/src/js/hyper.js",
+    "isEntry": true,
+    "css": [
+      "assets/hyper-a885f3ee.css"
+    ]
+  }
+}

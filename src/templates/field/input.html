@@ -1,0 +1,13 @@
+<div class="hyper-input-component" v-cloak>
+    <hyper-input
+        :value="{{ value | json_encode }}"
+        :settings="{{ settings | json_encode }}"
+        name="{{ name }}"
+        handle="{{ field.handle }}"
+        :element-id="{{ element.id ?: 'null' }}"
+        element-type="{{ className(element) }}"
+        :element-site-id="{{ element.siteId ?: 'null' }}"
+        :element-draft-id="{{ element.draftId ?: 'null' }}"
+        :element-revision-id="{{ element.revisionId ?: 'null' }}"
+    ></hyper-input>
+</div>

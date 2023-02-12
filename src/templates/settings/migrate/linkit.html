@@ -1,0 +1,34 @@
+{% extends 'hyper/_layouts/settings' %}
+
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set selectedNavItem = 'linkit' %}
+{% set fullPageForm = response is not defined %}
+
+{% block actionButton %}{% endblock %}
+
+{% block blockContent %}
+
+{{ actionInput('hyper/migrations/linkit') }}
+{{ redirectInput('hyper/settings/migrate/linkit') }}
+
+<h2 class="first">{{ 'Migrate Linkit Fields' | t('hyper') }}</h2>
+
+{% if response is not defined %}
+    <p>{{ 'Migrate your Linkit fields and content to Hyper fields.' | t('hyper') }}</p>
+
+    {{ 'This will **permanently** modify all your Linkit fields and cannot be reverted. We‘ll make a backup before the migration is run if you need to restore back to it.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit" value="{{ 'Migrate Fields' | t('hyper') }}">
+{% else %}
+    {% for formId, output in response %}
+        {{ output | raw }}
+    {% endfor %}
+
+    <hr>
+
+    <a class="btn submit" href="{{ cpUrl('hyper/settings/migrate/linkit') }}">{{ 'Done' | t('hyper') }}</a>
+{% endif %}
+
+{% endblock %}

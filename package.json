@@ -1,0 +1,40 @@
+{
+    "name": "hyper",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "vite --port 4010",
+        "build": "vite build",
+        "watch": "vite build --watch"
+    },
+    "devDependencies": {
+        "@babel/eslint-parser": "^7.19.1",
+        "@pixelandtonic/craftui": "~0.3.8",
+        "@rollup/plugin-node-resolve": "^15.0.1",
+        "@vitejs/plugin-legacy": "^3.0.1",
+        "@vitejs/plugin-vue": "^4.0.0",
+        "autoprefixer": "^10.4.13",
+        "babel-eslint": "^10.1.0",
+        "eslint": "^8.31.0",
+        "eslint-import-resolver-alias": "^1.1.2",
+        "eslint-plugin-import": "^2.26.0",
+        "eslint-plugin-vue": "^9.8.0",
+        "lodash-es": "^4.17.21",
+        "postcss": "^8.4.20",
+        "postcss-color-function": "^4.1.0",
+        "resolve-url-loader": "^5.0.0",
+        "rollup-plugin-analyzer": "^4.0.0",
+        "sass": "^1.57.1",
+        "vite": "4.0.4",
+        "vite-plugin-compression": "^0.5.1",
+        "vite-plugin-eslint": "^1.8.1"
+    },
+    "dependencies": {
+        "craftcms-sass": "^3.5.7",
+        "tippy.js": "^6.3.7",
+        "vue": "^3.2.45",
+        "vue-mitt": "^0.0.1",
+        "vue-slicksort": "^2.0.3",
+        "vuedraggable": "^4.1.0"
+    }
+}

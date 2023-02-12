@@ -1,0 +1,34 @@
+{% extends 'hyper/_layouts/settings' %}
+
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set selectedNavItem = 'typedLink' %}
+{% set fullPageForm = response is not defined %}
+
+{% block actionButton %}{% endblock %}
+
+{% block blockContent %}
+
+{{ actionInput('hyper/migrations/typed-link') }}
+{{ redirectInput('hyper/settings/migrate/typed-link') }}
+
+<h2 class="first">{{ 'Migrate Typed Link Fields' | t('hyper') }}</h2>
+
+{% if response is not defined %}
+    <p>{{ 'Migrate your Typed Link fields and content to Hyper fields.' | t('hyper') }}</p>
+
+    {{ 'This will **permanently** modify all your Typed Link fields and cannot be reverted. We‘ll make a backup before the migration is run if you need to restore back to it.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit" value="{{ 'Migrate Fields' | t('hyper') }}">
+{% else %}
+    {% for formId, output in response %}
+        {{ output | raw }}
+    {% endfor %}
+
+    <hr>
+
+    <a class="btn submit" href="{{ cpUrl('hyper/settings/migrate/typed-link') }}">{{ 'Done' | t('hyper') }}</a>
+{% endif %}
+
+{% endblock %}

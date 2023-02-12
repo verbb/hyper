@@ -1,0 +1,50 @@
+{% extends 'hyper/_layouts' %}
+
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% requireAdmin %}
+
+{% set crumbs = [
+    { label: 'Hyper' | t('hyper'), url: url('hyper') },
+    { label: 'Settings' | t('app'), url: url('hyper/settings') },
+] %}
+
+{% set navItems = {
+    general: { label: 'General Settings' | t('hyper'), url: url('hyper/settings') },
+    migrationsHeading: { heading: 'Migrations' | t('hyper') },
+} %}
+
+{% if craft.hyper.getPlugin().getService().isPluginInstalledAndEnabled('linkit') %}
+    {% set navItems = navItems | merge({ linkit: { label: 'Linkit' | t('hyper'), url: url('hyper/settings/migrate/linkit') } }) %}
+{% endif %}
+
+{% if craft.hyper.getPlugin().getService().isPluginInstalledAndEnabled('typedlinkfield') %}
+    {% set navItems = navItems | merge({ typedLink: { label: 'Typed Link Field' | t('hyper'), url: url('hyper/settings/migrate/typed-link') } }) %}
+{% endif %}
+
+{% if craft.hyper.getPlugin().getService().isPluginInstalledAndEnabled('link') %}
+    {% set navItems = navItems | merge({ link: { label: 'Link' | t('hyper'), url: url('hyper/settings/migrate/link') } }) %}
+{% endif %}
+
+{% set title = 'Settings - {title}' | t('hyper', { title: navItems[selectedNavItem].label }) %}
+
+{% block sidebar %}
+
+<nav>
+    <ul>
+        {% for itemId, item in navItems %}
+            {% if item %}
+                {% set itemIsSelected = ((selectedNavItem is not defined and loop.first) or (selectedNavItem is defined and selectedNavItem == itemId)) -%}
+
+                {% if item.heading is defined %}
+                    <li class="heading"><span>{{ item.heading }}</span></li>
+                {% else %}
+                    <li><a{% if itemIsSelected %} class="sel"{% endif %} href="{{ item.url }}">{{ item.label }}</a></li>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+
+{% endblock %}

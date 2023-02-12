@@ -1,0 +1,21 @@
+{% import '_includes/forms' as forms %}
+
+{{ forms.checkboxSelectField({
+    label: 'Sources' | t('app'),
+    instructions: 'Which sources do you want to select {type} from?' | t('app', { type: pluralElementType }),
+    name: 'sources',
+    required: true,
+    showAllOption: true,
+    values: linkType.sources,
+    options: linkType.sourceOptions,
+    errors: linkType.getErrors('sources'),
+}) }}
+
+{{ forms.textField({
+    label: 'Selection Label' | t('app'),
+    instructions: 'Enter the text you want to appear on the {type} selection input.' | t('app', { type: lowerElementType }),
+    name: 'selectionLabel',
+    value: linkType.selectionLabel,
+    placeholder: linkType.defaultSelectionLabel(),
+    errors: linkType.getErrors('selectionLabel')
+}) }}
