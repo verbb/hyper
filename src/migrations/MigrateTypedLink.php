@@ -177,7 +177,7 @@ class MigrateTypedLink extends PluginMigration
     public function processFieldContent(): void
     {
         foreach ($this->fields as $fieldData) {
-            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” content ({$fieldData['uid']}).");
+            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” ({$fieldData['uid']}) content.");
 
             // Fetch the field model because we'll need it later
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);
@@ -210,7 +210,10 @@ class MigrateTypedLink extends PluginMigration
 
                                 $this->stdout('    > Migrated content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_GREEN);
                             } else {
-                                $this->stdout('    > Unable to convert content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_RED);
+                                // Null model is okay, that's just an empty field content
+                                if ($settings !== null) {
+                                    $this->stdout('    > Unable to convert content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_RED);
+                                }
                             }
                         } else {
                             $this->stdout('    > Unable to find content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
@@ -254,10 +257,13 @@ class MigrateTypedLink extends PluginMigration
 
                                         $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
                                     } else {
-                                        $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                        // Null model is okay, that's just an empty field content
+                                        if ($settings !== null) {
+                                            $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                        }
                                     }
                                 } else {
-                                    $this->stdout('    >Unable to find Matrix content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
+                                    $this->stdout('    > Unable to find Matrix content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                                 }
                             }
                         }
@@ -294,10 +300,13 @@ class MigrateTypedLink extends PluginMigration
 
                                     $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
                                 } else {
-                                    $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    // Null model is okay, that's just an empty field content
+                                    if ($settings !== null) {
+                                        $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    }
                                 }
                             } else {
-                                $this->stdout('    >Unable to find Super Table content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
+                                $this->stdout('    > Unable to find Super Table content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                             }
                         }
                     }
@@ -308,9 +317,15 @@ class MigrateTypedLink extends PluginMigration
         }
     }
 
-    public function convertModel($oldSettings): bool|array
+    public function convertModel($oldSettings): bool|array|null
     {
         $oldType = $oldSettings['type'] ?? null;
+
+        // Return null for an empty field, false for when unable to find matching new type
+        if ($oldType === null) {
+            return null;
+        }
+
         $linkTypeClass = $this->getLinkType($oldType);
 
         if (!$linkTypeClass) {

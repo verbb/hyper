@@ -108,9 +108,15 @@ class MigrateLinkit extends PluginMigration
         }
     }
 
-    public function convertModel($oldSettings): bool|array
+    public function convertModel($oldSettings): bool|array|null
     {
         $oldType = $oldSettings['type'] ?? null;
+
+        // Return null for an empty field, false for when unable to find matching new type
+        if ($oldType === null) {
+            return null;
+        }
+
         $linkTypeClass = $this->getLinkType($oldType);
 
         if (!$linkTypeClass) {

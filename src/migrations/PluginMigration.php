@@ -149,7 +149,10 @@ class PluginMigration extends Migration
 
                             $this->stdout('    > Migrated content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
                         } else {
-                            $this->stdout('    > Unable to convert content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                            // Null model is okay, that's just an empty field content
+                            if ($settings !== null) {
+                                $this->stdout('    > Unable to convert content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                            }
                         }
                     }
                 }
@@ -189,7 +192,10 @@ class PluginMigration extends Migration
                                 
                                     $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
                                 } else {
-                                    $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    // Null model is okay, that's just an empty field content
+                                    if ($settings !== null) {
+                                        $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    }
                                 }
                             }
                         }
@@ -227,7 +233,10 @@ class PluginMigration extends Migration
                             
                                 $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
                             } else {
-                                $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                // Null model is okay, that's just an empty field content
+                                if ($settings !== null) {
+                                    $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                }
                             }
                         }
                     }
