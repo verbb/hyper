@@ -118,10 +118,6 @@ class PluginMigration extends Migration
         ]);
         $this->trigger(self::EVENT_MODIFY_LINK_TYPE, $event);
 
-        if (!$event->newClass) {
-            throw new Exception('Unable to determine new link type from ' . $oldClass . '.');
-        }
-
         return $event->newClass;
     }
 
