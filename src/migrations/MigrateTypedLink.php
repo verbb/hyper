@@ -322,7 +322,7 @@ class MigrateTypedLink extends PluginMigration
         $oldType = $oldSettings['type'] ?? null;
 
         // Return null for an empty field, false for when unable to find matching new type
-        if ($oldType === null) {
+        if (!$oldType) {
             return null;
         }
 
