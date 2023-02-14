@@ -107,7 +107,7 @@ class PluginMigration extends Migration
         $this->_consoleRequest = $value;
     }
 
-    public function getLinkType($oldClass): string
+    public function getLinkType($oldClass): ?string
     {
         $newClass = $this->typeMap[$oldClass] ?? null;
 
