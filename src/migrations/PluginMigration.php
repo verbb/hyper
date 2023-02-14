@@ -148,6 +148,8 @@ class PluginMigration extends Migration
                             Db::update('{{%content}}', [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
 
                             $this->stdout('    > Migrated content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                        } else {
+                            $this->stdout('    > Unable to convert content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
                         }
                     }
                 }
@@ -186,6 +188,8 @@ class PluginMigration extends Migration
                                     Db::update($matrixField->contentTable, [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
                                 
                                     $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                } else {
+                                    $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
                                 }
                             }
                         }
@@ -222,6 +226,8 @@ class PluginMigration extends Migration
                                 Db::update($superTableField->contentTable, [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
                             
                                 $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                            } else {
+                                $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
                             }
                         }
                     }

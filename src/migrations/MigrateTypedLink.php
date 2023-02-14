@@ -204,10 +204,16 @@ class MigrateTypedLink extends PluginMigration
                             ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
                             ->one();
 
-                        if ($settings && $contentRow) {
-                            Db::update('{{%content}}', [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
+                        if ($contentRow) {
+                            if ($settings) {
+                                Db::update('{{%content}}', [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
 
-                            $this->stdout('    > Migrated content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_GREEN);
+                                $this->stdout('    > Migrated content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_GREEN);
+                            } else {
+                                $this->stdout('    > Unable to convert content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_RED);
+                            }
+                        } else {
+                            $this->stdout('    > Unable to find content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                         }
                     }
                 }
@@ -242,10 +248,16 @@ class MigrateTypedLink extends PluginMigration
                                     ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
                                     ->one();
 
-                                if ($settings && $contentRow) {
-                                    Db::update($matrixField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
+                                if ($contentRow) {
+                                    if ($settings) {
+                                        Db::update($matrixField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
 
-                                    $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                        $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                    } else {
+                                        $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    }
+                                } else {
+                                    $this->stdout('    >Unable to find Matrix content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                                 }
                             }
                         }
@@ -276,10 +288,16 @@ class MigrateTypedLink extends PluginMigration
                                 ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
                                 ->one();
 
-                            if ($settings && $contentRow) {
-                                Db::update($superTableField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
+                            if ($contentRow) {
+                                if ($settings) {
+                                    Db::update($superTableField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
 
-                                $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                    $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                } else {
+                                    $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                }
+                            } else {
+                                $this->stdout('    >Unable to find Super Table content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                             }
                         }
                     }
