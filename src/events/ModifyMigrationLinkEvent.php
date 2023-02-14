@@ -8,7 +8,7 @@ class ModifyMigrationLinkEvent extends CancelableEvent
     // Properties
     // =========================================================================
 
-    public string $oldClass = '';
-    public string $newClass = '';
+    public ?string $oldClass = '';
+    public ?string $newClass = '';
     
 }
