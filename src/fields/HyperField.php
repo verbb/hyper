@@ -244,6 +244,10 @@ class HyperField extends Field
         $hasErrors = false;
         $linkTypes = [];
 
+        // Ensure the link types are cast properly from arrays to objects. Can happen when called in migrations
+        // that for whatever reason `__construct()` isn't called.
+        $this->_prepareLinkTypes();
+
         foreach ($this->linkTypes as $linkType) {
             if (!$linkType->validate()) {
                 $hasErrors = true;
@@ -594,5 +598,16 @@ class HyperField extends Field
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
+    }
+
+    private function _prepareLinkTypes()
+    {
+        if (is_array($this->linkTypes)) {
+            foreach ($this->linkTypes as $key => $linkType) {
+                if (is_array($linkType)) {
+                    $this->linkTypes[$key] = Hyper::$plugin->getLinks()->createLink($linkType);
+                }
+            }
+        }
     }
 }
