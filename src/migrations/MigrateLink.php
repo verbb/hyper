@@ -43,7 +43,7 @@ class MigrateLink extends PluginMigration
     public function processFieldSettings(): void
     {
         foreach ($this->fields as $field) {
-            $this->stdout("Preparing to migrate field “{$field['handle']}”.");
+            $this->stdout("Preparing to migrate field “{$field['handle']}” ({$field['uid']}).");
 
             $settings = Json::decode($field['settings']);
 

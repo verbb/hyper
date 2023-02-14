@@ -128,7 +128,7 @@ class PluginMigration extends Migration
     public function processFieldContent(): void
     {
         foreach ($this->fields as $fieldData) {
-            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” content.");
+            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” ({$fieldData['uid']}) content.");
 
             // Fetch the field model because we'll need it later
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);

@@ -47,7 +47,7 @@ class MigrateTypedLink extends PluginMigration
         $fieldService = Craft::$app->getFields();
 
         foreach ($this->fields as $field) {
-            $this->stdout("Preparing to migrate field “{$field['handle']}”.");
+            $this->stdout("Preparing to migrate field “{$field['handle']}” ({$field['uid']}).");
 
             $settings = Json::decode($field['settings']);
             $allowCustomText = $settings['allowCustomText'] ?? true;
@@ -177,7 +177,7 @@ class MigrateTypedLink extends PluginMigration
     public function processFieldContent(): void
     {
         foreach ($this->fields as $fieldData) {
-            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” content.");
+            $this->stdout("Preparing to migrate field “{$fieldData['handle']}” content ({$fieldData['uid']}).");
 
             // Fetch the field model because we'll need it later
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);
