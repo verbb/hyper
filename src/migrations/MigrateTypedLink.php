@@ -53,8 +53,8 @@ class MigrateTypedLink extends PluginMigration
             $allowCustomText = $settings['allowCustomText'] ?? true;
             $allowTarget = $settings['allowTarget'] ?? true;
             $customTextRequired = $settings['customTextRequired'] ?? true;
-            $defaultLinkName = $settings['defaultLinkName'] ?? true;
-            $defaultText = $settings['defaultText'] ?? true;
+            $defaultLinkName = $settings['defaultLinkName'] ?? '';
+            $defaultText = $settings['defaultText'] ?? '';
             $enableAllLinkTypes = $settings['enableAllLinkTypes'] ?? true;
             $enableAriaLabel = $settings['enableAriaLabel'] ?? true;
             $enableTitle = $settings['enableTitle'] ?? true;
