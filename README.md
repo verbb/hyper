@@ -1,4 +1,6 @@
 # Hyper Plugin for Craft CMS
+<img width="500" src="https://verbb.io/uploads/plugins/hyper/hyper-social-card.png?v=2">
+
 Hyper is a Craft CMS field for creating links, with a focus on user experience and flexibility.
 
 ## Features
