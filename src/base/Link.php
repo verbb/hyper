@@ -417,7 +417,7 @@ abstract class Link extends Element implements LinkInterface
         return Template::raw(Html::tag('a', $this->getText(), $attributes));
     }
 
-    public function getLinkAttributes(array $attributes = []): array
+    public function getLinkAttributes(array $attributes = [], bool $asString = false): array|Markup
     {
         $attributes = array_merge($attributes, $this->getCustomAttributes());
 
@@ -431,7 +431,13 @@ abstract class Link extends Element implements LinkInterface
             $attributes['rel'] = 'noopener noreferrer';
         }
 
-        return array_filter($attributes);
+        $attributes = array_filter($attributes);
+
+        if ($asString) {
+            return Template::raw(Html::renderTagAttributes($attributes));
+        }
+
+        return $attributes;
     }
 
 }
