@@ -181,6 +181,10 @@ abstract class ElementLink extends Link
 
     public function getLinkText(): ?string
     {
+        if ($this->linkText) {
+            return $this->linkText;
+        }
+
         if ($cached = $this->_getElementCache()) {
             return $cached->title;
         }

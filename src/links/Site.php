@@ -82,6 +82,10 @@ class Site extends Link
 
     public function getLinkText(): ?string
     {
+        if ($this->linkText) {
+            return $this->linkText;
+        }
+        
         if ($site = $this->getLinkSite()) {
             return $site->name;
         }
