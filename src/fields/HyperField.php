@@ -331,9 +331,13 @@ class HyperField extends Field
 
     public function validateBlocks(ElementInterface $element): void
     {
-        $links = $element->getFieldValue($this->handle);
-
         $scenario = $element->getScenario();
+
+        if ($scenario !== Element::SCENARIO_LIVE) {
+            return;
+        }
+
+        $links = $element->getFieldValue($this->handle);
 
         foreach ($links as $i => $link) {
             $link->setScenario($scenario);
@@ -346,7 +350,7 @@ class HyperField extends Field
             }
         }
 
-        if ($element->getScenario() === Element::SCENARIO_LIVE && ($this->minLinks || $this->maxLinks)) {
+        if ($this->minLinks || $this->maxLinks) {
             $arrayValidator = new ArrayValidator([
                 'min' => $this->minLinks ?: null,
                 'max' => $this->maxLinks ?: null,
