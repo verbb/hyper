@@ -36,7 +36,8 @@
                 <div class="handle"></div>
             </div>
 
-            <input v-model="proxyValue" :name="name" type="hidden">
+            <!-- The server-side can be picky about `false` being an actual truthy value -->
+            <input :value="proxyValue ? '1' : ''" :name="name" type="hidden">
         </div>
     </div>
 </template>
