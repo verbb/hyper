@@ -285,10 +285,6 @@ export default {
 
 <style lang="scss">
 
-.h-add-link-btn {
-    margin-top: 20px;
-}
-
 .hyper-link {
     margin-bottom: 0.75rem;
 }
