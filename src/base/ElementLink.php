@@ -150,6 +150,10 @@ abstract class ElementLink extends Link
             return $this->_element;
         }
 
+        if (!$this->linkValue) {
+            return null;
+        }
+
         /** @var ElementInterface|string $elementType */
         $elementType = static::elementType();
 
