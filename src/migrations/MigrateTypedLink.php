@@ -342,7 +342,7 @@ class MigrateTypedLink extends PluginMigration
 
         $link = new $linkTypeClass();
         $link->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
-        $link->linkValue = $oldSettings['linkedUrl'] ?? $oldSettings['linkedId'] ?? null;
+        $link->linkValue = $oldSettings['linkedUrl'] ?? null;
 
         $advanced = Json::decode($oldSettings['payload']);
         $link->ariaLabel = $advanced['ariaLabel'] ?? null;
@@ -352,6 +352,7 @@ class MigrateTypedLink extends PluginMigration
 
         if ($link instanceof ElementLink) {
             $link->linkSiteId = $oldSettings['linkedSiteId'] ?? null;
+            $link->linkValue = $oldSettings['linkedId'] ?? null;
         }
 
         return [$link->getSerializedValues()];
