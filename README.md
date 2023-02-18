@@ -15,7 +15,7 @@ Hyper is a Craft CMS field for creating links, with a focus on user experience a
 - Plenty of template helpers to make rendering links a breeze and extensible.
 - GraphQL support for querying links.
 - Feed Me support for importing links in elements like entries.
-- One-click migrations for [Typed Link](https://github.com/sebastian-lenz/craft-linkfield), [Linkit](https://github.com/presseddigital/linkit) and [Link](https://github.com/flipboxfactory/craft-link) fields.
+- One-click migrations for [Typed Link Field](https://github.com/sebastian-lenz/craft-linkfield), [Linkit](https://github.com/presseddigital/linkit) and [Link](https://github.com/flipboxfactory/craft-link) fields.
 - Events to write your own link types, or extend existing ones.
 
 ## Link Types
