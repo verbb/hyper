@@ -138,7 +138,11 @@ class MigrateTypedLink extends PluginMigration
                         if (!$fieldService->saveField($matrixField)) {
                             throw new Exception(Json::encode($matrixField->getErrors()));
                         }
+                    } else {
+                        $this->stdout("    > Unable to find owner Matrix field for ID “{$matrixFieldId}”." . PHP_EOL, Console::FG_RED);
                     }
+                } else {
+                    $this->stdout("    > Unable to find owner Matrix field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
                 }
             }
 
@@ -161,7 +165,11 @@ class MigrateTypedLink extends PluginMigration
                         if (!$fieldService->saveField($superTableField)) {
                             throw new Exception(Json::encode($superTableField->getErrors()));
                         }
+                    } else {
+                        $this->stdout("    > Unable to find owner Super Table field for ID “{$superTableFieldId}”." . PHP_EOL, Console::FG_RED);
                     }
+                } else {
+                    $this->stdout("    > Unable to find owner Super Table field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
                 }
             }
 
@@ -364,7 +372,8 @@ class MigrateTypedLink extends PluginMigration
                         if ($tabElement instanceof CustomField) {
                             $tabField = $tabElement->getField();
 
-                            if ($tabField->id === $newField->id) {
+                            // Using string checks fixes an issue when converting multiple fields in a single Matrix field
+                            if ((string)$tabField->id === (string)$newField->id) {
                                 $tabElement->setField($newField);
                             }
                         }
