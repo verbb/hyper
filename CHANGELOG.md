@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3 - 2023-02-18
+
+### Fixed
+- Fix an error migrating Typed Link fields for element-based links with cache data.
+- Fix an error when migrating Typed Link fields, when multiple ones are in a Matrix field.
+- Fix a visual gap for new link button for multi-link fields.
+- Fix an error when rendering fields that used to have an element for the link value, not being `null`.
+
 ## 1.0.2 - 2023-02-16
 
 ### Added
