@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4 - 2023-02-21
+
+### Fixed
+- Fix classes not applying with `getLink({ class: ‘…’ })`.
+- Fix a migration issue for Vizy fields containing Super Table/Matrix fields with links.
+
 ## 1.0.3 - 2023-02-18
 
 ### Fixed
