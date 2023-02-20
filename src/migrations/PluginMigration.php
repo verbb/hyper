@@ -313,26 +313,25 @@ class PluginMigration extends Migration
 
     public function migrateVizyContent($fieldData): void
     {
-        // Find all Vizy fields that reference this field
-        if ($fieldData['context'] !== 'global') {
-            return;
-        }
-
         Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], function($handle, $data) {
-            $content = ArrayHelper::getValue($data, 'content.fields.' . $handle);
+            // We need to flatten the data to deal with deeply-nested content like when in Matrix/Super Table.
+            foreach (self::flatten($data) as $flatKey => $flatContent) {
+                $searchKey = 'fields.' . $handle;
 
-            // Sometimes stored as a JSON string
-            if (is_string($content)) {
-                $content = Json::decodeIfJson($content);
+                // Find from the end of the block path `fields.myLinkField`
+                if (str_ends_with($flatKey, $searchKey)) {
+                    // Sometimes stored as a JSON string
+                    if (is_string($flatContent)) {
+                        $flatContent = Json::decodeIfJson($flatContent);
+                    }
+
+                    if ($newContent = $this->convertModel($flatContent)) {
+                        ArrayHelper::setValue($data, $flatKey, $newContent);
+                    }
+                }
             }
 
-            if ($newContent = $this->convertModel($content)) {
-                ArrayHelper::setValue($data, 'content.fields.' . $handle, $newContent);
-
-                return $data;
-            }
-
-            return null;
+            return $data;
         }, $this->db);
     }
 
@@ -403,5 +402,37 @@ class PluginMigration extends Migration
         }
 
         return $rtn;
+    }
+
+    public static function flatten(array $data, string $separator = '.'): array
+    {
+        $result = [];
+        $stack = [];
+        $path = '';
+
+        reset($data);
+        while (!empty($data)) {
+            $key = key($data);
+            $element = $data[$key];
+            unset($data[$key]);
+
+            if (is_array($element) && !empty($element)) {
+                if (!empty($data)) {
+                    $stack[] = [$data, $path];
+                }
+                $data = $element;
+                reset($data);
+                $path .= $key . $separator;
+            } else {
+                $result[$path . $key] = $element;
+            }
+
+            if (empty($data) && !empty($stack)) {
+                [$data, $path] = array_pop($stack);
+                reset($data);
+            }
+        }
+
+        return $result;
     }
 }

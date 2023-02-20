@@ -35,7 +35,7 @@ class LinkCollection implements IteratorAggregate, Countable
                 $handle = $data['handle'] ?? $field->defaultLinkType;
                 $link = $field->getLinkTypeByHandle($handle);
 
-                if ($link) {
+                if ($link && is_array($data)) {
                     $newLink = clone($link);
                     $newLink->setAttributes($data, false);
 
