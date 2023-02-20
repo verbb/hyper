@@ -421,10 +421,21 @@ abstract class Link extends Element implements LinkInterface
     {
         $attributes = array_merge($attributes, $this->getCustomAttributes());
 
-        $attributes['class'] = $this->getClasses();
-        $attributes['href'] = $this->getUrl();
-        $attributes['title'] = $this->getLinkTitle();
-        $attributes['aria-label'] = $this->getAriaLabel();
+        if ($classes = $this->getClasses()) {
+            $attributes['class'] = $classes;
+        }
+
+        if ($href = $this->getUrl()) {
+            $attributes['href'] = $href;
+        }
+
+        if ($title = $this->getLinkTitle()) {
+            $attributes['title'] = $title;
+        }
+
+        if ($ariaLabel = $this->getAriaLabel()) {
+            $attributes['aria-label'] = $ariaLabel;
+        }
 
         if ($this->getNewWindow()) {
             $attributes['target'] = '_blank';
