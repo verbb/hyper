@@ -157,22 +157,6 @@ class Hyper extends Plugin
                 ->onUpdate(SuperTableService::CONFIG_BLOCKTYPE_KEY . '.{uid}', [$this->getService(), 'handleChangedBlockType'])
                 ->onRemove(SuperTableService::CONFIG_BLOCKTYPE_KEY . '.{uid}', [$this->getService(), 'handleDeletedBlockType']);
         }
-
-        Event::on(ProjectConfig::class, ProjectConfig::EVENT_REBUILD, function(RebuildConfigEvent $event) {
-            // Ensure the are serialized as JSON for link types. This is because rebuilding doesn't trigger `Field::beforeSave()`
-            foreach ($event->config['fields'] as $fieldKey => $field) {
-                if ($field['type'] === HyperField::class) {
-                    foreach (($field['settings']['linkTypes'] ?? []) as $linkTypeKey => $linkType) {
-                        if ($linkType instanceof LinkInterface) {
-                            $event->config['fields'][$fieldKey]['settings']['linkTypes'][$linkTypeKey] = $linkType->getSettingsConfig();
-                        }
-                    }
-
-                    // Not sure why this isn't applied automatically, but for consistency, ensure the settings are the same as from `Field::beforeSave()`.
-                    $event->config['fields'][$fieldKey]['settings'] = ProjectConfigHelper::packAssociativeArrays($event->config['fields'][$fieldKey]['settings']);
-                }
-            }
-        });
     }
 
     private function _registerCraftEventListeners(): void

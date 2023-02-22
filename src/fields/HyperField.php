@@ -50,11 +50,11 @@ class HyperField extends Field
     public bool $multipleLinks = false;
     public ?int $minLinks = null;
     public ?int $maxLinks = null;
-    public array $linkTypes = [];
     public ?int $fieldLayoutId = null;
     public string $columnType = Schema::TYPE_TEXT;
 
     private bool $_isStatic = false;
+    private array $_linkTypes = [];
 
 
     // Public Methods
@@ -62,16 +62,8 @@ class HyperField extends Field
 
     public function __construct($config = [])
     {
-        // Convert link types as arrays to Link objects.
-        // This can be fired before the Hyper plugin is ready in some instances
-        if (array_key_exists('linkTypes', $config)) {
-            if (is_array($config['linkTypes'])) {
-                foreach ($config['linkTypes'] as $key => $linkType) {
-                    if (is_array($linkType)) {
-                        $config['linkTypes'][$key] = Hyper::$plugin->getLinks()->createLink($linkType);
-                    }
-                }
-            }
+        if (isset($config['linkTypes']) && $config['linkTypes'] === '') {
+            $config['linkTypes'] = [];
         }
 
         parent::__construct($config);
@@ -87,6 +79,18 @@ class HyperField extends Field
         return $rules;
     }
 
+    public function getSettings(): array
+    {
+        $settings = parent::getSettings();
+
+        // Serialize the link types as arrays instead of arrays of Link classes
+        $settings['linkTypes'] = array_map(function($linkType) {
+            return $linkType->getSettingsConfig();
+        }, $this->getLinkTypes());
+
+        return $settings;
+    }
+
     public function getContentColumnType(): array|string
     {
         return $this->columnType;
@@ -95,7 +99,7 @@ class HyperField extends Field
     public function validateLinkTypes(): void
     {
         // Ensure there is at least one enabled link type
-        if (!ArrayHelper::getColumn($this->linkTypes, 'enabled')) {
+        if (!ArrayHelper::getColumn($this->getLinkTypes(), 'enabled')) {
             $this->addError('linkTypes', Craft::t('hyper', 'You must enable at least one link type.'));
         }
     }
@@ -242,28 +246,11 @@ class HyperField extends Field
 
         // Save each link type correctly and validate
         $hasErrors = false;
-        $linkTypes = [];
 
-        // Ensure the link types are cast properly from arrays to objects. Can happen when called in migrations
-        // that for whatever reason `__construct()` isn't called.
-        $this->_prepareLinkTypes();
-
-        foreach ($this->linkTypes as $linkType) {
+        foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->validate()) {
                 $hasErrors = true;
             }
-
-            // Set up the field layout config - it'll be saved later
-            if (!$linkType->layoutConfig) {
-                $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
-            }
-
-            // Generate a layout UID if not already set
-            if (!$linkType->layoutUid) {
-                $linkType->layoutUid = StringHelper::UUID();
-            }
-
-            $linkTypes[] = $linkType->getSettingsConfig();
         }
 
         if ($hasErrors) {
@@ -272,11 +259,9 @@ class HyperField extends Field
             return false;
         }
 
-        $this->linkTypes = $linkTypes;
-
         // Any fields not in the global scope won't trigger a PC change event. Go manual.
         if ($this->context !== 'global') {
-            Hyper::$plugin->getService()->saveField($this->linkTypes);
+            Hyper::$plugin->getService()->saveField($this->getLinkTypes());
         }
 
         return true;
@@ -299,9 +284,9 @@ class HyperField extends Field
     public function getLinkTypeByHandle(?string $handle): ?LinkInterface
     {
         if (!$handle) {
-            $link = $this->linkTypes[0] ?? null;
+            $link = $this->getLinkTypes()[0] ?? null;
         } else {
-            $link = ArrayHelper::firstWhere($this->linkTypes, 'handle', $handle);
+            $link = ArrayHelper::firstWhere($this->getLinkTypes(), 'handle', $handle);
         }
 
         if ($link) {
@@ -385,6 +370,44 @@ class HyperField extends Field
         return $keywords;
     }
 
+    public function getLinkTypes(): array
+    {
+        if (isset($this->_linkTypes)) {
+            return $this->_linkTypes;
+        }
+
+        if ($this->getIsNew()) {
+            return [];
+        }
+
+        return $this->_linkTypes;
+    }
+
+    public function setLinkTypes(array|LinkInterface $linkTypes): void
+    {
+        $this->_linkTypes = [];
+
+        foreach ($linkTypes as $config) {
+            if ($config instanceof LinkInterface) {
+                $linkType = $config;
+            } else {
+                $linkType = Hyper::$plugin->getLinks()->createLink($config);
+            }
+
+            // Set up the field layout config - it'll be saved later
+            if (!$linkType->layoutConfig) {
+                $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
+            }
+
+            // Generate a layout UID if not already set
+            if (!$linkType->layoutUid) {
+                $linkType->layoutUid = StringHelper::UUID();
+            }
+
+            $this->_linkTypes[] = $linkType;
+        }
+    }
+
 
     // Private Methods
     // =========================================================================
@@ -397,7 +420,7 @@ class HyperField extends Field
         $oldNamespace = $view->getNamespace();
         $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK__]"));
 
-        foreach ($this->linkTypes as $linkType) {
+        foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->enabled) {
                 continue;
             }
@@ -492,7 +515,7 @@ class HyperField extends Field
         $linksService = Hyper::$plugin->getLinks();
 
         // For any already-saved link type settings, prep them
-        foreach ($this->linkTypes as $linkType) {
+        foreach ($this->getLinkTypes() as $linkType) {
             $linkTypes[get_class($linkType)] = $this->_getLinkTypeSettingsConfig($linkType);
         }
 
@@ -602,16 +625,5 @@ class HyperField extends Field
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
-    }
-
-    private function _prepareLinkTypes()
-    {
-        if (is_array($this->linkTypes)) {
-            foreach ($this->linkTypes as $key => $linkType) {
-                if (is_array($linkType)) {
-                    $this->linkTypes[$key] = Hyper::$plugin->getLinks()->createLink($linkType);
-                }
-            }
-        }
     }
 }
