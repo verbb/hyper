@@ -6,6 +6,8 @@
                     <div :class="['hc-sidebar-item', selectedLinkType.handle === element.handle ? 'sel' : '', element.hasErrors ? 'has-errors' : '']" @click.prevent="selectTab(element)">
                         <lightswitch-field v-model="element.enabled" :name="getName(`linkTypes[${element.handle}][enabled]`)" :extra-small="true" />
 
+                        <input type="hidden" :name="getName(`linkTypes[${element.handle}][sortOrder]`)" :value="index">
+
                         <span class="hc-label-text">{{ element.label }}</span>
 
                         <drag-handle class="hc-sidebar-item-move hc-move">

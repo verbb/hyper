@@ -372,22 +372,16 @@ class HyperField extends Field
 
     public function getLinkTypes(): array
     {
-        if (isset($this->_linkTypes)) {
-            return $this->_linkTypes;
-        }
-
-        if ($this->getIsNew()) {
-            return [];
-        }
-
         return $this->_linkTypes;
     }
 
-    public function setLinkTypes(array|LinkInterface $linkTypes): void
+    public function setLinkTypes(array $linkTypes): void
     {
         $this->_linkTypes = [];
 
-        foreach ($linkTypes as $config) {
+        foreach ($linkTypes as $key => $config) {
+            $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
+
             if ($config instanceof LinkInterface) {
                 $linkType = $config;
             } else {
@@ -404,7 +398,7 @@ class HyperField extends Field
                 $linkType->layoutUid = StringHelper::UUID();
             }
 
-            $this->_linkTypes[] = $linkType;
+            $this->_linkTypes[$sortOrder] = $linkType;
         }
     }
 
@@ -516,17 +510,24 @@ class HyperField extends Field
 
         // For any already-saved link type settings, prep them
         foreach ($this->getLinkTypes() as $linkType) {
-            $linkTypes[get_class($linkType)] = $this->_getLinkTypeSettingsConfig($linkType);
+            $linkTypes[] = $this->_getLinkTypeSettingsConfig($linkType);
         }
 
+        $registeredLinkTypes = $linksService->getAllLinkTypes();
+
+        // Sort alphabetically by label
+        sort($registeredLinkTypes);
+
         // Then, ensure that we always have at least one instance of a registered link type
-        foreach ($linksService->getAllLinkTypes() as $linkTypeClass) {
-            if (isset($linkTypes[$linkTypeClass])) {
+        foreach ($registeredLinkTypes as $linkTypeClass) {
+            $hasLinkType = ArrayHelper::firstWhere($linkTypes, 'type', $linkTypeClass);
+
+            if ($hasLinkType) {
                 continue;
             }
 
             $linkType = $linksService->createLink($linkTypeClass);
-            $linkTypes[$linkTypeClass] = $this->_getLinkTypeSettingsConfig($linkType);
+            $linkTypes[] = $this->_getLinkTypeSettingsConfig($linkType);
         }
 
         $disabledTypes = [
@@ -550,12 +551,7 @@ class HyperField extends Field
             }
         }
 
-        // Sort alphabetically by label
-        usort($linkTypes, function($a, $b) {
-            return strcmp($a['label'], $b['label']);
-        });
-
-        return array_values($linkTypes);
+        return $linkTypes;
     }
 
     private function _getLinkTypeSettingsConfig(LinkInterface $linkType): array
