@@ -1,6 +1,8 @@
 <template>
     <div ref="fld-container" class="hyper-block-editor-layout">
-        <div class="hyper-workspace">
+        <div ref="fld-content"></div>
+
+        <div v-if="loading || error" class="hyper-workspace">
             <div v-if="loading" class="hyper-loading-pane">
                 <div class="hyper-loading hyper-loading-lg"></div>
             </div>
@@ -64,6 +66,9 @@ export default {
 
     watch: {
         proxyValue(newValue) {
+            // Clear the cache when the value changes
+            this.cache = null;
+
             this.$emit('update:modelValue', newValue);
         },
 
@@ -83,8 +88,17 @@ export default {
     },
 
     methods: {
+        clearLayout() {
+            if (this.$refs['fld-content']) {
+                this.$refs['fld-content'].innerHTML = '';
+            }
+        },
+
         loadLayout() {
             this.loading = true;
+
+            // Clear the UI for the field layout to prevent seeing potentially stale layouts
+            this.clearLayout();
 
             if (this.cache) {
                 this.updateLayout();
@@ -126,17 +140,21 @@ export default {
                 .catch((error) => {
                     this.error = true;
                     this.errorMessage = error;
+                })
+                .finally(() => {
                     this.loading = false;
                 });
         },
 
         updateLayout() {
-            this.$el.innerHTML = this.cache.html;
-            Craft.appendBodyHtml(this.cache.footHtml);
+            if (this.$refs['fld-content']) {
+                this.$refs['fld-content'].innerHTML = this.cache.html;
+                Craft.appendBodyHtml(this.cache.footHtml);
 
-            this.watchForChanges();
+                this.watchForChanges();
 
-            this.mounted = true;
+                this.mounted = true;
+            }
         },
 
         watchForChanges() {
@@ -148,12 +166,14 @@ export default {
                 updateFunction();
             });
 
-            observer.observe(this.$el, {
-                childList: true,
-                attributes: true,
-                subtree: true,
-                characterData: true,
-            });
+            if (this.$refs['fld-content']) {
+                observer.observe(this.$refs['fld-content'], {
+                    childList: true,
+                    attributes: true,
+                    subtree: true,
+                    characterData: true,
+                });
+            }
         },
 
         serializeLayout() {
@@ -162,9 +182,13 @@ export default {
                 return;
             }
 
-            const fieldLayoutData = this.$el.querySelector('input[name="fieldLayout"]').value;
+            if (this.$refs['fld-content']) {
+                const $fieldLayout = this.$refs['fld-content'].querySelector('input[name="fieldLayout"]');
 
-            this.proxyValue = fieldLayoutData;
+                if ($fieldLayout) {
+                    this.proxyValue = $fieldLayout.value;
+                }
+            }
         },
     },
 };
