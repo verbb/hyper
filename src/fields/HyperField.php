@@ -22,6 +22,8 @@ use craft\web\View;
 
 use yii\db\Schema;
 
+use Throwable;
+
 use GraphQL\Type\Definition\Type;
 use LitEmoji\LitEmoji;
 
@@ -480,32 +482,36 @@ class HyperField extends Field
 
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
-        // Render just the first tab
-        $linkFieldLayout = $link->getFieldLayout();
+        try {
+            // Render just the first tab
+            $linkFieldLayout = $link->getFieldLayout();
 
-        if (!$linkFieldLayout) {
-            return Html::tag('div', Craft::t('hyper', 'Unable to render field. Please resave the field settings.'), ['class' => 'error']);
+            if (!$linkFieldLayout) {
+                return Html::tag('div', Craft::t('hyper', 'Unable to render field. Please resave the field settings.'), ['class' => 'error']);
+            }
+
+            $fieldLayout = clone($linkFieldLayout);
+
+            if (!$fieldLayout) {
+                return Html::tag('div', Craft::t('hyper', 'Unable to render field layout. Please resave the field settings.'), ['class' => 'error']);
+            }
+
+            $layoutTab = $fieldLayout->getTabs()[0] ?? [];
+            $fieldLayout->setTabs([$layoutTab]);
+
+            // Add the link type to the LinkField field layout element, so we generate the correct HTML for the type
+            $linkValueField = $fieldLayout->getField('linkValue');
+            $linkValueField->field = $this;
+            $linkValueField->link = $link;
+
+            $form = $fieldLayout->createForm($link);
+
+            // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
+            // because the form HTML is for JavaScript; not returned by inputHtml().
+            return $view->namespaceInputs($form->render());
+        } catch (Throwable $e) {
+            return Html::tag('div', Craft::t('hyper', 'Unable to render field layout - {e}.', ['e' => $e->getMessage()]), ['class' => 'error']);
         }
-
-        $fieldLayout = clone($linkFieldLayout);
-
-        if (!$fieldLayout) {
-            return Html::tag('div', Craft::t('hyper', 'Unable to render field layout. Please resave the field settings.'), ['class' => 'error']);
-        }
-
-        $layoutTab = $fieldLayout->getTabs()[0] ?? [];
-        $fieldLayout->setTabs([$layoutTab]);
-
-        // Add the link type to the LinkField field layout element, so we generate the correct HTML for the type
-        $linkValueField = $fieldLayout->getField('linkValue');
-        $linkValueField->field = $this;
-        $linkValueField->link = $link;
-
-        $form = $fieldLayout->createForm($link);
-
-        // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
-        // because the form HTML is for JavaScript; not returned by inputHtml().
-        return $view->namespaceInputs($form->render());
     }
 
     private function _getLinkTypeSettings(): array
