@@ -1,8 +1,6 @@
 <template>
     <div ref="fld-container" class="hyper-block-editor-layout">
-        <div ref="fld-content"></div>
-
-        <div v-if="loading || error" class="hyper-workspace">
+        <div v-show="loading || error" class="hyper-workspace">
             <div v-if="loading" class="hyper-loading-pane">
                 <div class="hyper-loading hyper-loading-lg"></div>
             </div>
@@ -15,6 +13,8 @@
                 </div>
             </div>
         </div>
+
+        <div v-show="!loading && !error" ref="fld-content"></div>
     </div>
 </template>
 
@@ -96,11 +96,14 @@ export default {
 
         loadLayout() {
             this.loading = true;
+            this.error = false;
 
             // Clear the UI for the field layout to prevent seeing potentially stale layouts
             this.clearLayout();
 
             if (this.cache) {
+                this.loading = false;
+
                 this.updateLayout();
 
                 return;
