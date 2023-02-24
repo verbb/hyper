@@ -510,7 +510,7 @@ class HyperField extends Field
             // because the form HTML is for JavaScript; not returned by inputHtml().
             return $view->namespaceInputs($form->render());
         } catch (Throwable $e) {
-            return Html::tag('div', Craft::t('hyper', 'Unable to render field layout - {e}.', ['e' => $e->getMessage()]), ['class' => 'error']);
+            return Html::tag('div', Craft::t('hyper', 'Unable to render field - {e}.', ['e' => $e->getMessage()]), ['class' => 'error']);
         }
     }
 
