@@ -481,10 +481,16 @@ class HyperField extends Field
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
         // Render just the first tab
-        $fieldLayout = clone($link->getFieldLayout());
+        $linkFieldLayout = $link->getFieldLayout();
+
+        if (!$linkFieldLayout) {
+            return Html::tag('div', Craft::t('hyper', 'Unable to render field. Please resave the field settings.'), ['class' => 'error']);
+        }
+
+        $fieldLayout = clone($linkFieldLayout);
 
         if (!$fieldLayout) {
-            return '';
+            return Html::tag('div', Craft::t('hyper', 'Unable to render field layout. Please resave the field settings.'), ['class' => 'error']);
         }
 
         $layoutTab = $fieldLayout->getTabs()[0] ?? [];
