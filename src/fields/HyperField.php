@@ -39,7 +39,7 @@ class HyperField extends Field
 
     public static function valueType(): string
     {
-        return 'string|null';
+        return sprintf('\\%s|null', LinkCollection::class);
     }
 
 
