@@ -144,6 +144,22 @@ class Service extends Component
         }
     }
 
+    public function handleDeletedBlockType(ConfigEvent $event): void
+    {
+        $fields = $event->oldValue['fields'] ?? [];
+
+        foreach ($fields as $field) {
+            if ($field['type'] === HyperField::class) {
+                $configEvent = new ConfigEvent([
+                    'oldValue' => $field,
+                ]);
+
+                // Call the regular event handler with a fake event to prevent duplicate code
+                $this->handleDeletedField($configEvent);
+            }
+        }
+    }
+
     public function isPluginInstalledAndEnabled(string $plugin): bool
     {
         $pluginsService = Craft::$app->getPlugins();
