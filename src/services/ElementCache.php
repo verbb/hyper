@@ -78,6 +78,8 @@ class ElementCache extends Component
             $this->_fetchedCaches[$cacheKey] = [
                 'title' => $value['title'],
                 'uri' => $value['uri'],
+                'id' => $value['targetId'],
+                'siteId' => $value['targetSiteId'],
             ];
         }
     }
@@ -93,7 +95,9 @@ class ElementCache extends Component
 
         $result = (new Query())
             ->select([
-                'title', 'uri'
+                'title',
+                'uri',
+                'targetSiteId as siteId',
             ])
             ->from(['{{%hyper_element_cache}}'])
             ->where(['targetId' => $id, 'targetSiteId' => $siteId])
