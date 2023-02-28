@@ -97,6 +97,7 @@ class ElementCache extends Component
             ->select([
                 'title',
                 'uri',
+                'targetId as id',
                 'targetSiteId as siteId',
             ])
             ->from(['{{%hyper_element_cache}}'])
