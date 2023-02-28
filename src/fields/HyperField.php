@@ -16,7 +16,9 @@ use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Html;
 use craft\helpers\Json;
+use craft\helpers\ProjectConfig;
 use craft\helpers\StringHelper;
+use craft\models\FieldLayout;
 use craft\validators\ArrayValidator;
 use craft\web\View;
 
@@ -387,6 +389,9 @@ class HyperField extends Field
             if ($config instanceof LinkInterface) {
                 $linkType = $config;
             } else {
+                // Some extra handling here when setting from the POST.
+                $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
+
                 $linkType = Hyper::$plugin->getLinks()->createLink($config);
             }
 
@@ -614,6 +619,27 @@ class HyperField extends Field
         $view->registerJs('document.addEventListener("vite-script-loaded", function(e) {' .
             'if (e.detail.path === "field/src/js/hyper.js") {' . $js . '}' .
         '}); if (Craft.HyperReady) {' . $js . '}');
+    }
+
+    private function _normalizeLayoutConfig(array $config = []): array
+    {
+        // This is supremely stupid. When settings for the field layout come through when editing the field
+        // they'll contain extra info. Project Config, for some bizarre reason, strips this out - which is fine - 
+        // but doesn't re-index the array. So we end up with inconsistent `__assoc__` content in project config!
+        // The way to get around this is to pass it all through the PC helpers before setting on the link.
+        $layoutConfig = $config['layoutConfig'] ?? [];
+
+        if (is_string($layoutConfig)) {
+            $layoutConfig = Json::decode($layoutConfig);
+        }
+
+        $newLayout = FieldLayout::createFromConfig($layoutConfig);
+        $fieldLayoutConfig = $newLayout->getConfig();
+
+        $fieldLayoutConfig = ProjectConfig::packAssociativeArrays($fieldLayoutConfig);
+        $fieldLayoutConfig = ProjectConfig::cleanupConfig($fieldLayoutConfig);
+
+        return ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
     }
 
     private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
