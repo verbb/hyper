@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5.1 - 2023-03-01
+
+### Fixed
+- Fix settings icon not appearing for multi-link fields.
+
 ## 1.0.5 - 2023-03-01
 
 ### Added
