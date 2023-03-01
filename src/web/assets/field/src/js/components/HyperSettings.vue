@@ -252,7 +252,9 @@ export default {
                 this.initEventListeners();
             });
 
-            this.tippy.hide();
+            if (this.tippy) {
+                this.tippy.hide();
+            }
         },
     },
 };

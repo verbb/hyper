@@ -222,12 +222,13 @@ export default {
 
         initSettingsMenu() {
             const $el = this.$el.parentElement;
+            const $settingsBtn = $el.querySelector('.hyper-header-settings');
             const $template = $el.querySelector('#hyper-settings-template');
 
-            if ($template) {
+            if ($template && $settingsBtn) {
                 $template.style.display = 'block';
 
-                this.tippy = tippy($el.querySelector('.hyper-header-settings'), {
+                this.tippy = tippy($settingsBtn, {
                     content: $template,
                     trigger: 'click',
                     allowHTML: true,
@@ -269,7 +270,9 @@ export default {
         },
 
         deleteBlock() {
-            this.tippy.hide();
+            if (this.tippy) {
+                this.tippy.hide();
+            }
 
             this.$emit('delete', this.blockIndex);
         },
