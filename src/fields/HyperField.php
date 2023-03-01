@@ -633,6 +633,9 @@ class HyperField extends Field
             $layoutConfig = Json::decode($layoutConfig);
         }
 
+        // Ensure we remove `uid` from the `layoutConfig` - we don't want it
+        ArrayHelper::remove($layoutConfig, 'uid');
+
         $newLayout = FieldLayout::createFromConfig($layoutConfig);
         $fieldLayoutConfig = $newLayout->getConfig();
 

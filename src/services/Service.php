@@ -11,6 +11,7 @@ use craft\db\Table;
 use craft\elements\Entry;
 use craft\elements\db\ElementQueryInterface;
 use craft\events\ConfigEvent;
+use craft\helpers\ArrayHelper;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class Service extends Component
@@ -90,6 +91,9 @@ class Service extends Component
             if (!$layoutUid || !$layoutConfig) {
                 continue;
             }
+
+            // Ensure we remove `uid` from the `layoutConfig` - we don't want it
+            ArrayHelper::remove($layoutConfig, 'uid');
 
             $fieldLayout = FieldLayout::createFromConfig($layoutConfig);
             $fieldLayout->type = $linkType['type'];
