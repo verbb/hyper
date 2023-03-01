@@ -157,6 +157,14 @@ class HyperField extends Field
         $view = Craft::$app->getView();
         $id = Html::id($this->handle);
 
+        // Ensure that a valid default link type is set, just in case. Otherwise select the first.
+        $enabledLinkTypes = array_values(ArrayHelper::where($this->getLinkTypes(), 'enabled'));
+        $defaultLinkTypeObject = ArrayHelper::where($enabledLinkTypes, 'handle', $this->defaultLinkType);
+
+        if (!$defaultLinkTypeObject) {
+            $this->defaultLinkType = $enabledLinkTypes[0]->handle ?? null;
+        }
+
         $settings = [
             'fieldId' => $this->id,
             'handle' => $this->handle,
