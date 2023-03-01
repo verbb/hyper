@@ -391,6 +391,11 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
+        // Just in case the plugin isn't initialised yet
+        if (!Hyper::getInstance()) {
+            return;
+        }
+
         foreach ($linkTypes as $key => $config) {
             $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
 
