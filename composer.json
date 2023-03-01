@@ -2,7 +2,7 @@
     "name": "verbb/hyper",
     "description": "A user-friendly links field for Craft.",
     "type": "craft-plugin",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "keywords": [
         "craft",
         "cms",

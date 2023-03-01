@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.5 - 2023-03-01
+
+### Added
+- Add error text when unable to render the link’s HTML for general errors.
+- Add error text when unable to render the link’s HTML due to field layout issues.
+
+### Fixed
+- Fix an error with invalid field layout data..
+- Fix multi-link fields with a single tab for linktype settings throwing an error.
+- Fix project config change inconsistencies for link types.
+- Fix element cache for element links not working correctly for multi-site installs.
+- Fix incorrect `valueType()` for field.
+- Fix an error when deleting a Matrix or Super Table block type throwing an error with Hyper fields.
+- Fix link type field layouts not persisting once edited.
+- Fix link types not saving a custom order in the field settings.
+- Fix an error when running project config rebuild.
+
 ## 1.0.4 - 2023-02-21
 
 ### Fixed
