@@ -653,13 +653,23 @@ class HyperField extends Field
             return [];
         }
 
-        $newLayout = FieldLayout::createFromConfig($layoutConfig);
-        $fieldLayoutConfig = $newLayout->getConfig();
+        $firstTab = $layoutConfig['tabs'][0] ?? [];
 
-        $fieldLayoutConfig = ProjectConfig::packAssociativeArrays($fieldLayoutConfig);
-        $fieldLayoutConfig = ProjectConfig::cleanupConfig($fieldLayoutConfig);
+        // We only need to run this when the field layout config is not already transformed. As this is called each `setLinkTypes()`
+        // it'll be run even when reading from the database or project config, where it's already "correct". We're checking on `userCondition`
+        // purely because that's a value we know is stripped out by project config's saving mechanism for a field layout.
+        if (array_key_exists('userCondition', $firstTab)) {
+            $newLayout = FieldLayout::createFromConfig($layoutConfig);
+            $fieldLayoutConfig = $newLayout->getConfig();
 
-        return ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
+            $fieldLayoutConfig = ProjectConfig::packAssociativeArrays($fieldLayoutConfig);
+            $fieldLayoutConfig = ProjectConfig::cleanupConfig($fieldLayoutConfig);
+            $fieldLayoutConfig = ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
+
+            return $fieldLayoutConfig;
+        }
+
+        return $layoutConfig;
     }
 
     private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
