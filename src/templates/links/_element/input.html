@@ -3,6 +3,17 @@
 {% set selectId = 'link-url-' ~ random() %}
 {% set siteId = 'link-siteid-' ~ random() %}
 
+{% set criteria = {
+    status: null,
+} %}
+
+{# Assets don't support `uri` like other elements do #}
+{% if className(link) != 'verbb\\hyper\\links\\Asset' %}
+    {% set criteria = criteria | merge({
+        uri: ':notempty:',
+    }) %}
+{% endif %}
+
 {{ forms.elementSelect({
     id: selectId,
     name: 'linkValue',
@@ -13,10 +24,7 @@
     storageKey: 'hyper.' ~ field.handle ~ '.' ~ lowerElementType,
     elements: link.getElements(),
     selectionLabel: link.selectionLabel,
-    criteria: {
-        status: null,
-        uri: ':notempty:',
-    },
+    criteria: criteria,
 }) }}
 
 {{ forms.hidden({
