@@ -75,4 +75,6 @@ return [
     'Native Fields' => 'Native Fields',
     'Edit' => 'Edit',
     'Choose' => 'Choose',
+    'Add a link' => 'Add a link',
+    'Add {type}' => 'Add {type}',
 ];

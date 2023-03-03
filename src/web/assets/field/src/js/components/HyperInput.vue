@@ -18,14 +18,20 @@
         </div>
 
         <div v-if="settings.multipleLinks && !settings.isStatic">
-            <button type="button" class="btn dashed add icon menubtn h-add-link-btn" :class="canAdd ? '' : 'disabled'" :disabled="!canAdd">{{ t('hyper', 'Add a link') }}</button>
+            <div v-if="settings.linkTypes.length > 1">
+                <button type="button" class="btn dashed icon add menubtn h-add-link-btn" :class="canAdd ? '' : 'disabled'" :disabled="!canAdd">{{ t('hyper', 'Add a link') }}</button>
 
-            <div id="hyper-linktypes-template" class="hyper-menu" style="display: none;">
-                <ul class="padded" role="listbox" aria-hidden="true">
-                    <li v-for="(linkType, index) in settings.linkTypes" :key="index">
-                        <a role="option" tabindex="-1" @click.prevent="newLinkBlock(linkType.handle)">{{ linkType.label }}</a>
-                    </li>
-                </ul>
+                <div id="hyper-linktypes-template" class="hyper-menu" style="display: none;">
+                    <ul class="padded" role="listbox" aria-hidden="true">
+                        <li v-for="(linkType, index) in settings.linkTypes" :key="index">
+                            <a role="option" tabindex="-1" @click.prevent="newLinkBlock(linkType.handle)">{{ linkType.label }}</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div v-else>
+                <button type="button" class="btn dashed icon add h-add-link-btn" :class="canAdd ? '' : 'disabled'" :disabled="!canAdd" @click.prevent="newLinkBlock(settings.linkTypes[0].handle)">{{ t('hyper', 'Add {type}', { type: settings.linkTypes[0].label }) }}</button>
             </div>
         </div>
     </div>
