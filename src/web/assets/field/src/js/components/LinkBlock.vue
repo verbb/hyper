@@ -308,7 +308,7 @@ export default {
 .hyper-wrapper {
     border: 1px solid #d8dee7;
     border-radius: 6px;
-    overflow: hidden;
+    // overflow: hidden;
 }
 
 .hyper-header {
