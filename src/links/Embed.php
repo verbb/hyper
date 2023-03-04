@@ -51,7 +51,10 @@ class Embed extends Link
                 $client = new CurlClient();
                 $client->setSettings($settings->embedClientSettings);
 
-                $embed = new \Embed\Embed(new Crawler($client));
+                $crawler = new Crawler($client);
+                $crawler->addDefaultHeaders($settings->embedHeaders);
+
+                $embed = new \Embed\Embed($crawler);
                 $info = $embed->get($url);
 
                 $values['linkValue'] = Json::decode(Json::encode([

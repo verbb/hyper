@@ -8,13 +8,15 @@ The below shows the defaults already used by Hyper, so you don't need to add the
 
 return [
     '*' => [
-        'embedClientSettings' => '',
+        'embedClientSettings' => [],
+        'embedHeaders' => [],
     ],
 ];
 ```
 
 ## Configuration options
 - `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
+- `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 
 ## Control Panel
 You can also manage configuration settings through the Control Panel by visiting Settings → Hyper.
