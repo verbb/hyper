@@ -201,6 +201,15 @@ export default {
             if (this.$refs.fields) {
                 // Use `clone()` and `htmlize()` to properly copy existing DOM content
                 const $fieldsHtml = $(this.$refs.fields.$el.childNodes).clone();
+
+                // Special-case for Redactor. We need to reset it to its un-initialized form
+                // because it doesn't have better double-binding checks.
+                if ($fieldsHtml.find('.redactor-box').length) {
+                    // Rip out the `textarea` which is all we need
+                    const $textarea = $fieldsHtml.find('.redactor-box textarea').htmlize();
+                    $fieldsHtml.find('.redactor-box').replaceWith($textarea);
+                }
+
                 let fieldsHtml = $fieldsHtml.htmlize();
 
                 // Revert to blank namespacing for `id` and `name` now that the order has changed
