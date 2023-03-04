@@ -8,4 +8,6 @@ class Settings extends Model
     // Properties
     // =========================================================================
 
+    public array $embedClientSettings = [];
+
 }

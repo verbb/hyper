@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\links;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
 
 use craft\helpers\Json;
@@ -8,6 +9,9 @@ use craft\helpers\Template;
 
 use Throwable;
 use Twig\Markup;
+
+use Embed\Http\Crawler;
+use Embed\Http\CurlClient;
 
 class Embed extends Link
 {
@@ -35,13 +39,19 @@ class Embed extends Link
 
     public function getSerializedValues(): array
     {
+        /* @var Settings $settings */
+        $settings = Hyper::$plugin->getSettings();
+
         $values = parent::getSerializedValues();
 
         $url = $values['linkValue'] ?? null;
 
         if (is_string($url)) {
             try {
-                $embed = new \Embed\Embed();
+                $client = new CurlClient();
+                $client->setSettings($settings->embedClientSettings);
+
+                $embed = new \Embed\Embed(new Crawler($client));
                 $info = $embed->get($url);
 
                 $values['linkValue'] = Json::decode(Json::encode([
