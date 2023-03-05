@@ -35,6 +35,11 @@ class Links extends Component
             linkTypes\User::class,
         ];
 
+        if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('commerce')) {
+            $linkTypes[] = linkTypes\Product::class;
+            $linkTypes[] = linkTypes\Variant::class;
+        }
+
         $event = new RegisterComponentTypesEvent([
             'types' => $linkTypes,
         ]);
