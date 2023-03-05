@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.1.0 - 2023-03-05
+
+### Added
+- Add Commerce Product and Variant link types.
+- Add `hyper/migrate/typed-link-field` console command for migration.
+- Add `hyper/migrate/typed-link-content` console command for migration.
+- Add `hyper/migrate/linkit-field` console command for migration.
+- Add `hyper/migrate/linkit-content` console command for migration.
+- Add `hyper/migrate/link-field` console command for migration.
+- Add `hyper/migrate/link-content` console command for migration.
+- Add `embedDetectorsSettings` to pass to embed settings. (thanks @kylecotter).
+- Add `embedHeaders` plugin setting to provide settings for Embed link fetching.
+- Add `embedClientSettings` plugin setting to provide settings for Embed link fetching.
+
+### Changed
+- Improve third-party link field content migration. You can now run the migration for the field and content separately and safely multiple times, and per-environment.
+- Update multi-link fields to not show a link type dropdown when only one link type is available.
+
+### Fixed
+- Fix select fields not working for link blocks when re-ordered for Craft 4.4+.
+- Fix Redactor not working correctly for link blocks when re-ordering.
+- Fix an visual overflow issue for link blocks.
+- Fix asset link types not working correctly to select assets.
+- Fix multi-link fields not allowing all links to be removed.
+- Fix a infinite loop issue when link types contain custom fields.
+- Fix an error when Hyper hasn’t been fully initialised yet, setting link type objects.
+- Fix an issue where a disabled link type could be chosen as the default for the field.
+
 ## 1.0.5.2 - 2023-03-01
 
 ### Fixed
