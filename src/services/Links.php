@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\services;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\links as linkTypes;
 

@@ -14,11 +14,9 @@ use craft\helpers\ElementHelper;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 
-use Exception;
-
 use lenz\linkfield\fields\LinkField;
 
-class MigrateTypedLink extends PluginMigration
+class MigrateTypedLinkContent extends PluginContentMigration
 {
     // Properties
     // =========================================================================
@@ -42,146 +40,6 @@ class MigrateTypedLink extends PluginMigration
     // Public Methods
     // =========================================================================
 
-    public function processFieldSettings(): void
-    {
-        $fieldService = Craft::$app->getFields();
-
-        foreach ($this->fields as $field) {
-            $this->stdout("Preparing to migrate field “{$field['handle']}” ({$field['uid']}).");
-
-            $settings = Json::decode($field['settings']);
-            $allowCustomText = $settings['allowCustomText'] ?? true;
-            $allowTarget = $settings['allowTarget'] ?? true;
-            $customTextRequired = $settings['customTextRequired'] ?? true;
-            $defaultLinkName = $settings['defaultLinkName'] ?? '';
-            $defaultText = $settings['defaultText'] ?? '';
-            $enableAllLinkTypes = $settings['enableAllLinkTypes'] ?? true;
-            $enableAriaLabel = $settings['enableAriaLabel'] ?? true;
-            $enableTitle = $settings['enableTitle'] ?? true;
-
-            $types = [];
-
-            foreach (($settings['typeSettings'] ?? []) as $key => $type) {
-                $linkTypeClass = $this->getLinkType($key);
-
-                if (!$linkTypeClass) {
-                    continue;
-                }
-
-                $linkType = new $linkTypeClass();
-                $linkType->label = $linkType::displayName();
-                $linkType->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
-                $linkType->enabled = $enableAllLinkTypes || ($type['enabled'] ?? false);
-                $linkType->linkText = $defaultText;
-
-                if ($linkType instanceof ElementLink) {
-                    $linkType->sources = $type['sources'] ?? '*';
-                } else if ($linkType instanceof linkTypes\Site) {
-                    $linkType->sites = $type['sites'] ?? null;
-
-                    if (is_array($linkType->sites)) {
-                        foreach ($linkType->sites as $siteKey => $siteId) {
-                            if ($site = Craft::$app->getSites()->getSiteById($siteId)) {
-                                $linkType->sites[$siteKey] = $site->uid;
-                            }
-                        }
-                    }
-                }
-
-                $fieldLayout = self::getDefaultFieldLayout($allowCustomText, $enableTitle, $enableAriaLabel);
-                $linkType->layoutUid = StringHelper::UUID();
-                $linkType->layoutConfig = $fieldLayout->getConfig();
-
-                $types[] = $linkType->getSettingsConfig();
-            }
-
-            // Create a new Hyper field instance to have the settings validated correctly
-            $newFieldConfig = $field;
-            unset($newFieldConfig['type'], $newFieldConfig['settings']);
-
-            $newFieldConfig['newWindow'] = $allowTarget;
-            $newFieldConfig['defaultLinkType'] = $this->getLinkType($defaultLinkName) ? 'default-' . StringHelper::toKebabCase($this->getLinkType($defaultLinkName)) : null;
-            $newFieldConfig['linkTypes'] = $types;
-
-            $newField = new HyperField($newFieldConfig);
-            $newField->columnSuffix = StringHelper::randomString(8);
-
-            if (!$newField->validate()) {
-                $this->stdout(Json::encode($newField->getErrors()) . PHP_EOL, Console::FG_RED);
-
-                continue;
-            }
-
-            // We have to save the field instead of a settings update, because the plugin doesn't use the content table
-            if ($newField->context === 'global') {
-                if (!$fieldService->saveField($newField)) {
-                    throw new Exception(Json::encode($newField->getErrors()));
-                }
-            }
-
-            if (str_contains($newField->context, 'matrixBlockType')) {
-                // Get the Matrix field, and the content table
-                $blockTypeUid = explode(':', $newField->context)[1];
-
-                $matrixFieldId = (new Query())
-                    ->select(['fieldId'])
-                    ->from('{{%matrixblocktypes}}')
-                    ->where(['uid' => $blockTypeUid])
-                    ->scalar();
-
-                if ($matrixFieldId) {
-                    $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
-
-                    if ($matrixField) {
-                        $this->migrateBlockField($matrixField, $newField);
-
-                        if (!$fieldService->saveField($matrixField)) {
-                            throw new Exception(Json::encode($matrixField->getErrors()));
-                        }
-                    } else {
-                        $this->stdout("    > Unable to find owner Matrix field for ID “{$matrixFieldId}”." . PHP_EOL, Console::FG_RED);
-                    }
-                } else {
-                    $this->stdout("    > Unable to find owner Matrix field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
-                }
-            }
-
-            if (str_contains($newField->context, 'superTableBlockType')) {
-                // Get the Super Table field, and the content table
-                $blockTypeUid = explode(':', $newField->context)[1];
-
-                $superTableFieldId = (new Query())
-                    ->select(['fieldId'])
-                    ->from('{{%supertableblocktypes}}')
-                    ->where(['uid' => $blockTypeUid])
-                    ->scalar();
-
-                if ($superTableFieldId) {
-                    $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
-
-                    if ($superTableField) {
-                        $this->migrateBlockField($superTableField, $newField);
-
-                        if (!$fieldService->saveField($superTableField)) {
-                            throw new Exception(Json::encode($superTableField->getErrors()));
-                        }
-                    } else {
-                        $this->stdout("    > Unable to find owner Super Table field for ID “{$superTableFieldId}”." . PHP_EOL, Console::FG_RED);
-                    }
-                } else {
-                    $this->stdout("    > Unable to find owner Super Table field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
-                }
-            }
-
-            // Check for Vizy fields, a little different
-            if ($this->isPluginInstalledAndEnabled('vizy')) {
-                $this->migrateVizyContent($field);
-            }
-
-            $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
-        }
-    }
-
     public function processFieldContent(): void
     {
         foreach ($this->fields as $fieldData) {
@@ -203,7 +61,7 @@ class MigrateTypedLink extends PluginMigration
                 // Handle global field content
                 if ($field->context === 'global') {
                     foreach ($content as $row) {
-                        $settings = $this->convertModel($row);
+                        $settings = $this->convertModel($field, $row);
 
                         // Find the content row to update
                         $contentRow = (new Query())
@@ -250,7 +108,7 @@ class MigrateTypedLink extends PluginMigration
 
                         if ($matrixField) {
                             foreach ($content as $row) {
-                                $settings = $this->convertModel($row);
+                                $settings = $this->convertModel($field, $row);
 
                                 // Find the content row to update
                                 $contentRow = (new Query())
@@ -293,7 +151,7 @@ class MigrateTypedLink extends PluginMigration
 
                     if ($superTableField) {
                         foreach ($content as $row) {
-                            $settings = $this->convertModel($row);
+                            $settings = $this->convertModel($field, $row);
 
                             // Find the content row to update
                             $contentRow = (new Query())
@@ -325,11 +183,19 @@ class MigrateTypedLink extends PluginMigration
         }
     }
 
-    public function convertModel($oldSettings): bool|array|null
+    public function convertModel(HyperField $field, array $oldSettings): bool|array|null
     {
         $oldType = $oldSettings['type'] ?? null;
+        $hyperType = $oldSettings[0]['type'] ?? null;
 
-        // Return null for an empty field, false for when unable to find matching new type
+        if (str_contains($hyperType, 'verbb\\hyper')) {
+            $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
+
+            return null;
+        }
+
+        // Return `null` for an empty field, or already migrated to Hyper.
+        // `false` for when unable to find matching new type.
         if (!$oldType) {
             return null;
         }

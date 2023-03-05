@@ -3,6 +3,7 @@ namespace verbb\hyper\links;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
+use verbb\hyper\models\Settings;
 
 use craft\helpers\Json;
 use craft\helpers\Template;

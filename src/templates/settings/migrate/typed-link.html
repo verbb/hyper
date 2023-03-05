@@ -10,7 +10,6 @@
 
 {% block blockContent %}
 
-{{ actionInput('hyper/migrations/typed-link') }}
 {{ redirectInput('hyper/settings/migrate/typed-link') }}
 
 <h2 class="first">{{ 'Migrate Typed Link Fields' | t('hyper') }}</h2>
@@ -20,7 +19,21 @@
 
     {{ 'This will **permanently** modify all your Typed Link fields and cannot be reverted. We‘ll make a backup before the migration is run if you need to restore back to it.' | t('hyper') | md }}
 
-    <input type="submit" class="btn submit" value="{{ 'Migrate Fields' | t('hyper') }}">
+    {{ 'This is a 2-step process. First, to migrate your fields. Second, to migrate your content.' | t('hyper') | md }}
+
+    <h3>{{ 'Step 1. Migrate Fields' | t('hyper') }}</h3>
+
+    {{ 'You should first migrate your fields over in an environment with `allowAdminChanges` set to `true`. Once migrated successfully, you can then migrate the content for those fields.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-field" value="{{ 'Migrate Fields' | t('hyper') }}">
+
+    <hr>
+
+    <h3>{{ 'Step 2. Migrate Content' | t('hyper') }}</h3>
+
+    {{ 'Once your fields have been migrated, the content for that field used in elements must be converted. You should run this in your local development environment to test everything migrates correctly. You can then deploy your field changes as run this as many times as you like on other environments. As content is stored per-environment, you\'ll need to run this step on each environment.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-content" value="{{ 'Migrate Content' | t('hyper') }}">
 {% else %}
     {% for formId, output in response %}
         {{ output | raw }}

@@ -10,20 +10,15 @@ use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 
-use presseddigital\linkit\fields\LinkitField;
-use presseddigital\linkit\models\Asset;
-use presseddigital\linkit\models\Category;
-use presseddigital\linkit\models\Email;
-use presseddigital\linkit\models\Entry;
-use presseddigital\linkit\models\Facebook;
-use presseddigital\linkit\models\Instagram;
-use presseddigital\linkit\models\LinkedIn;
-use presseddigital\linkit\models\Phone;
-use presseddigital\linkit\models\Twitter;
-use presseddigital\linkit\models\Url;
-use presseddigital\linkit\models\User;
+use flipbox\craft\link\fields\Link;
+use flipbox\craft\link\types\Asset;
+use flipbox\craft\link\types\Category;
+use flipbox\craft\link\types\Email;
+use flipbox\craft\link\types\Entry;
+use flipbox\craft\link\types\Url;
+use flipbox\craft\link\types\User;
 
-class MigrateLinkit extends PluginMigration
+class MigrateLinkField extends PluginFieldMigration
 {
     // Properties
     // =========================================================================
@@ -33,16 +28,11 @@ class MigrateLinkit extends PluginMigration
         Category::class => linkTypes\Category::class,
         Email::class => linkTypes\Email::class,
         Entry::class => linkTypes\Entry::class,
-        Phone::class => linkTypes\Phone::class,
         Url::class => linkTypes\Url::class,
-        Twitter::class => linkTypes\Url::class,
-        Facebook::class => linkTypes\Url::class,
-        Instagram::class => linkTypes\Url::class,
-        LinkedIn::class => linkTypes\Url::class,
         User::class => linkTypes\User::class,
     ];
 
-    public string $oldFieldTypeClass = LinkitField::class;
+    public string $oldFieldTypeClass = Link::class;
 
 
     // Public Methods
@@ -54,43 +44,58 @@ class MigrateLinkit extends PluginMigration
             $this->stdout("Preparing to migrate field “{$field['handle']}” ({$field['uid']}).");
 
             $settings = Json::decode($field['settings']);
-            $allowCustomText = $settings['allowCustomText'] ?? true;
 
             $types = [];
+            $identifierMap = [];
+            $processedTypes = [];
 
             foreach (($settings['types'] ?? []) as $key => $type) {
-                $linkTypeClass = $this->getLinkType($key);
+                $oldClass = $type['class'] ?? null;
+                $linkTypeClass = $this->getLinkType($oldClass);
 
                 if (!$linkTypeClass) {
                     continue;
                 }
 
                 $linkType = new $linkTypeClass();
-                $linkType->label = $linkType::displayName();
+                $linkType->label = $type['label'] ?? $linkType::displayName();
                 $linkType->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
-                $linkType->enabled = $type['enabled'] ?? false;
-                $linkType->linkText = $type['customLabel'] ?? null;
+                $linkType->enabled = true;
+
+                if (in_array($linkTypeClass, $processedTypes)) {
+                    $linkType->handle = $key;
+                    $linkType->isCustom = true;
+                }
+
+                $allowText = $type['allowText'] ?? true;
 
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = $type['sources'] ?? '*';
-                    $linkType->selectionLabel = $type['customSelectionLabel'] ?? null;
                 } else {
-                    $linkType->placeholder = $type['customPlaceholder'] ?? null;
+                    $linkType->placeholder = $type['placeholder'] ?? null;
                 }
 
-                $fieldLayout = self::getDefaultFieldLayout($allowCustomText);
+                $fieldLayout = self::getDefaultFieldLayout($allowText);
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 
                 $types[] = $linkType->getSettingsConfig();
+
+                $identifierMap[$key] = [
+                    'handle' => $linkType->handle,
+                    'class' => get_class($linkType),
+                ];
+
+                $processedTypes[] = $linkTypeClass;
             }
 
             // Create a new Hyper field instance to have the settings validated correctly
             $newFieldConfig = $field;
             unset($newFieldConfig['type'], $newFieldConfig['settings']);
 
-            $newFieldConfig['newWindow'] = $settings['allowTarget'] ?? false;
+            $newFieldConfig['newWindow'] = true;
             $newFieldConfig['linkTypes'] = $types;
+            $newFieldConfig['migrationData'] = $identifierMap;
 
             $newField = new HyperField($newFieldConfig);
 
@@ -106,29 +111,5 @@ class MigrateLinkit extends PluginMigration
 
             $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
         }
-    }
-
-    public function convertModel($oldSettings): bool|array|null
-    {
-        $oldType = $oldSettings['type'] ?? null;
-
-        // Return null for an empty field, false for when unable to find matching new type
-        if (!$oldType) {
-            return null;
-        }
-
-        $linkTypeClass = $this->getLinkType($oldType);
-
-        if (!$linkTypeClass) {
-            return false;
-        }
-
-        $link = new $linkTypeClass();
-        $link->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
-        $link->linkValue = $oldSettings['value'] ?? null;
-        $link->linkText = $oldSettings['customText'] ?? null;
-        $link->newWindow = $oldSettings['target'] ?? false;
-
-        return [$link->getSerializedValues()];
     }
 }

@@ -1,9 +1,12 @@
 <?php
 namespace verbb\hyper\controllers;
 
-use verbb\hyper\migrations\MigrateLinkit;
-use verbb\hyper\migrations\MigrateTypedLink;
-use verbb\hyper\migrations\MigrateLink;
+use verbb\hyper\migrations\MigrateLinkitField;
+use verbb\hyper\migrations\MigrateLinkitContent;
+use verbb\hyper\migrations\MigrateTypedLinkField;
+use verbb\hyper\migrations\MigrateTypedLinkContent;
+use verbb\hyper\migrations\MigrateLinkField;
+use verbb\hyper\migrations\MigrateLinkContent;
 
 use Craft;
 use craft\helpers\App;
@@ -16,19 +19,34 @@ class MigrationsController extends Controller
     // Public Methods
     // =========================================================================
 
-    public function actionLinkit(): void
+    public function actionLinkitField(): void
     {
-        $this->_migrate(MigrateLinkit::class);
+        $this->_migrate(MigrateLinkitField::class);
     }
 
-    public function actionTypedLink(): void
+    public function actionLinkitContent(): void
     {
-        $this->_migrate(MigrateTypedLink::class);
+        $this->_migrate(MigrateLinkitContent::class);
     }
 
-    public function actionLink(): void
+    public function actionTypedLinkField(): void
     {
-        $this->_migrate(MigrateLink::class);
+        $this->_migrate(MigrateTypedLinkField::class);
+    }
+
+    public function actionTypedLinkContent(): void
+    {
+        $this->_migrate(MigrateTypedLinkContent::class);
+    }
+
+    public function actionLinkField(): void
+    {
+        $this->_migrate(MigrateLinkField::class);
+    }
+
+    public function actionLinkContent(): void
+    {
+        $this->_migrate(MigrateLinkContent::class);
     }
 
 

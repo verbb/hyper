@@ -56,6 +56,7 @@ class HyperField extends Field
     public ?int $maxLinks = null;
     public ?int $fieldLayoutId = null;
     public string $columnType = Schema::TYPE_TEXT;
+    public array $migrationData = [];
 
     private bool $_isStatic = false;
     private array $_linkTypes = [];
@@ -664,9 +665,8 @@ class HyperField extends Field
 
             $fieldLayoutConfig = ProjectConfig::packAssociativeArrays($fieldLayoutConfig);
             $fieldLayoutConfig = ProjectConfig::cleanupConfig($fieldLayoutConfig);
-            $fieldLayoutConfig = ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
 
-            return $fieldLayoutConfig;
+            return ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
         }
 
         return $layoutConfig;
