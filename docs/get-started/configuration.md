@@ -10,6 +10,7 @@ return [
     '*' => [
         'embedClientSettings' => [],
         'embedHeaders' => [],
+        'embedDetectorsSettings' => [],
     ],
 ];
 ```
@@ -17,6 +18,7 @@ return [
 ## Configuration options
 - `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
+- `embedDetectorsSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the detectors for Embed links.
 
 ## Control Panel
 You can also manage configuration settings through the Control Panel by visiting Settings → Hyper.

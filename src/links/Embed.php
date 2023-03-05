@@ -56,6 +56,8 @@ class Embed extends Link
                 $crawler->addDefaultHeaders($settings->embedHeaders);
 
                 $embed = new \Embed\Embed($crawler);
+                $embed->setSettings($settings->embedDetectorsSettings);
+
                 $info = $embed->get($url);
 
                 $values['linkValue'] = Json::decode(Json::encode([

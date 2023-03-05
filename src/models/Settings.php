@@ -10,5 +10,6 @@ class Settings extends Model
 
     public array $embedClientSettings = [];
     public array $embedHeaders = [];
+    public array $embedDetectorsSettings = [];
 
 }
