@@ -7,6 +7,7 @@ use verbb\hyper\fieldlayoutelements\LinkField;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\Asset;
 
 abstract class ElementLink extends Link
 {
@@ -173,7 +174,10 @@ abstract class ElementLink extends Link
     public function getLinkUrl(): ?string
     {
         if ($cached = $this->_getElementCache()) {
-            return $cached->url;
+            // Asset links skip the cache for the moment, as they're more complicated than a `uri`
+            if (!($cached instanceof Asset)) {
+                return $cached->url;
+            }
         }
 
         if ($element = $this->getElement()) {
