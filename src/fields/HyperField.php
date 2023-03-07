@@ -7,6 +7,7 @@ use verbb\hyper\gql\types\generators\LinkTypeGenerator;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\helpers\Plugin;
 use verbb\hyper\models\LinkCollection;
+use verbb\hyper\services\Links;
 
 use Craft;
 use craft\base\Element;
@@ -392,11 +393,6 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
-        // Just in case the plugin isn't initialised yet
-        if (!Hyper::getInstance()) {
-            return;
-        }
-
         foreach ($linkTypes as $key => $config) {
             $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
 
@@ -406,7 +402,7 @@ class HyperField extends Field
                 // Some extra handling here when setting from the POST.
                 $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
 
-                $linkType = Hyper::$plugin->getLinks()->createLink($config);
+                $linkType = Links::createLink($config);
             }
 
             // Set up the field layout config - it'll be saved later
@@ -557,7 +553,7 @@ class HyperField extends Field
                 continue;
             }
 
-            $linkType = $linksService->createLink($linkTypeClass);
+            $linkType = Links::createLink($linkTypeClass);
             $linkTypes[] = $this->_getLinkTypeSettingsConfig($linkType);
         }
 

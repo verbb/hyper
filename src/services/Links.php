@@ -12,6 +12,29 @@ use craft\helpers\Component as ComponentHelper;
 
 class Links extends Component
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function createLink(mixed $config): LinkInterface
+    {
+        if (is_string($config)) {
+            $config = ['type' => $config];
+        }
+
+        try {
+            $link = ComponentHelper::createComponent($config, LinkInterface::class);
+        } catch (MissingComponentException $e) {
+            $config['errorMessage'] = $e->getMessage();
+            $config['expectedType'] = $config['type'];
+            unset($config['type']);
+
+            $link = new linkTypes\MissingLink($config);
+        }
+
+        return $link;
+    }
+
+
     // Constants
     // =========================================================================
 
@@ -47,25 +70,6 @@ class Links extends Component
         $this->trigger(self::EVENT_REGISTER_LINK_TYPES, $event);
 
         return $event->types;
-    }
-
-    public function createLink(mixed $config): LinkInterface
-    {
-        if (is_string($config)) {
-            $config = ['type' => $config];
-        }
-
-        try {
-            $link = ComponentHelper::createComponent($config, LinkInterface::class);
-        } catch (MissingComponentException $e) {
-            $config['errorMessage'] = $e->getMessage();
-            $config['expectedType'] = $config['type'];
-            unset($config['type']);
-
-            $link = new linkTypes\MissingLink($config);
-        }
-
-        return $link;
     }
 
 }
