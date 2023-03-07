@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 - 2023-03-07
+
+### Fixed
+- Fix an issue registering link types when Hyper isn’t fully initialized.
+- Fix an error with element caches for Asset links.
+
 ## 1.1.0 - 2023-03-05
 
 ### Added
