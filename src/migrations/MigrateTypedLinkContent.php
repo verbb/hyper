@@ -31,6 +31,7 @@ class MigrateTypedLinkContent extends PluginContentMigration
         'tel' => linkTypes\Phone::class,
         'url' => linkTypes\Url::class,
         'user' => linkTypes\User::class,
+        'craftCommerce-product' => linkTypes\Product::class,
     ];
 
     public string $oldFieldTypeClass = LinkField::class;
