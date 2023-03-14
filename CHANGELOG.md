@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2 - 2023-03-14
+
+### Fixed
+- Fix an error with Commerce Product/Variant link types.
+
 ## 1.1.1 - 2023-03-07
 
 ### Fixed
