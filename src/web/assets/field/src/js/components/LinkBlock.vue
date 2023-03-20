@@ -272,7 +272,7 @@ export default {
                     placement: 'bottom',
                     theme: 'light-border hyper-tippy-menu',
                     maxWidth: '300px',
-                    zIndex: 10,
+                    zIndex: 100,
                     hideOnClick: true,
                 });
             }

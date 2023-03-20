@@ -168,7 +168,7 @@ export default {
                     placement: 'bottom-end',
                     theme: 'light-border hyper-tippy-menu',
                     maxWidth: '300px',
-                    zIndex: 10,
+                    zIndex: 100,
                     hideOnClick: true,
                 });
             }
