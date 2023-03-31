@@ -26,6 +26,11 @@ class FieldCache extends Component
             return;
         }
 
+        // Only want existing fields
+        if ($event->isNew) {
+            return;
+        }
+
         $field = $event->field;
 
         // Only proceed if the field handle changed
