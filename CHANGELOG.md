@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.3 - 2023-04-04
+
+### Fixed
+- Fix empty link states for Email and Phone links.
+- Fix an error when creating the field cache for new fields.
+- Increase z-index for tooltips when in live preview or editor slide-out.
+
 ## 1.1.2 - 2023-03-14
 
 ### Fixed
