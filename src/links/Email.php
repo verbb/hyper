@@ -41,7 +41,7 @@ class Email extends Link
 
     public function getUrlPrefix(): ?string
     {
-        return 'mailto:';
+        return $this->getLinkUrl() ? 'mailto:' : null;
     }
 
 }
