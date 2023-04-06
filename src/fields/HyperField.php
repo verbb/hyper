@@ -210,6 +210,9 @@ class HyperField extends Field
         }
 
         if (is_string($value) && !empty($value)) {
+            // Un-serialize any encoded HTML entities
+            $value = StringHelper::htmlDecode($value);
+
             // Support emoji's for anything
             $value = LitEmoji::shortcodeToUnicode($value);
             
@@ -228,8 +231,15 @@ class HyperField extends Field
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
 
-            // Support emoji's for anything
-            return Json::decode(LitEmoji::unicodeToShortcode(Json::encode($value)));
+            $value = Json::encode($value);
+
+            // Ensure that we encode HTML entities before emoji processing, as that'll replace `«`, etc characters
+            $value = StringHelper::htmlEncode($value, ENT_NOQUOTES);
+
+            // Serialize any emoji's (for anything)
+            $value = LitEmoji::unicodeToShortcode($value);
+
+            return Json::decode($value);
         }
 
         return $value;
