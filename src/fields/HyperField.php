@@ -210,13 +210,11 @@ class HyperField extends Field
         }
 
         if (is_string($value) && !empty($value)) {
-            // Un-serialize any encoded HTML entities
-            $value = StringHelper::htmlDecode($value);
-
-            // Support emoji's for anything
-            $value = LitEmoji::shortcodeToUnicode($value);
-            
             $value = Json::decodeIfJson($value);
+
+            if (is_array($value)) {
+                $value = self::_decodeStringValues($value);
+            }
         }
 
         if (!is_array($value)) {
@@ -231,15 +229,7 @@ class HyperField extends Field
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
 
-            $value = Json::encode($value);
-
-            // Ensure that we encode HTML entities before emoji processing, as that'll replace `«`, etc characters
-            $value = StringHelper::htmlEncode($value, ENT_NOQUOTES);
-
-            // Serialize any emoji's (for anything)
-            $value = LitEmoji::unicodeToShortcode($value);
-
-            return Json::decode($value);
+            return Json::decode(Json::encode(self::_encodeStringValues($value)));
         }
 
         return $value;
@@ -695,5 +685,56 @@ class HyperField extends Field
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
+    }
+
+    private static function _decodeStringValues(array $values)
+    {
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $value = self::_decodeStringValues($value);
+            } else if (is_string($value)) {
+                // TODO: replace in Craft 4.4+ or LitEmoji 5+
+                $value = self::shortcodesToEmoji($value);
+            }
+
+            $values[$key] = $value;
+        }
+
+        return $values;
+    }
+
+    private static function _encodeStringValues(array $values)
+    {
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $value = self::_encodeStringValues($value);
+            } else if (is_string($value)) {
+                // TODO: replace in Craft 4.4+ or LitEmoji 5+
+                $value = self::emojiToShortcodes($value);
+            }
+
+            $values[$key] = $value;
+        }
+
+        return $values;
+    }
+
+    public static function emojiToShortcodes(string $str): string
+    {
+        // Add delimiters around all 4-byte chars
+        $dl = '__MB4_DL__';
+        $dr = '__MB4_DR__';
+        $str = StringHelper::replaceMb4($str, fn($char) => sprintf('%s%s%s', $dl, $char, $dr));
+
+        // Strip out consecutive delimiters
+        $str = str_replace(sprintf('%s%s', $dr, $dl), '', $str);
+
+        // Replace all 4-byte sequences individually
+        return preg_replace_callback("/$dl(.+?)$dr/", fn($m) => LitEmoji::unicodeToShortcode($m[1]), $str);
+    }
+
+    public static function shortcodesToEmoji(string $str): string
+    {
+        return LitEmoji::shortcodeToUnicode($str);
     }
 }
