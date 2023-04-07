@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.4 - 2023-04-07
+
+### Added
+- `LinkCollection` now implements `ArrayAccess` to allow index-access for Hyper field values.
+
+### Fixed
+- Fix some HTML characters being stripped incorrectly due to LitEmoji processing.
+- Fix HTML characters not being encoded/decoded correctly for field values.
+
 ## 1.1.3 - 2023-04-04
 
 ### Fixed
