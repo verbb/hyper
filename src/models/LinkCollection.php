@@ -6,11 +6,12 @@ use verbb\hyper\fields\HyperField;
 
 use craft\base\ElementInterface;
 
+use ArrayAccess;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
 
-class LinkCollection implements IteratorAggregate, Countable
+class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 {
     // Properties
     // =========================================================================
@@ -101,6 +102,26 @@ class LinkCollection implements IteratorAggregate, Countable
     public function getIterator(): ArrayIterator
     {
         return new ArrayIterator($this->_links);
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return isset($this->_links[$offset]);
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        return isset($this->_links[$offset]) ? $this->_links[$offset] : null;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        $this->_links[$offset] = $item;
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->_links[$offset]);
     }
 
     public function count(): int
