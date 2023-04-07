@@ -6,6 +6,7 @@ use verbb\hyper\base\LinkInterface;
 use verbb\hyper\gql\types\generators\LinkTypeGenerator;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\helpers\Plugin;
+use verbb\hyper\helpers\StringHelper;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\services\Links;
 
@@ -18,7 +19,6 @@ use craft\helpers\ArrayHelper;
 use craft\helpers\Html;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig;
-use craft\helpers\StringHelper;
 use craft\models\FieldLayout;
 use craft\validators\ArrayValidator;
 use craft\web\View;
@@ -28,7 +28,6 @@ use yii\db\Schema;
 use Throwable;
 
 use GraphQL\Type\Definition\Type;
-use LitEmoji\LitEmoji;
 
 class HyperField extends Field
 {
@@ -694,7 +693,7 @@ class HyperField extends Field
                 $value = self::_decodeStringValues($value);
             } else if (is_string($value)) {
                 // TODO: replace in Craft 4.4+ or LitEmoji 5+
-                $value = self::shortcodesToEmoji($value);
+                $value = StringHelper::shortcodesToEmoji($value);
             }
 
             $values[$key] = $value;
@@ -710,31 +709,12 @@ class HyperField extends Field
                 $value = self::_encodeStringValues($value);
             } else if (is_string($value)) {
                 // TODO: replace in Craft 4.4+ or LitEmoji 5+
-                $value = self::emojiToShortcodes($value);
+                $value = StringHelper::emojiToShortcodes($value);
             }
 
             $values[$key] = $value;
         }
 
         return $values;
-    }
-
-    public static function emojiToShortcodes(string $str): string
-    {
-        // Add delimiters around all 4-byte chars
-        $dl = '__MB4_DL__';
-        $dr = '__MB4_DR__';
-        $str = StringHelper::replaceMb4($str, fn($char) => sprintf('%s%s%s', $dl, $char, $dr));
-
-        // Strip out consecutive delimiters
-        $str = str_replace(sprintf('%s%s', $dr, $dl), '', $str);
-
-        // Replace all 4-byte sequences individually
-        return preg_replace_callback("/$dl(.+?)$dr/", fn($m) => LitEmoji::unicodeToShortcode($m[1]), $str);
-    }
-
-    public static function shortcodesToEmoji(string $str): string
-    {
-        return LitEmoji::shortcodeToUnicode($str);
     }
 }
