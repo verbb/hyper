@@ -128,7 +128,7 @@ class PluginMigration extends Migration
 
     public function migrateVizyContent($fieldData): void
     {
-        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], function($handle, $data) {
+        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) {
             // We need to flatten the data to deal with deeply-nested content like when in Matrix/Super Table.
             foreach (self::flatten($data) as $flatKey => $flatContent) {
                 $searchKey = 'fields.' . $handle;
