@@ -417,49 +417,56 @@ abstract class Link extends Element implements LinkInterface
         return Template::raw(Html::tag('a', $this->getText(), $attributes));
     }
 
-    private function _mergeAttributes(array $attributes1, array $attributes2): array
+    public function getLinkAttributes(array $attributes = [], bool $asString = false): array|Markup
     {
-        $attributes1 = Html::normalizeTagAttributes($attributes1);
-        $attributes2 = Html::normalizeTagAttributes($attributes2);
-        $attributes = ArrayHelper::merge($attributes1, $attributes2);
+        $attr = [];
 
-        // Ensure we don't have any duplicate classes
-        if (isset($attributes['class']) && is_array($attributes['class'])) {
-            $attributes['class'] = array_unique($attributes['class']);
+        if ($classes = $this->getClasses()) {
+            $attr['class'] = $classes;
+        }
+
+        if ($href = $this->getUrl()) {
+            $attr['href'] = $href;
+        }
+
+        if ($title = $this->getLinkTitle()) {
+            $attr['title'] = $title;
+        }
+
+        if ($ariaLabel = $this->getAriaLabel()) {
+            $attr['aria-label'] = $ariaLabel;
+        }
+
+        if ($this->getNewWindow()) {
+            $attr['target'] = '_blank';
+            $attr['rel'] = 'noopener noreferrer';
+        }
+
+        // Merge attributes in a specific order to allow template-define attributes to override everything
+        $attributes = $this->_mergeAttributes($this->getCustomAttributes(), $attr, $attributes);
+        $attributes = array_filter($attributes);
+
+        if ($asString) {
+            return Template::raw(Html::renderTagAttributes($attributes));
         }
 
         return $attributes;
     }
 
-    public function getLinkAttributes(array $attributes = [], bool $asString = false): array|Markup
+
+    // Private Methods
+    // =========================================================================
+
+    private function _mergeAttributes(array $attributes1, array $attributes2, array $attributes3 = []): array
     {
-        $attributes = $this->_mergeAttributes($attributes, $this->getCustomAttributes());
+        $attributes1 = Html::normalizeTagAttributes($attributes1);
+        $attributes2 = Html::normalizeTagAttributes($attributes2);
+        $attributes3 = Html::normalizeTagAttributes($attributes3);
+        $attributes = ArrayHelper::merge($attributes1, $attributes2, $attributes3);
 
-        if ($classes = $this->getClasses()) {
-            $attributes['class'] = $classes;
-        }
-
-        if ($href = $this->getUrl()) {
-            $attributes['href'] = $href;
-        }
-
-        if ($title = $this->getLinkTitle()) {
-            $attributes['title'] = $title;
-        }
-
-        if ($ariaLabel = $this->getAriaLabel()) {
-            $attributes['aria-label'] = $ariaLabel;
-        }
-
-        if ($this->getNewWindow()) {
-            $attributes['target'] = '_blank';
-            $attributes['rel'] = 'noopener noreferrer';
-        }
-
-        $attributes = array_filter($attributes);
-
-        if ($asString) {
-            return Template::raw(Html::renderTagAttributes($attributes));
+        // Ensure we don't have any duplicate classes
+        if (isset($attributes['class']) && is_array($attributes['class'])) {
+            $attributes['class'] = array_unique($attributes['class']);
         }
 
         return $attributes;
