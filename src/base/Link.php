@@ -417,9 +417,23 @@ abstract class Link extends Element implements LinkInterface
         return Template::raw(Html::tag('a', $this->getText(), $attributes));
     }
 
+    private function _mergeAttributes(array $attributes1, array $attributes2): array
+    {
+        $attributes1 = Html::normalizeTagAttributes($attributes1);
+        $attributes2 = Html::normalizeTagAttributes($attributes2);
+        $attributes = ArrayHelper::merge($attributes1, $attributes2);
+
+        // Ensure we don't have any duplicate classes
+        if (isset($attributes['class']) && is_array($attributes['class'])) {
+            $attributes['class'] = array_unique($attributes['class']);
+        }
+
+        return $attributes;
+    }
+
     public function getLinkAttributes(array $attributes = [], bool $asString = false): array|Markup
     {
-        $attributes = array_merge($attributes, $this->getCustomAttributes());
+        $attributes = $this->_mergeAttributes($attributes, $this->getCustomAttributes());
 
         if ($classes = $this->getClasses()) {
             $attributes['class'] = $classes;
