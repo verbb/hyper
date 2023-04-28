@@ -442,7 +442,8 @@ abstract class Link extends Element implements LinkInterface
             $attr['rel'] = 'noopener noreferrer';
         }
 
-        // Merge attributes in a specific order to allow template-define attributes to override everything
+        // Merge attributes in a specific order to allow template-provided attributes to override everything.
+        // Combine "Custom Attributes" in field settings with derived attributes (above) with template-provided ones.
         $attributes = $this->_mergeAttributes($this->getCustomAttributes(), $attr, $attributes);
         $attributes = array_filter($attributes);
 
