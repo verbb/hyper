@@ -14,6 +14,14 @@ class Custom extends Link
     // Public Methods
     // =========================================================================
 
+    public function getSettingsConfig(): array
+    {
+        $values = parent::getSettingsConfig();
+        $values['placeholder'] = $this->placeholder;
+
+        return $values;
+    }
+
     public function defaultPlaceholder(): ?string
     {
         return '';

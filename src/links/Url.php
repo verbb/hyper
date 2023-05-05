@@ -36,6 +36,14 @@ class Url extends Link
         return $rules;
     }
 
+    public function getSettingsConfig(): array
+    {
+        $values = parent::getSettingsConfig();
+        $values['placeholder'] = $this->placeholder;
+
+        return $values;
+    }
+
     public function defaultPlaceholder(): ?string
     {
         return rtrim(Craft::$app->getSites()->primarySite->baseUrl, '/');

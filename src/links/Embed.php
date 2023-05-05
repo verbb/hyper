@@ -25,6 +25,14 @@ class Embed extends Link
     // Public Methods
     // =========================================================================
 
+    public function getSettingsConfig(): array
+    {
+        $values = parent::getSettingsConfig();
+        $values['placeholder'] = $this->placeholder;
+
+        return $values;
+    }
+
     public function getInputConfig(): array
     {
         $values = parent::getInputConfig();

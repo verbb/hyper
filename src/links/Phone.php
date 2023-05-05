@@ -25,6 +25,14 @@ class Phone extends Link
         return $rules;
     }
 
+    public function getSettingsConfig(): array
+    {
+        $values = parent::getSettingsConfig();
+        $values['placeholder'] = $this->placeholder;
+
+        return $values;
+    }
+
     public function validatePhone(string $attribute): void
     {
         $isValid = filter_var($this->$attribute, FILTER_VALIDATE_REGEXP, [
