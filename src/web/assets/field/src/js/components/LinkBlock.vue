@@ -9,7 +9,7 @@
 
             <div class="hyper-header-actions">
                 <div v-if="settings.newWindow" class="hyper-header-new-window">
-                    <lightswitch-field ref="switch" v-model="link.newWindow" name="newWindow" :extra-small="true" :is-static="settings.isStatic">
+                    <lightswitch-field ref="switch" v-model="link.newWindow" :extra-small="true" :is-static="settings.isStatic">
                         <template #label>
                             <span class="hyper-header-new-window-label">{{ t('hyper', 'New Window') }}</span>
                         </template>
