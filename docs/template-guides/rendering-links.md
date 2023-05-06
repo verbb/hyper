@@ -47,6 +47,19 @@ You can also pass in any extra attributes you require:
 {# Outputs: <a href="http://my-site.test/some-url" class="text-black font-bold" data-link="external">Some URL</a> #}
 ```
 
+You can also override the link text using `linkText` or `text`.
+
+```twig
+{% set linkContent %}
+    <svg ... />
+    Check out this link
+{% endset %}
+
+{{ entry.myLinkField.getLink({
+    linkText: linkContent,
+}) }}
+```
+
 ## Link Type
 You may want to customise the rendering of a link depending on it's type. You'll need to use the full class for the link type to compare:
 

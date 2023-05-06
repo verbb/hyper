@@ -412,6 +412,13 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
+        // Remove overridden `linkText` or `text` and use as the text
+        $customText = ArrayHelper::remove($attributes, 'linkText') ?? ArrayHelper::remove($attributes, 'text');
+
+        if ($customText) {
+            $this->linkText = $customText;
+        }
+
         $attributes = $this->getLinkAttributes($attributes);
 
         return Template::raw(Html::tag('a', $this->getText(), $attributes));
