@@ -7,7 +7,7 @@ use modules\MyLinkType;
 use verbb\hyper\services\Links;
 use yii\base\Event;
 
-Event::on(Links::class, Links::EVENT_REGISTER_SOURCE_TYPES, function(RegisterComponentTypesEvent $event) {
+Event::on(Links::class, Links::EVENT_REGISTER_LINK_TYPES, function(RegisterComponentTypesEvent $event) {
     $event->types[] = MyLinkType::class;
 });
 ```
