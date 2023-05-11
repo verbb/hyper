@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.5 - 2023-05-11
+
+### Added
+- Add compatibility with Vizy 2.1.x.
+
+### Changed
+- Allow `text` and `linkText` options to override link text for `getLink()` calls.
+- Link attributes defined in the field settings can now be overridden in templates.
+
+### Fixed
+- Fix an error in some cases with an empty element select modal.
+- Fix place link type settings not saving correctly.
+- Fix an issue using Smith to clone Matrix fields containing Hyper fields.
+- Fix classes define in templates not merging with field settings classes.
+
 ## 1.1.4 - 2023-04-07
 
 ### Added
