@@ -82,7 +82,7 @@ export default {
         },
 
         elementSiteId: {
-            type: Number,
+            type: [Number, String],
             default: 0,
         },
 
@@ -96,14 +96,14 @@ export default {
             default: '',
         },
 
-        settings: {
-            type: Object,
-            default: () => { return {}; },
+        inputSettings: {
+            type: String,
+            default: '',
         },
 
         value: {
-            type: Array,
-            default: () => { return []; },
+            type: String,
+            default: '',
         },
     },
 
@@ -129,6 +129,10 @@ export default {
             };
         },
 
+        settings() {
+            return JSON.parse(this.inputSettings);
+        },
+
         canAdd() {
             if (this.settings.maxLinks && this.proxyValue.length >= this.settings.maxLinks) {
                 return false;
@@ -139,7 +143,7 @@ export default {
     },
 
     created() {
-        this.proxyValue = this.clone(this.value);
+        this.proxyValue = JSON.parse(this.clone(this.value));
 
         // Prepare all link blocks by caching their HTML/JS
         this.proxyValue.forEach((link) => {
