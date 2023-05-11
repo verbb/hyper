@@ -17,7 +17,7 @@
 {{ forms.elementSelect({
     id: selectId,
     name: 'linkValue',
-    elementType: link.elementType,
+    elementType: link.elementType(),
     limit: 1,
     showSiteMenu: true,
     sources: link.getAvailableSources(),
