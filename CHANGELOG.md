@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.6 - 2023-05-17
+
+### Fixed
+- Fix a migration error with Typed Link fields in Vizy fields.
+- Fix an issue where Hyper fields weren’t working in Vizy fields.
+
 ## 1.1.5 - 2023-05-11
 
 ### Added
