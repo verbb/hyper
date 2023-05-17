@@ -178,6 +178,11 @@ class MigrateTypedLinkContent extends PluginContentMigration
                         }
                     }
                 }
+
+                // Check for Vizy fields, a little different
+                if ($this->isPluginInstalledAndEnabled('vizy')) {
+                    $this->migrateVizyContent($fieldData);
+                }
             }
 
             $this->stdout("    > Field “{$fieldData['handle']}” content migrated." . PHP_EOL, Console::FG_GREEN);
