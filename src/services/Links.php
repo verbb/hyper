@@ -3,6 +3,7 @@ namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\base\ElementLink;
 use verbb\hyper\links as linkTypes;
 
 use craft\base\Component;
@@ -23,6 +24,11 @@ class Links extends Component
 
         try {
             $link = ComponentHelper::createComponent($config, LinkInterface::class);
+
+            // Check if the element class exists, in case the third-party plugin was uninstalled
+            if ($link instanceof ElementLink && !class_exists($link::elementType())) {
+                throw new MissingComponentException();
+            }
         } catch (MissingComponentException $e) {
             $config['errorMessage'] = $e->getMessage();
             $config['expectedType'] = $config['type'];

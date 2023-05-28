@@ -392,7 +392,14 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
+        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+
         foreach ($linkTypes as $key => $config) {
+            // Check if the saved link type is still registered
+            if (!in_array($config['type'], $registeredLinkTypes)) {
+                continue;
+            }
+
             $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
 
             if ($config instanceof LinkInterface) {

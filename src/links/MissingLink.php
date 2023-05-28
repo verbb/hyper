@@ -15,6 +15,14 @@ class MissingLink extends Link implements MissingComponentInterface
     use MissingComponentTrait;
 
 
+    // Properties
+    // =========================================================================
+
+    public ?int $linkSiteId = null;
+    public string|array|null $sources = '*';
+    public ?string $selectionLabel = null;
+
+
     // Static Methods
     // =========================================================================
 
