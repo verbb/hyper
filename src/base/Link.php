@@ -154,6 +154,11 @@ abstract class Link extends Element implements LinkInterface
         return !$this->count();
     }
 
+    public function isElement(): bool
+    {
+        return $this instanceof ElementLink;
+    }
+
     public function defineRules(): array
     {
         $rules = parent::defineRules();
