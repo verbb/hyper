@@ -22,7 +22,7 @@ class ClassesField extends TextField
         return Craft::t('hyper', 'Classes');
     }
 
-    public function instructions(ElementInterface $element = null, bool $static = false): ?string
+    public function defaultInstructions(ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'Additional CSS classes for the link.');
     }

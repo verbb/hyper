@@ -22,7 +22,7 @@ class LinkTitleField extends TextField
         return Craft::t('hyper', 'Link Title');
     }
 
-    public function instructions(ElementInterface $element = null, bool $static = false): ?string
+    public function defaultInstructions(ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'The title attribute for the link.');
     }

@@ -23,7 +23,7 @@ class CustomAttributesField extends BaseNativeField
         return Craft::t('hyper', 'Custom Attributes');
     }
 
-    public function instructions(ElementInterface $element = null, bool $static = false): ?string
+    public function defaultInstructions(ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'Additional HTML attributes for the link.');
     }

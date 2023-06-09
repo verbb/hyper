@@ -22,7 +22,7 @@ class AriaLabelField extends TextField
         return Craft::t('hyper', 'ARIA Label');
     }
 
-    public function instructions(ElementInterface $element = null, bool $static = false): ?string
+    public function defaultInstructions(ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'The aria-label for the link.');
     }

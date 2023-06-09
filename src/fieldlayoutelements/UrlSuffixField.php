@@ -22,7 +22,7 @@ class UrlSuffixField extends TextField
         return Craft::t('hyper', 'URL Suffix');
     }
 
-    public function instructions(ElementInterface $element = null, bool $static = false): ?string
+    public function defaultInstructions(ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'Additional content appended to the link URL. e.g. `?success=true` or `#section-start`.');
     }
