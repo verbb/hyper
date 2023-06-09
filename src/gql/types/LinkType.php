@@ -38,11 +38,17 @@ class LinkType extends ObjectType
                 'name' => 'isElement',
                 'description' => 'Whether the chosen link value is an element.',
                 'type' => Type::boolean(),
+                'resolve' => function($link) {
+                    return $link->isElement();
+                },
             ],
             'isEmpty' => [
                 'name' => 'isEmpty',
                 'description' => 'Whether a link has been set for the field.',
                 'type' => Type::boolean(),
+                'resolve' => function($link) {
+                    return $link->isEmpty();
+                },
             ],
             'link' => [
                 'name' => 'link',
