@@ -59,3 +59,23 @@ This is the interface implemented by all links.
 | `url`| `String` | The url for the link.
 | `urlPrefix`| `String` | The url prefix for the link.
 | `urlSuffix`| `String` | The url suffix for the link.
+
+#### Custom Fields
+In order to access custom fields on a Link Type, you'll need to use the correct type. This will be a `PascalCase` string of the Link Type defined in your field settings. This is because each Link Type has a different field layout, with different fields. You'll need to "cast" the correct Link Type depending on what field you need to query.
+
+```gql
+myLinkField {
+    url
+    text
+
+    ... on myLinkField_Url_LinkType {
+        plainText
+    }
+
+    ... on myLinkField_CustomUrl_LinkType {
+        anotherField
+    }
+}
+```
+
+For example, for any of the default Link Types (`Asset`, `Entry`, `Custom`, `Url`, etc.) you can use `myLinkField_Url_LinkType` and then any custom field handles within that. For any additional, new Link Types that you create over the default ones, use `PascalCase` for the "Label". For example, for a Link Type with a label "Custom URL", this would be `myLinkField_CustomUrl_LinkType`.

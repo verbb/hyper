@@ -34,6 +34,13 @@ abstract class Link extends Element implements LinkInterface
         return array_pop($classNameParts);
     }
 
+    public static function gqlTypeNameByContext(mixed $context): string
+    {
+        $linkTypeHandle = StringHelper::toPascalCase($context->label);
+
+        return $context->field->handle . '_' . $linkTypeHandle . '_LinkType';
+    }
+
     public static function getDefaultFieldLayout(): FieldLayout
     {
         $fieldLayout = new FieldLayout([
@@ -238,6 +245,15 @@ abstract class Link extends Element implements LinkInterface
         $variables = $this->getSettingsHtmlVariables();
 
         return Craft::$app->getView()->renderTemplate("hyper/links/$handle/settings", $variables);
+    }
+
+    public function getCustomFields(): array
+    {
+        if ($fieldLayout = $this->getFieldLayout()) {
+            return $fieldLayout->getCustomFields();
+        }
+
+        return [];
     }
 
     public function getFieldLayout(): ?FieldLayout
@@ -464,6 +480,11 @@ abstract class Link extends Element implements LinkInterface
         }
 
         return $attributes;
+    }
+
+    public function getGqlTypeName(): string
+    {
+        return static::gqlTypeNameByContext($this);
     }
 
 

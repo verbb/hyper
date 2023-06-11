@@ -3,7 +3,7 @@ namespace verbb\hyper\fields;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
-use verbb\hyper\gql\types\generators\LinkTypeGenerator;
+use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\helpers\Plugin;
 use verbb\hyper\helpers\StringHelper;
@@ -16,6 +16,7 @@ use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\ArrayHelper;
+use craft\helpers\Gql;
 use craft\helpers\Html;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig;
@@ -311,9 +312,10 @@ class HyperField extends Field
 
     public function getContentGqlType(): Type|array
     {
-        $type = LinkTypeGenerator::generateType($this);
-
-        return Type::listOf($type);
+        return [
+            'name' => $this->handle,
+            'type' => Type::nonNull(Type::listOf(GqlLinkInterface::getType($this))),
+        ];
     }
 
     public function getElementValidationRules(): array
