@@ -11,6 +11,7 @@ use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\UrlSuffixField;
+use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\integrations\feedme\fields\Hyper as FeedMeHyperField;
 use verbb\hyper\models\Settings;
 use verbb\hyper\variables\HyperVariable;
@@ -21,11 +22,13 @@ use craft\elements\db\ElementQuery;
 use craft\events\DefineFieldLayoutFieldsEvent;
 use craft\events\PopulateElementEvent;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\helpers\UrlHelper;
 use craft\models\FieldLayout;
 use craft\services\Elements;
 use craft\services\Fields;
+use craft\services\Gql;
 use craft\services\ProjectConfig;
 use craft\web\Application;
 use craft\web\twig\variables\CraftVariable;
@@ -71,6 +74,7 @@ class Hyper extends Plugin
         $this->_registerProjectConfigEventListeners();
         $this->_registerCraftEventListeners();
         $this->_registerThirdPartyEventListeners();
+        $this->_registerGraphQl();
 
         if (Craft::$app->getRequest()->getIsCpRequest()) {
             $this->_registerCpRoutes();
@@ -204,5 +208,12 @@ class Hyper extends Plugin
                 $event->fields[] = FeedMeHyperField::class;
             });
         }
+    }
+
+    private function _registerGraphQl(): void
+    {
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_TYPES, function(RegisterGqlTypesEvent $event) {
+            $event->types[] = GqlLinkInterface::class;
+        });
     }
 }
