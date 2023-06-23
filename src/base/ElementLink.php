@@ -6,6 +6,7 @@ use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\LinkField;
 
 use Craft;
+use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\elements\Asset;
 
@@ -145,7 +146,7 @@ abstract class ElementLink extends Link
         return $elements;
     }
 
-    public function getElement(mixed $status = null): ?ElementInterface
+    public function getElement(mixed $status = Element::STATUS_ENABLED): ?ElementInterface
     {
         if ($this->_element) {
             return $this->_element;
@@ -166,7 +167,7 @@ abstract class ElementLink extends Link
         return $this->_element = $query->one();
     }
 
-    public function hasElement(mixed $status = null): bool
+    public function hasElement(mixed $status = Element::STATUS_ENABLED): bool
     {
         return (bool)$this->getElement($status);
     }
@@ -222,7 +223,12 @@ abstract class ElementLink extends Link
         if ($cached = Hyper::$plugin->getElementCache()->getCache($this->linkValue, $this->linkSiteId)) {
             $elementType = static::elementType();
 
-            return $this->_elementCache = new $elementType($cached);
+            $element = new $elementType($cached);
+
+            // Ensure we only return for "live" elements
+            if ($element && $element->status === Element::STATUS_ENABLED) {
+                return $this->_elementCache = $element;
+            }
         }
 
         return null;
