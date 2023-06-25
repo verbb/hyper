@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.8 - 2023-06-25
+
+### Added
+- Add link types to GraphQL queries.
+- Add `Link::isElement()`.
+
+### Changed
+- Element links now only return an element value when the linked-to element is enabled.
+
+### Fixed
+- Fix GraphQL queries containing `isElement` and `isEmpty`.
+- Fix `LinkInterface` not being registered properly as a GraphQL interface.
+- Fix some field layout elements not allowing custom instructions text.
+- Fix an error when uninstalling third-party elements that register a link type.
+
 ## 1.1.7 - 2023-05-27
 
 ### Fixed
