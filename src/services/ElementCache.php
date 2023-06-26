@@ -10,6 +10,7 @@ use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\events\ElementEvent;
+use craft\helpers\Db;
 
 class ElementCache extends Component
 {
@@ -183,6 +184,11 @@ class ElementCache extends Component
         $record->delete();
 
         return true;
+    }
+
+    public function clearCache(): void
+    {
+        Db::truncateTable('{{%hyper_element_cache}}');
     }
 
 }

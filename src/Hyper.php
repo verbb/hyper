@@ -21,6 +21,7 @@ use craft\base\Plugin;
 use craft\elements\db\ElementQuery;
 use craft\events\DefineFieldLayoutFieldsEvent;
 use craft\events\PopulateElementEvent;
+use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
@@ -30,6 +31,7 @@ use craft\services\Elements;
 use craft\services\Fields;
 use craft\services\Gql;
 use craft\services\ProjectConfig;
+use craft\utilities\ClearCaches;
 use craft\web\Application;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
@@ -75,6 +77,7 @@ class Hyper extends Plugin
         $this->_registerCraftEventListeners();
         $this->_registerThirdPartyEventListeners();
         $this->_registerGraphQl();
+        $this->_registerCacheTypes();
 
         if (Craft::$app->getRequest()->getIsCpRequest()) {
             $this->_registerCpRoutes();
@@ -214,6 +217,17 @@ class Hyper extends Plugin
     {
         Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_TYPES, function(RegisterGqlTypesEvent $event) {
             $event->types[] = GqlLinkInterface::class;
+        });
+    }
+
+    private function _registerCacheTypes(): void
+    {
+        Event::on(ClearCaches::class, ClearCaches::EVENT_REGISTER_CACHE_OPTIONS, function(RegisterCacheOptionsEvent $event) {
+            $event->options[] = [
+                'key' => 'hyper',
+                'label' => Craft::t('hyper', 'Hyper field element cache'),
+                'action' => [Hyper::$plugin->getElementCache(), 'clearCache'],
+            ];
         });
     }
 }
