@@ -90,6 +90,19 @@ class MigrateLinkField extends PluginFieldMigration
                 $processedTypes[] = $linkTypeClass;
             }
 
+            // Disable some Hyper link types that don't exist for Link, to ensure 1-for-1 migration. Still creates the link type.
+            self::createDisabledLinkTypes($types, [
+                linkTypes\Custom::class,
+                linkTypes\Embed::class,
+                linkTypes\Phone::class,
+                linkTypes\Product::class,
+                linkTypes\Site::class,
+                linkTypes\Variant::class,
+            ]);
+
+            // Order types by label
+            usort($types, fn($a, $b) => $a['label'] <=> $b['label']);
+
             // Create a new Hyper field instance to have the settings validated correctly
             $newFieldConfig = $field;
             unset($newFieldConfig['type'], $newFieldConfig['settings']);

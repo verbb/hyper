@@ -126,6 +126,22 @@ class PluginFieldMigration extends PluginMigration
         return $handle;
     }
 
+    public static function createDisabledLinkTypes(array &$linkTypes, array $disabledTypes): void
+    {
+        foreach ($disabledTypes as $linkTypeClass) {
+            $linkType = new $linkTypeClass();
+            $linkType->label = $linkType::displayName();
+            $linkType->handle = self::getLinkTypeHandle($linkTypes, 'default-' . StringHelper::toKebabCase($linkTypeClass));
+            $linkType->enabled = false;
+
+            $fieldLayout = self::getDefaultFieldLayout(true);
+            $linkType->layoutUid = StringHelper::UUID();
+            $linkType->layoutConfig = $fieldLayout->getConfig();
+
+            $linkTypes[] = $linkType->getSettingsConfig();
+        }
+    }
+
     public static function getClassDisplayName(string $class): string
     {
         $classNameParts = explode('\\', $class);
