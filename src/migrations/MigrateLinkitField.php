@@ -70,6 +70,7 @@ class MigrateLinkitField extends PluginFieldMigration
                 $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
                 $linkType->enabled = $type['enabled'] ?? false;
                 $linkType->linkText = $type['customLabel'] ?? null;
+                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = $type['sources'] ?? '*';

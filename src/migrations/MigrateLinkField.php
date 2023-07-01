@@ -61,6 +61,7 @@ class MigrateLinkField extends PluginFieldMigration
                 $linkType->label = $type['label'] ?? $linkType::displayName();
                 $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
                 $linkType->enabled = true;
+                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
                 if (in_array($linkTypeClass, $processedTypes)) {
                     $linkType->handle = $key;
