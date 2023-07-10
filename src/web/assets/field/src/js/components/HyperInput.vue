@@ -274,6 +274,11 @@ export default {
                 handle,
             };
 
+            // Apply default new window setting
+            if (this.settings.newWindow) {
+                newLink.newWindow = this.settings.defaultNewWindow ?? false;
+            }
+
             // Add it to the link collection
             this.proxyValue.push(newLink);
 
