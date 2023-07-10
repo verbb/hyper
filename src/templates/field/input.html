@@ -1,5 +1,11 @@
 <input type="hidden" name="{{ name }}">
 
+{% do view.registerTranslations('hyper', [
+    'Add a link',
+    'Add {type}',
+    'New Window',
+]) %}
+
 <div class="hyper-input-component" v-cloak>
     <hyper-input
         value="{{ value | json_encode }}"
