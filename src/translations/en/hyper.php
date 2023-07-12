@@ -69,5 +69,14 @@ return [
     'Step 1. Migrate Fields' => 'Step 1. Migrate Fields',
     'Unable to render field layout. Please resave the field settings.' => 'Unable to render field layout. Please resave the field settings.',
     'Step 2. Migrate Content' => 'Step 2. Migrate Content',
-    'Migrate Content' => 'Migrate Content'
+    'Migrate Content' => 'Migrate Content',
+    'Hyper field element cache' => 'Hyper field element cache',
+    'Add a link' => 'Add a link',
+    'Add {type}' => 'Add {type}',
+    'New link type' => 'New link type',
+    'Select a link type to edit.' => 'Select a link type to edit.',
+    'Link Fields' => 'Link Fields',
+    'Configure the fields and UI elements available to links. Elements in the first tab will be always be shown, while any other tabs will be shown in a slide-out panel.' => 'Configure the fields and UI elements available to links. Elements in the first tab will be always be shown, while any other tabs will be shown in a slide-out panel.',
+    'Are you sure you want to delete “{name}”?' => 'Are you sure you want to delete “{name}”?',
+    'New Window' => 'New Window',
 ];

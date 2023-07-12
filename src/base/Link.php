@@ -27,11 +27,21 @@ abstract class Link extends Element implements LinkInterface
     // Static Methods
     // =========================================================================
 
-    public static function displayName(): string
+    public static function classDisplayName(): string
     {
         $classNameParts = explode('\\', static::class);
 
         return array_pop($classNameParts);
+    }
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', static::classDisplayName());
+    }
+
+    public static function displayNameSlug(): string
+    {
+        return StringHelper::toKebabCase(static::classDisplayName());
     }
 
     public static function gqlTypeNameByContext(mixed $context): string
@@ -240,7 +250,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getSettingsHtml(): ?string
     {
-        $handle = StringHelper::toKebabCase(static::displayName());
+        $handle = static::displayNameSlug();
 
         $variables = $this->getSettingsHtmlVariables();
 
@@ -285,7 +295,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getInputHtml(LinkField $layoutField, HyperField $field): ?string
     {
-        $handle = StringHelper::toKebabCase(static::displayName());
+        $handle = static::displayNameSlug();
 
         $variables = $this->getInputHtmlVariables($layoutField, $field);
 

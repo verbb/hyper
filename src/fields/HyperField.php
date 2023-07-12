@@ -434,6 +434,12 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
+        // Prevent calls to this too early, before Hyper is initialized
+        // https://github.com/verbb/hyper/issues/72
+        if (!Hyper::getInstance()) {
+            return;
+        }
+
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
         foreach ($linkTypes as $key => $config) {

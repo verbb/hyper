@@ -13,6 +13,7 @@ use craft\db\Query;
 use craft\helpers\App;
 use craft\helpers\Console;
 use craft\helpers\Json;
+use craft\helpers\StringHelper;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 
@@ -110,5 +111,41 @@ class PluginFieldMigration extends PluginMigration
         $fieldLayout->setTabs([$tab1, $tab2]);
 
         return $fieldLayout;
+    }
+
+    public static function getLinkTypeHandle(array $linkTypes, string $handle): string
+    {
+        // Ensure that we generate a unique link type handle, as when migrating, we can have multiple
+        // link types of the same type (LinkIt Twitter = Hyper URL).
+        foreach ($linkTypes as $linkType) {
+            if ($linkType['handle'] === $handle) {
+                return StringHelper::randomString(10);
+            }
+        }
+
+        return $handle;
+    }
+
+    public static function createDisabledLinkTypes(array &$linkTypes, array $disabledTypes): void
+    {
+        foreach ($disabledTypes as $linkTypeClass) {
+            $linkType = new $linkTypeClass();
+            $linkType->label = $linkType::displayName();
+            $linkType->handle = self::getLinkTypeHandle($linkTypes, 'default-' . StringHelper::toKebabCase($linkTypeClass));
+            $linkType->enabled = false;
+
+            $fieldLayout = self::getDefaultFieldLayout(true);
+            $linkType->layoutUid = StringHelper::UUID();
+            $linkType->layoutConfig = $fieldLayout->getConfig();
+
+            $linkTypes[] = $linkType->getSettingsConfig();
+        }
+    }
+
+    public static function getClassDisplayName(string $class): string
+    {
+        $classNameParts = explode('\\', $class);
+
+        return array_pop($classNameParts);
     }
 }

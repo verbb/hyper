@@ -29,6 +29,13 @@
         </div>
 
         <div class="hc-pane">
+            <div v-if="isEmpty(selectedLinkType)" class="hc-pane-empty">
+                <div class="hc-pane-empty-placeholder">{{ t('hyper', 'Select a link type to edit.') }}</div>
+
+                <!-- eslint-disable-next-line -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="68px" height="32.9px" viewBox="0 0 68 32.9"><path fill="currentColor" d="M8.2,32.9c-0.3,0-0.6-0.2-0.7-0.5c-0.7-2.2-2.3-3.6-3.9-5.1c-1.3-1.2-2.6-2.5-3.6-4.1c-0.1-0.2-0.1-0.5,0-0.7s0.3-0.4,0.6-0.4c2.1-0.2,9.2-1,11.8-3.2c0.3-0.3,0.8-0.2,1.1,0.1c0.3,0.3,0.2,0.8-0.1,1.1c-2.5,2.1-8.1,3-11.4,3.4c0.8,1,1.7,1.9,2.6,2.8C6.4,27.8,8.1,29.4,9,32c0.1,0.4-0.1,0.8-0.5,0.9C8.4,32.9,8.3,32.9,8.2,32.9z M30,30.8c-8.1,0-16.5-1.8-24-5.4c-0.4-0.2-0.5-0.6-0.4-1s0.6-0.5,1-0.4c14.3,6.9,32.1,7,44.2,0.4c9-4.9,14.4-13.1,15.7-23.8C66.6,0.2,67,0,67.4,0c0.4,0.1,0.7,0.4,0.7,0.8C66.7,12,61,20.6,51.5,25.7C45.4,29.1,37.8,30.8,30,30.8z"/></svg>
+            </div>
+
             <div v-for="(linkType) in proxyLinkTypes" :key="linkType.handle" :class="selectedLinkType.handle === linkType.handle ? '' : 'hidden'">
                 <div v-html="getParsedLinkTypeHtml(linkType.html, linkType.handle)"></div>
 
@@ -60,7 +67,7 @@
 </template>
 
 <script>
-import { camelCase, capitalize } from 'lodash-es';
+import { camelCase, capitalize, isEmpty } from 'lodash-es';
 import { SlickList, SlickItem } from 'vue-slicksort';
 
 import tippy from 'tippy.js';
@@ -120,7 +127,7 @@ export default {
         return {
             drag: false,
             tippy: null,
-            selectedLinkType: null,
+            selectedLinkType: {},
             proxyLinkTypes: [],
         };
     },
@@ -141,7 +148,6 @@ export default {
 
     created() {
         this.proxyLinkTypes = this.clone(this.linkTypes);
-        this.selectedLinkType = this.proxyLinkTypes[0];
 
         // Append any JS for link type settings
         this.linkTypes.forEach((linkType) => {
@@ -178,6 +184,10 @@ export default {
     methods: {
         selectTab(linkType) {
             this.selectedLinkType = linkType;
+        },
+
+        isEmpty(value) {
+            return isEmpty(value);
         },
 
         getName(name) {
@@ -337,6 +347,31 @@ export default {
 .hc-pane {
     flex: 1;
     padding: 20px;
+}
+
+.hc-pane-empty {
+    color: #000;
+    padding: 20px;
+    flex: 1;
+    margin-left: 24px;
+    display: flex;
+    justify-content: center;
+    font-size: 2em;
+    font-weight: 400;
+    opacity: 0.4;
+    color: #265275;
+    margin-top: 3rem;
+    position: relative;
+
+    svg {
+        position: absolute;
+        top: 4rem;
+        left: 50%;
+        width: 170px;
+        height: auto;
+        margin-left: -85px;
+        transform: rotate(7deg) translateX(-50%);
+    }
 }
 
 .tippy-box[data-theme~='hyper-tippy-menu'] > .tippy-content {

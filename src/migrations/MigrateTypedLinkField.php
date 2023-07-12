@@ -69,9 +69,10 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
                 $linkType = new $linkTypeClass();
                 $linkType->label = $linkType::displayName();
-                $linkType->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
+                $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
                 $linkType->enabled = $enableAllLinkTypes || ($type['enabled'] ?? false);
                 $linkType->linkText = $defaultText;
+                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = $type['sources'] ?? '*';
@@ -93,6 +94,15 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
                 $types[] = $linkType->getSettingsConfig();
             }
+
+            // Disable some Hyper link types that don't exist for Typed Link, to ensure 1-for-1 migration. Still creates the link type.
+            self::createDisabledLinkTypes($types, [
+                linkTypes\Embed::class,
+                linkTypes\Variant::class,
+            ]);
+
+            // Order types by label
+            usort($types, fn($a, $b) => $a['label'] <=> $b['label']);
 
             // Create a new Hyper field instance to have the settings validated correctly
             $newFieldConfig = $field;

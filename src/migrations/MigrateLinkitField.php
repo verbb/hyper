@@ -66,10 +66,11 @@ class MigrateLinkitField extends PluginFieldMigration
                 }
 
                 $linkType = new $linkTypeClass();
-                $linkType->label = $linkType::displayName();
-                $linkType->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
+                $linkType->label = self::getClassDisplayName($key);
+                $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
                 $linkType->enabled = $type['enabled'] ?? false;
                 $linkType->linkText = $type['customLabel'] ?? null;
+                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = $type['sources'] ?? '*';
@@ -84,6 +85,18 @@ class MigrateLinkitField extends PluginFieldMigration
 
                 $types[] = $linkType->getSettingsConfig();
             }
+
+            // Disable some Hyper link types that don't exist for Linkit, to ensure 1-for-1 migration. Still creates the link type.
+            self::createDisabledLinkTypes($types, [
+                linkTypes\Custom::class,
+                linkTypes\Embed::class,
+                linkTypes\Product::class,
+                linkTypes\Site::class,
+                linkTypes\Variant::class,
+            ]);
+
+            // Order types by label
+            usort($types, fn($a, $b) => $a['label'] <=> $b['label']);
 
             // Create a new Hyper field instance to have the settings validated correctly
             $newFieldConfig = $field;

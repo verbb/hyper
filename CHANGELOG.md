@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.9 - 2023-07-11
+
+### Added
+- Add French translations. (thanks @scandella).
+- Add custom link type checks to migrations.
+- Add cache utility to clear caches for element links.
+
+### Changed
+- Update link field migrations to disable any link types that weren’t present in the respective original link plugin (e.g. Embed).
+- Field settings now no longer open the settings for the first link type automatically.
+
+### Fixed
+- Fix LinkIt migration for social media URLs (Facebook, Twitter, etc), not migrating correctly.
+- Fix translations for some strings.
+- Fix an error when Hyper fields are initialized too early, before Craft and Hyper are ready.
+- Fix default new window setting for multiple link version not working correctly. (thanks @JeroenOnstuimig).
+
 ## 1.1.8 - 2023-06-25
 
 ### Added

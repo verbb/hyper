@@ -1,6 +1,14 @@
 {% import '_includes/forms' as forms %}
 {% import 'verbb-base/_macros' as macros %}
 
+{% do view.registerTranslations('hyper', [
+    'New link type',
+    'Select a link type to edit.',
+    'Link Fields',
+    'Configure the fields and UI elements available to links. Elements in the first tab will be always be shown, while any other tabs will be shown in a slide-out panel.',
+    'Are you sure you want to delete “{name}”?',
+]) %}
+
 {% set linkTypeOptions = [] %}
 
 {% for linkType in linkTypes %}
