@@ -61,6 +61,7 @@ class HyperField extends Field
 
     private bool $_isStatic = false;
     private array $_linkTypes = [];
+    private ?array $_linkTypeFields = null;
 
 
     // Public Methods
@@ -388,6 +389,45 @@ class HyperField extends Field
     public function getLinkTypes(): array
     {
         return $this->_linkTypes;
+    }
+
+    /**
+     * Returns all the link types' fields.
+     *
+     * @param string[]|null $typeHandles The Hyper link type handles to return fields for.
+     * If null, all link type fields will be returned.
+     * @return FieldInterface[]
+     */
+    public function getLinkTypeFields(?array $typeHandles = null): array
+    {
+        if (!isset($this->_linkTypeFields)) {
+            $this->_linkTypeFields = [];
+
+            if (!empty($linkTypes = $this->getLinkTypes())) {
+                
+                $fieldColumnPrefix = 'field_';
+                
+                foreach ($linkTypes as $linkType) {
+                    $fields = $linkType->getCustomFields();
+                    foreach ($fields as $field) {
+                        $field->columnPrefix = $fieldColumnPrefix;
+                        $this->_linkTypeFields[$linkType->handle][] = $field;
+                    }
+                }
+            }
+        }
+
+        $fields = [];
+
+        foreach ($this->_linkTypeFields as $linkTypeHandle => $linkTypeFields) {
+            if ($typeHandles === null || in_array($linkTypeHandle, $typeHandles)) {
+                array_push($fields, ...$linkTypeFields);
+            }
+        }
+
+        $fields = array_unique($fields, SORT_REGULAR);
+
+        return $fields;
     }
 
     public function setLinkTypes(array $linkTypes): void
