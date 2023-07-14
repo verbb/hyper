@@ -2,7 +2,7 @@
     <div class="hyper-wrapper">
         <div class="hyper-header">
             <div class="hyper-header-type">
-                <select v-model="link.handle" :disabled="settings.isStatic">
+                <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">
                     <option v-for="type in settings.linkTypes" :key="type.handle" :value="type.handle">{{ type.label }}</option>
                 </select>
             </div>
