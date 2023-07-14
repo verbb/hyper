@@ -81,6 +81,8 @@ class MigrateLinkitContent extends PluginContentMigration
         $linkTypeClass = $this->getLinkType($oldType);
 
         if (!$linkTypeClass) {
+            $this->stdout("    > Unable to migrate “{$oldType}” class.", Console::FG_RED);
+
             return false;
         }
 
