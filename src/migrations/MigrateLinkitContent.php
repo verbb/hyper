@@ -52,7 +52,7 @@ class MigrateLinkitContent extends PluginContentMigration
         'fruitstudios\\linkit\\models\\Facebook' => linkTypes\Url::class,
         'fruitstudios\\linkit\\models\\Instagram' => linkTypes\Url::class,
         'fruitstudios\\linkit\\models\\LinkedIn' => linkTypes\Url::class,
-        'fruitstudios\\linkit\\models\\User' => linkTypes\User::class,=
+        'fruitstudios\\linkit\\models\\User' => linkTypes\User::class,
     ];
 
     public string $oldFieldTypeClass = LinkitField::class;
