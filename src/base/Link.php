@@ -8,13 +8,13 @@ use verbb\hyper\fieldlayoutelements\CustomAttributesField;
 use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
+use verbb\hyper\helpers\Html;
 
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
-use craft\helpers\Html;
 use craft\helpers\StringHelper;
 use craft\helpers\Template;
 use craft\models\FieldLayout;
@@ -511,6 +511,11 @@ abstract class Link extends Element implements LinkInterface
         // Ensure we don't have any duplicate classes
         if (isset($attributes['class']) && is_array($attributes['class'])) {
             $attributes['class'] = array_unique($attributes['class']);
+        }
+
+        // Handle `rel` attributes which have custom added support for merging
+        if (isset($attributes['rel']) && is_array($attributes['rel'])) {
+            $attributes['rel'] = implode(' ', $attributes['rel']);
         }
 
         return $attributes;
