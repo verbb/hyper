@@ -166,7 +166,7 @@ export default {
                     html = html.replace(/<(?:input|textarea|select)\s[^>]*/ig, '$& disabled');
                 }
 
-                return html.replace(new RegExp('__HYPER_BLOCK__', 'g'), this.blockIndex);
+                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), this.blockIndex);
             }
 
             return '';
@@ -238,8 +238,8 @@ export default {
                 let fieldsHtml = $fieldsHtml.htmlize();
 
                 // Revert to blank namespacing for `id` and `name` now that the order has changed
-                const idPlaceholder = `${this.settings.namespacedId}-__HYPER_BLOCK__`;
-                const namePlaceholder = `${this.settings.namespacedName}[__HYPER_BLOCK__]`;
+                const idPlaceholder = `${this.settings.namespacedId}-__HYPER_BLOCK_${this.settings.placeholderKey}__`;
+                const namePlaceholder = `${this.settings.namespacedName}[__HYPER_BLOCK_${this.settings.placeholderKey}__]`;
                 const currentId = `${this.settings.namespacedId}-${this.blockIndex}`;
                 const currentName = `${this.settings.namespacedName}[${this.blockIndex}]`;
 

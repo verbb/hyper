@@ -182,12 +182,14 @@ class HyperField extends Field
         ];
 
         // Prepare the link types and HTML for fields
-        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element);
+        $placeholderKey = StringHelper::randomString(10);
+        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element, $placeholderKey);
         $settings['linkTypes'] = $linkTypeInfo['linkTypes'] ?? [];
         $settings['js'] = $linkTypeInfo['js'] ?? [];
+        $settings['placeholderKey'] = $placeholderKey;
 
         // Prepare the link element values for the field, including pre-rendered HTML
-        $value = $this->_getLinksForInput($value);
+        $value = $this->_getLinksForInput($value, $placeholderKey);
 
         // Create the Hyper Input Vue component
         $js = 'new Craft.Hyper.Input("' . $view->namespaceInputId($id) . '");';
@@ -431,13 +433,13 @@ class HyperField extends Field
     // Private Methods
     // =========================================================================
 
-    private function _getLinkTypeInfoForInput(?ElementInterface $element): array
+    private function _getLinkTypeInfoForInput(?ElementInterface $element, string $placeholderKey): array
     {
         $linkTypeInfo = [];
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK__]"));
+        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
 
         foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->enabled) {
@@ -466,7 +468,7 @@ class HyperField extends Field
         return $linkTypeInfo;
     }
 
-    private function _getLinksForInput(LinkCollection $links): array
+    private function _getLinksForInput(LinkCollection $links, string $placeholderKey): array
     {
         $preppedValues = [];
 
@@ -484,7 +486,7 @@ class HyperField extends Field
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK__]"));
+        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
 
         // For each Link element, render the fields and convert to an array
         foreach ($links as $key => $link) {
