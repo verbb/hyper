@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.10 - 2023-07-21
+
+### Added
+- Add support for `rel` in custom attributes field value, when also enabling “new window”.
+- Add extra debugging message for Linkit migration when link types cannot be migrated.
+- Add support for migrating Product link type for LinkIt.
+
+### Changed
+- The Link type dropdown now shows as disabled if only a single link type.
+
+### Fixed
+- Fix nested Hyper fields not working correctly.
+- Fix an error where checking if Craft was initialized too early results in empty Hyper fields.
+
 ## 1.1.9 - 2023-07-11
 
 ### Added
