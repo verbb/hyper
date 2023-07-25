@@ -529,6 +529,9 @@ class HyperField extends Field
             $linkValueField->field = $this;
             $linkValueField->link = $link;
 
+            // Bit of a hack here to trick `Link::getIsFresh()` that this _isn't_ a fresh block. Using `setIsFresh()` won't work.
+            $link->contentId = 99999;
+
             $form = $fieldLayout->createForm($link);
 
             // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
