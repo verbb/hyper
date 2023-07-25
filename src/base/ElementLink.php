@@ -20,6 +20,11 @@ abstract class ElementLink extends Link
         return Craft::t('app', 'Choose');
     }
 
+    public static function checkElementUri(): bool
+    {
+        return true;
+    }
+
 
     // Abstract Methods
     // =========================================================================
