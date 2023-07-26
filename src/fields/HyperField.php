@@ -396,11 +396,18 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
-        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+        // Prevent calls to this too early, before Hyper is initialized
+        // https://github.com/verbb/hyper/issues/72
+        if (Hyper::getInstance()) {
+            $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+        } else {
+            $registeredLinkTypes = [];
+        }
 
         foreach ($linkTypes as $key => $config) {
-            // Check if the saved link type is still registered
-            if (!in_array($config['type'], $registeredLinkTypes)) {
+            // Check if the saved link type is still registered. Be sure to check if this is an early
+            // initialization where no registered link types are available - that's okay.
+            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
                 continue;
             }
 
