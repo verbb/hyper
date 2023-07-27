@@ -14,6 +14,7 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Gql;
@@ -310,6 +311,16 @@ class HyperField extends Field
         }
 
         return $link;
+    }
+
+    public function modifyElementsQuery(ElementQueryInterface $query, mixed $value): void
+    {
+        // If we're trying to eager-load this field, remove it as it won't work correctly and return an empty value
+        if ($query->with && is_array($query->with)) {
+            if (($key = array_search($this->handle, $query->with)) !== false) {
+                unset($query->with[$key]);
+            }
+        }
     }
 
     public function getContentGqlType(): Type|array
