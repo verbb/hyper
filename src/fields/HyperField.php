@@ -2,6 +2,7 @@
 namespace verbb\hyper\fields;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\links as linkTypes;
@@ -265,6 +266,9 @@ class HyperField extends Field
         $hasErrors = false;
 
         foreach ($this->getLinkTypes() as $linkType) {
+            // Set the correct scenario for the link type (an "element") to validate only field settings rules
+            $linkType->setScenario(Link::SCENARIO_SETTINGS);
+
             if (!$linkType->validate()) {
                 $hasErrors = true;
             }
