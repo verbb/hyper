@@ -15,6 +15,13 @@ export default {
         },
     },
 
+    mounted() {
+        this.$nextTick(() => {
+            // Ensure any Craft fields are prepped.
+            Craft.initUiElements(this.$el);
+        });
+    },
+
     render() {
         // Apply our dynamically provided template, rendered via Craft.
         return h('div', {
