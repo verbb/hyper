@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.11 - 2023-08-10
+
+### Added
+- Add `Link::checkElementUri()`.
+
+### Fixed
+- Fix some fields not having their JS initialized when used in the link type “Content” tab.
+- Fix an error with Matrix (and some other fields) caused by incorrect Linktype validation calls when saving a Hyper field.
+- Fix incorrect results when trying to eager-load Hyper fields.
+- Fix an error when Hyper fields are initialized too early, before Craft and Hyper are ready.
+- Fix lightswitch UI on Craft 4.4.16+.
+- Fix “fresh” check for blocks, affecting some defaults for some fields (Button Box) saving over content.
+
 ## 1.1.10 - 2023-07-21
 
 ### Added
