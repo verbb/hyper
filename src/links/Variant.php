@@ -14,4 +14,9 @@ class Variant extends ElementLink
     {
         return VariantElement::class;
     }
+
+    public static function checkElementUri(): bool
+    {
+        return false;
+    }
 }
