@@ -34,7 +34,10 @@ Craft.Hyper.Input = Garnish.Base.extend({
 });
 
 Craft.Hyper.Settings = Garnish.Base.extend({
-    init(idPrefix, settings) {
+    init(inputNamePrefix, settings) {
+        this.inputNamePrefix = inputNamePrefix;
+        this.inputIdPrefix = Craft.formatInputId(this.inputNamePrefix);
+
         const app = createVueApp({
             components: {
                 HyperSettings,
@@ -47,7 +50,7 @@ Craft.Hyper.Settings = Garnish.Base.extend({
             },
         });
 
-        app.mount(`.${idPrefix}-hyper-configurator`);
+        app.mount(`.${this.inputIdPrefix}-hyper-configurator`);
     },
 });
 

@@ -127,10 +127,14 @@ class HyperField extends Field
     {
         $view = Craft::$app->getView();
 
-        $idPrefix = StringHelper::randomString(10);
+        $inputNamePrefix = $view->getNamespace();
+        $inputIdPrefix = Html::id($inputNamePrefix);
 
         // Create the Hyper Settings Vue component
-        $js = 'new Craft.Hyper.Settings("' . $idPrefix . '");';
+        $js = 'new Craft.Hyper.Settings(' .
+            Json::encode($inputNamePrefix, JSON_UNESCAPED_UNICODE) . 
+        ');';
+        
         $this->_registerJs($view, $js);
 
         // Get the link type settings (set defaults or normalize existing saved settings)
@@ -145,8 +149,9 @@ class HyperField extends Field
         }, Hyper::$plugin->getLinks()->getAllLinkTypes());
 
         return $view->renderTemplate('hyper/field/settings', [
-            'idPrefix' => $idPrefix,
             'field' => $this,
+            'inputNamePrefix' => $inputNamePrefix,
+            'inputIdPrefix' => $inputIdPrefix,
             'linkTypes' => $linkTypes,
             'registeredLinkTypes' => $registeredLinkTypes,
 
