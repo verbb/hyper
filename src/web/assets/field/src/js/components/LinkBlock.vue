@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { merge, escapeRegExp } from 'lodash-es';
+import { escapeRegExp } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
@@ -295,7 +295,17 @@ export default {
             this.slideout.open();
 
             this.slideout.on('submit', (e) => {
-                merge(this.link, e.response.data);
+                // Update the model with the data in the slideout
+                Object.entries(e.response.data).forEach(([key, value]) => {
+                    if (key === 'fields') {
+                        Object.entries(value).forEach(([fieldKey, field]) => {
+                            this.link[key][fieldKey] = field;
+                        });
+
+                    } else {
+                        this.link[key] = value;
+                    }
+                });
             });
 
             if (this.tippy) {
