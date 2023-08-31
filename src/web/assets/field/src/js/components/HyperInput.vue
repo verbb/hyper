@@ -125,7 +125,6 @@ export default {
                 useDragHandle: true,
                 lockToContainerEdges: true,
                 lockOffset: '0',
-                appendTo: '#content',
             };
         },
 
@@ -304,6 +303,9 @@ export default {
 
 .hyper-link {
     margin-bottom: 0.75rem;
+
+    // Fix for dragging in the element slide-out
+    z-index: 100;
 }
 
 </style>

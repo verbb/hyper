@@ -436,8 +436,39 @@ export default {
     cursor: move;
 }
 
+.hyper-body-wrapper > .flex-fields {
+    align-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 calc(var(--row-gap)*-1) calc(var(--row-gap)*-1);
+    width: calc(100% + var(--row-gap)*2);
+
+    // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
+    @media only screen and (min-width: 600px) and (max-width: 1535px) {
+        > :not(h2):not(hr):not(.line-break).width-25,
+        > :not(h2):not(hr):not(.line-break).width-50,
+        > :not(h2):not(hr):not(.line-break):last-child.width-25,
+        > :not(h2):not(hr):not(.line-break):last-child.width-50 {
+            width: 50%;
+        }
+    }
+
+    > :not(h2):not(hr):not(.line-break),
+    > :not(h2):not(hr):not(.line-break):last-child {
+        position: relative;
+        width: 100%;
+    }
+
+    > * {
+        box-sizing: border-box;
+        margin: 0 0 var(--row-gap)!important;
+        padding: 0 var(--row-gap);
+    }
+}
+
 // Required to properly override `!important`
-#content :not(.meta) .hyper-body-wrapper  > .flex-fields > * {
+#content :not(.meta) .hyper-body-wrapper > .flex-fields > *,
+.hyper-body-wrapper > .flex-fields > * {
     margin-bottom: 1rem !important;
 
     &:last-child {
