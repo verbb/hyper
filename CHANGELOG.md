@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.12 - 2023-09-15
+
+### Added
+- Add support for Shopify Product links.
+
+### Changed
+- Update cache after slug/uri changes. (thanks @nateiler).
+
+### Fixed
+- Fix an error for some field setups and failing linktypes.
+- Fix fields in the settings slideout not saving correctly in some cases.
+- Fix a visual bug when dragging multiple Hyper link blocks in the element slideout.
+- Fix multi-link “Add link” buttons not working correctly for nested Hyper fields.
+- Fix field not initializing correctly in Super Table or Matrix field settings.
+- Fix being unable to pick Variants for Variant link type.
+
 ## 1.1.11 - 2023-08-10
 
 ### Added
