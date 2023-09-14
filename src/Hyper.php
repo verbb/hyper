@@ -166,6 +166,7 @@ class Hyper extends Plugin
 
     private function _registerCraftEventListeners(): void
     {
+        Event::on(Elements::class, Elements::EVENT_AFTER_UPDATE_SLUG_AND_URI, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_SAVE_ELEMENT, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_DELETE_ELEMENT, [$this->getElementCache(), 'onDeleteElement']);
         
