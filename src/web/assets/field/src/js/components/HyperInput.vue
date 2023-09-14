@@ -167,24 +167,27 @@ export default {
 
             // Ensure we target just _this_ Hyper field, and not any nested Hyper fields
             const $container = this.$el.querySelector(':scope > .h-add-container');
-            const $template = $container.querySelector('.hyper-linktypes-template');
 
-            if ($template) {
-                $template.style.display = 'block';
+            if ($container) {
+                const $template = $container.querySelector('.hyper-linktypes-template');
 
-                this.tippy = tippy($container.querySelector('.h-add-link-btn'), {
-                    content: $template,
-                    trigger: 'click',
-                    allowHTML: true,
-                    arrow: true,
-                    interactive: true,
-                    appendTo: document.body,
-                    placement: 'bottom-end',
-                    theme: 'light-border hyper-tippy-menu',
-                    maxWidth: '300px',
-                    zIndex: 100,
-                    hideOnClick: true,
-                });
+                if ($template) {
+                    $template.style.display = 'block';
+
+                    this.tippy = tippy($container.querySelector('.h-add-link-btn'), {
+                        content: $template,
+                        trigger: 'click',
+                        allowHTML: true,
+                        arrow: true,
+                        interactive: true,
+                        appendTo: document.body,
+                        placement: 'bottom-end',
+                        theme: 'light-border hyper-tippy-menu',
+                        maxWidth: '300px',
+                        zIndex: 100,
+                        hideOnClick: true,
+                    });
+                }
             }
         });
     },
