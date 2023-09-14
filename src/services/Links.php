@@ -70,6 +70,10 @@ class Links extends Component
             $linkTypes[] = linkTypes\Variant::class;
         }
 
+        if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('shopify')) {
+            $linkTypes[] = linkTypes\ShopifyProduct::class;
+        }
+
         $event = new RegisterComponentTypesEvent([
             'types' => $linkTypes,
         ]);
