@@ -9,7 +9,7 @@
             @sort-end="onEndDrag"
         >
             <slick-item v-for="(element, index) in proxyValue" :key="element.id" :index="index" class="hyper-link">
-                <link-block :ref="`block-${index}`" :key="index" :value="element" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
+                <link-block :ref="`block-${index}`" :key="element.id" :value="element" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
             </slick-item>
         </slick-list>
 
