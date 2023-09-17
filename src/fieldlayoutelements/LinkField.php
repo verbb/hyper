@@ -31,6 +31,11 @@ class LinkField extends TextField
 
         parent::__construct($config);
     }
+    
+    public function showAttribute(): bool
+    {
+        return true;
+    }
 
     public function defaultLabel(?ElementInterface $element = null, bool $static = false): ?string
     {

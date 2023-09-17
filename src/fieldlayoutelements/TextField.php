@@ -16,6 +16,11 @@ class TextField extends CraftTextField
 
         parent::__construct($config);
     }
+    
+    public function showAttribute(): bool
+    {
+        return true;
+    }
 
     public function defaultPlaceholder(?ElementInterface $element = null, bool $static = false): ?string
     {

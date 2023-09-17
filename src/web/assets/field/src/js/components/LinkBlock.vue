@@ -486,6 +486,10 @@ export default {
     }
 }
 
+#content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
+    display: none;
+}
+
 .hyper-body-wrapper {
     display: flex;
     gap: 1rem;
@@ -497,17 +501,24 @@ export default {
     }
 
     .flex-fields > * {
-        &::before,
-        .copytextbtn {
-            display: none;
+        .copytextbtn.small {
+            padding: 0 5px;
+        }
+
+        .copytextbtn.small .copytextbtn__value {
+            font-size: .6rem;
+        }
+
+        .copytextbtn .copytextbtn__icon {
+            margin-top: -2px;
+            padding: 0;
+            width: 8px;
+            font-size: 9px;
         }
 
         .heading {
             font-size: 12px;
-            display: block;
-            line-height: 1;
-            margin-top: 0;
-            margin-bottom: 0.5rem;
+            margin-bottom: 4px;
 
             label {
                 font-weight: 600;
