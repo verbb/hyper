@@ -495,6 +495,7 @@ export default {
     gap: 1rem;
     padding: 0.75rem 0.75rem;
     background: #fff;
+    background-clip: content-box;
 
     .flex-fields {
         --row-gap: 0.5rem !important;
