@@ -23,13 +23,13 @@
                 <div id="hyper-settings-template" class="hyper-menu" style="display: none;">
                     <ul class="padded" role="listbox" aria-hidden="true">
                         <li v-if="linkType.tabCount > 1">
-                            <a data-icon="settings" role="option" tabindex="-1" @click.prevent="openSlideout">Settings</a>
+                            <a data-icon="settings" role="option" tabindex="-1" @click.prevent="openSlideout">{{ t('app', 'Settings') }}</a>
                         </li>
 
                         <hr v-if="linkType.tabCount > 1">
 
                         <li>
-                            <a class="error" data-icon="remove" role="option" tabindex="-1" @click.prevent="deleteBlock">Delete</a>
+                            <a class="error" data-icon="remove" role="option" tabindex="-1" @click.prevent="deleteBlock">{{ t('app', 'Delete') }}</a>
                         </li>
                     </ul>
                 </div>
