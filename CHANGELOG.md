@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.13 - 2023-09-25
+
+### Fixed
+- Fix missing translations.
+- Fix link block background clip.
+- Fix field handles not showing for link attributes and custom fields.
+- Fix an issue when re-ordering multiple links.
+
 ## 1.1.12 - 2023-09-15
 
 ### Added
