@@ -53,8 +53,8 @@
 
     {% set path = prefixPath | merge ([ 'fields', key ]) %}
 
-    {% set default = default ?? {
-        type: 'text',
+    {% set default = {
+        type: (key == 'newWindow') ? 'lightswitch' : 'text',
     } %}
 
     {% embed 'feed-me/_includes/fields/_base' %}
@@ -66,4 +66,20 @@
 
         {% endblock %}
     {% endembed %}
+{% endfor %}
+
+{% for customField in field.getLinkTypeFields() %}
+    {% set nameLabel = customField.name %}
+    {% set instructionsHandle = handle ~ '[' ~ customField.handle ~ ']' %}
+
+    {% set parentPath = prefixPath|merge ([ 'fields', customField.handle ]) %}
+
+    {% set fieldClass = craft.feedme.fields.getRegisteredField(className(customField)) %}
+    {% set template = fieldClass.getMappingTemplate() %}
+
+    {% include template ignore missing with {
+        field: customField,
+        handle: customField.handle,
+        path: parentPath,
+    } %}
 {% endfor %}
