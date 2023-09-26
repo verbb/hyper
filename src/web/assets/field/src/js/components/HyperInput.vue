@@ -267,8 +267,11 @@ export default {
             // For JS, because we're re-rendering HTML, the originally-bound JS will no longer work, so we
             // append it again, but there's also smarts to prevent duplication.
             Object.values(this.$refs).forEach((linkComponent) => {
-                linkComponent[0].updateHtml();
-                linkComponent[0].updateJs();
+                // Slight delay required to ensure that the DOM has caught up
+                setTimeout(() => {
+                    linkComponent[0].updateHtml();
+                    linkComponent[0].updateJs();
+                }, 50);
             });
         },
 
