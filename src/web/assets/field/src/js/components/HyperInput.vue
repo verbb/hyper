@@ -9,7 +9,7 @@
             @sort-end="onEndDrag"
         >
             <slick-item v-for="(element, index) in proxyValue" :key="element.id" :index="index" class="hyper-link">
-                <link-block :ref="`block-${index}`" :key="index" :value="element" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
+                <link-block :ref="`block-${index}`" :key="element.id" :value="element" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
             </slick-item>
         </slick-list>
 
@@ -17,11 +17,11 @@
             <link-block v-for="(link, index) in proxyValue" :key="index" :value="link" :block-index="index" :hyper-field="this" />
         </div>
 
-        <div v-if="settings.multipleLinks && !settings.isStatic">
+        <div v-if="settings.multipleLinks && !settings.isStatic" class="h-add-container">
             <div v-if="settings.linkTypes.length > 1">
                 <button type="button" class="btn dashed icon add menubtn h-add-link-btn" :class="canAdd ? '' : 'disabled'" :disabled="!canAdd">{{ t('hyper', 'Add a link') }}</button>
 
-                <div id="hyper-linktypes-template" class="hyper-menu" style="display: none;">
+                <div class="hyper-linktypes-template hyper-menu" style="display: none;">
                     <ul class="padded" role="listbox" aria-hidden="true">
                         <li v-for="(linkType, index) in settings.linkTypes" :key="index">
                             <a role="option" tabindex="-1" @click.prevent="newLinkBlock(linkType.handle)">{{ linkType.label }}</a>
@@ -125,7 +125,6 @@ export default {
                 useDragHandle: true,
                 lockToContainerEdges: true,
                 lockOffset: '0',
-                appendTo: '#content',
             };
         },
 
@@ -166,24 +165,29 @@ export default {
             // This is due to jQuery kicking in and serializing the form before Vue kicks in.
             this.updateInitialSerializedValue();
 
-            const $template = this.$el.querySelector('#hyper-linktypes-template');
+            // Ensure we target just _this_ Hyper field, and not any nested Hyper fields
+            const $container = this.$el.querySelector(':scope > .h-add-container');
 
-            if ($template) {
-                $template.style.display = 'block';
+            if ($container) {
+                const $template = $container.querySelector('.hyper-linktypes-template');
 
-                this.tippy = tippy(this.$el.querySelector('.h-add-link-btn'), {
-                    content: $template,
-                    trigger: 'click',
-                    allowHTML: true,
-                    arrow: true,
-                    interactive: true,
-                    appendTo: document.body,
-                    placement: 'bottom-end',
-                    theme: 'light-border hyper-tippy-menu',
-                    maxWidth: '300px',
-                    zIndex: 100,
-                    hideOnClick: true,
-                });
+                if ($template) {
+                    $template.style.display = 'block';
+
+                    this.tippy = tippy($container.querySelector('.h-add-link-btn'), {
+                        content: $template,
+                        trigger: 'click',
+                        allowHTML: true,
+                        arrow: true,
+                        interactive: true,
+                        appendTo: document.body,
+                        placement: 'bottom-end',
+                        theme: 'light-border hyper-tippy-menu',
+                        maxWidth: '300px',
+                        zIndex: 100,
+                        hideOnClick: true,
+                    });
+                }
             }
         });
     },
@@ -302,6 +306,9 @@ export default {
 
 .hyper-link {
     margin-bottom: 0.75rem;
+
+    // Fix for dragging in the element slide-out
+    z-index: 100;
 }
 
 </style>

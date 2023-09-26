@@ -7,8 +7,9 @@
     status: null,
 } %}
 
-{# Assets don't support `uri` like other elements do #}
-{% if className(link) != 'verbb\\hyper\\links\\Asset' %}
+{# Some elements like Assets don't support `uri` like other elements do #}
+{# But by default, don't allow linking to elements that don't have links #}
+{% if link.checkElementUri() %}
     {% set criteria = criteria | merge({
         uri: ':notempty:',
     }) %}

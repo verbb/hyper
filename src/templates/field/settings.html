@@ -81,7 +81,7 @@
         <p>{{ 'Configure the types of links available for users to pick from.' | t('hyper') }}</p>
     </div>
 
-    <div class="hyper-configurator {{ idPrefix }}-hyper-configurator">
+    <div class="hyper-configurator {{ inputIdPrefix }}-hyper-configurator">
         <hyper-settings
             :field-id="{{ field.id ?: 'null' }}"
             :link-types="{{ linkTypes | json_encode }}"

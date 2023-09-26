@@ -91,6 +91,7 @@ class MigrateLinkitField extends PluginFieldMigration
                 linkTypes\Custom::class,
                 linkTypes\Embed::class,
                 linkTypes\Product::class,
+                linkTypes\ShopifyProduct::class,
                 linkTypes\Site::class,
                 linkTypes\Variant::class,
             ]);

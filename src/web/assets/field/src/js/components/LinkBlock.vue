@@ -2,7 +2,7 @@
     <div class="hyper-wrapper">
         <div class="hyper-header">
             <div class="hyper-header-type">
-                <select v-model="link.handle" :disabled="settings.isStatic">
+                <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">
                     <option v-for="type in settings.linkTypes" :key="type.handle" :value="type.handle">{{ type.label }}</option>
                 </select>
             </div>
@@ -23,13 +23,13 @@
                 <div id="hyper-settings-template" class="hyper-menu" style="display: none;">
                     <ul class="padded" role="listbox" aria-hidden="true">
                         <li v-if="linkType.tabCount > 1">
-                            <a data-icon="settings" role="option" tabindex="-1" @click.prevent="openSlideout">Settings</a>
+                            <a data-icon="settings" role="option" tabindex="-1" @click.prevent="openSlideout">{{ t('app', 'Settings') }}</a>
                         </li>
 
                         <hr v-if="linkType.tabCount > 1">
 
                         <li>
-                            <a class="error" data-icon="remove" role="option" tabindex="-1" @click.prevent="deleteBlock">Delete</a>
+                            <a class="error" data-icon="remove" role="option" tabindex="-1" @click.prevent="deleteBlock">{{ t('app', 'Delete') }}</a>
                         </li>
                     </ul>
                 </div>
@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { merge, escapeRegExp } from 'lodash-es';
+import { escapeRegExp } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
@@ -166,7 +166,7 @@ export default {
                     html = html.replace(/<(?:input|textarea|select)\s[^>]*/ig, '$& disabled');
                 }
 
-                return html.replace(new RegExp('__HYPER_BLOCK__', 'g'), this.blockIndex);
+                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), this.blockIndex);
             }
 
             return '';
@@ -238,8 +238,8 @@ export default {
                 let fieldsHtml = $fieldsHtml.htmlize();
 
                 // Revert to blank namespacing for `id` and `name` now that the order has changed
-                const idPlaceholder = `${this.settings.namespacedId}-__HYPER_BLOCK__`;
-                const namePlaceholder = `${this.settings.namespacedName}[__HYPER_BLOCK__]`;
+                const idPlaceholder = `${this.settings.namespacedId}-__HYPER_BLOCK_${this.settings.placeholderKey}__`;
+                const namePlaceholder = `${this.settings.namespacedName}[__HYPER_BLOCK_${this.settings.placeholderKey}__]`;
                 const currentId = `${this.settings.namespacedId}-${this.blockIndex}`;
                 const currentName = `${this.settings.namespacedName}[${this.blockIndex}]`;
 
@@ -295,7 +295,17 @@ export default {
             this.slideout.open();
 
             this.slideout.on('submit', (e) => {
-                merge(this.link, e.response.data);
+                // Update the model with the data in the slideout
+                Object.entries(e.response.data).forEach(([key, value]) => {
+                    if (key === 'fields') {
+                        Object.entries(value).forEach(([fieldKey, field]) => {
+                            this.link[key][fieldKey] = field;
+                        });
+
+                    } else {
+                        this.link[key] = value;
+                    }
+                });
             });
 
             if (this.tippy) {
@@ -436,8 +446,39 @@ export default {
     cursor: move;
 }
 
+.hyper-body-wrapper > .flex-fields {
+    align-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 calc(var(--row-gap)*-1) calc(var(--row-gap)*-1);
+    width: calc(100% + var(--row-gap)*2);
+
+    // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
+    @media only screen and (min-width: 600px) and (max-width: 1535px) {
+        > :not(h2):not(hr):not(.line-break).width-25,
+        > :not(h2):not(hr):not(.line-break).width-50,
+        > :not(h2):not(hr):not(.line-break):last-child.width-25,
+        > :not(h2):not(hr):not(.line-break):last-child.width-50 {
+            width: 50%;
+        }
+    }
+
+    > :not(h2):not(hr):not(.line-break),
+    > :not(h2):not(hr):not(.line-break):last-child {
+        position: relative;
+        width: 100%;
+    }
+
+    > * {
+        box-sizing: border-box;
+        margin: 0 0 var(--row-gap)!important;
+        padding: 0 var(--row-gap);
+    }
+}
+
 // Required to properly override `!important`
-#content :not(.meta) .hyper-body-wrapper  > .flex-fields > * {
+#content :not(.meta) .hyper-body-wrapper > .flex-fields > *,
+.hyper-body-wrapper > .flex-fields > * {
     margin-bottom: 1rem !important;
 
     &:last-child {
@@ -445,28 +486,40 @@ export default {
     }
 }
 
+#content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
+    display: none;
+}
+
 .hyper-body-wrapper {
     display: flex;
     gap: 1rem;
     padding: 0.75rem 0.75rem;
     background: #fff;
+    border-radius: 0 6px 6px 0;
 
     .flex-fields {
         --row-gap: 0.5rem !important;
     }
 
     .flex-fields > * {
-        &::before,
-        .copytextbtn {
-            display: none;
+        .copytextbtn.small {
+            padding: 0 5px;
+        }
+
+        .copytextbtn.small .copytextbtn__value {
+            font-size: .6rem;
+        }
+
+        .copytextbtn .copytextbtn__icon {
+            margin-top: -2px;
+            padding: 0;
+            width: 8px;
+            font-size: 9px;
         }
 
         .heading {
             font-size: 12px;
-            display: block;
-            line-height: 1;
-            margin-top: 0;
-            margin-bottom: 0.5rem;
+            margin-bottom: 4px;
 
             label {
                 font-weight: 600;

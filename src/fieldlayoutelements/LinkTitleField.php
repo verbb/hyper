@@ -17,6 +17,11 @@ class LinkTitleField extends TextField
     // Public Methods
     // =========================================================================
 
+    public function showAttribute(): bool
+    {
+        return true;
+    }
+
     public function defaultLabel(?ElementInterface $element = null, bool $static = false): ?string
     {
         return Craft::t('hyper', 'Link Title');

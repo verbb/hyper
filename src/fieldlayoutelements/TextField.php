@@ -12,9 +12,14 @@ class TextField extends CraftTextField
 
     public function __construct($config = [])
     {
-        $config['placeholder'] = $config['placeholder'] ?? $this->defaultPlaceholder();
+        $config['placeholder'] = Craft::t('hyper', ($config['placeholder'] ?? $this->defaultPlaceholder()));
 
         parent::__construct($config);
+    }
+    
+    public function showAttribute(): bool
+    {
+        return true;
     }
 
     public function defaultPlaceholder(?ElementInterface $element = null, bool $static = false): ?string

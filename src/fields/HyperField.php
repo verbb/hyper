@@ -2,6 +2,7 @@
 namespace verbb\hyper\fields;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\links as linkTypes;
@@ -14,6 +15,7 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Gql;
@@ -126,10 +128,14 @@ class HyperField extends Field
     {
         $view = Craft::$app->getView();
 
-        $idPrefix = StringHelper::randomString(10);
+        $inputNamePrefix = $view->getNamespace();
+        $inputIdPrefix = Html::id($inputNamePrefix);
 
         // Create the Hyper Settings Vue component
-        $js = 'new Craft.Hyper.Settings("' . $idPrefix . '");';
+        $js = 'new Craft.Hyper.Settings(' .
+            Json::encode($inputNamePrefix, JSON_UNESCAPED_UNICODE) . 
+        ');';
+        
         $this->_registerJs($view, $js);
 
         // Get the link type settings (set defaults or normalize existing saved settings)
@@ -144,8 +150,9 @@ class HyperField extends Field
         }, Hyper::$plugin->getLinks()->getAllLinkTypes());
 
         return $view->renderTemplate('hyper/field/settings', [
-            'idPrefix' => $idPrefix,
             'field' => $this,
+            'inputNamePrefix' => $inputNamePrefix,
+            'inputIdPrefix' => $inputIdPrefix,
             'linkTypes' => $linkTypes,
             'registeredLinkTypes' => $registeredLinkTypes,
 
@@ -183,12 +190,14 @@ class HyperField extends Field
         ];
 
         // Prepare the link types and HTML for fields
-        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element);
+        $placeholderKey = StringHelper::randomString(10);
+        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element, $placeholderKey);
         $settings['linkTypes'] = $linkTypeInfo['linkTypes'] ?? [];
         $settings['js'] = $linkTypeInfo['js'] ?? [];
+        $settings['placeholderKey'] = $placeholderKey;
 
         // Prepare the link element values for the field, including pre-rendered HTML
-        $value = $this->_getLinksForInput($value);
+        $value = $this->_getLinksForInput($value, $placeholderKey);
 
         // Create the Hyper Input Vue component
         $js = 'new Craft.Hyper.Input("' . $view->namespaceInputId($id) . '");';
@@ -263,6 +272,9 @@ class HyperField extends Field
         $hasErrors = false;
 
         foreach ($this->getLinkTypes() as $linkType) {
+            // Set the correct scenario for the link type (an "element") to validate only field settings rules
+            $linkType->setScenario(Link::SCENARIO_SETTINGS);
+
             if (!$linkType->validate()) {
                 $hasErrors = true;
             }
@@ -309,6 +321,16 @@ class HyperField extends Field
         }
 
         return $link;
+    }
+
+    public function modifyElementsQuery(ElementQueryInterface $query, mixed $value): void
+    {
+        // If we're trying to eager-load this field, remove it as it won't work correctly and return an empty value
+        if ($query->with && is_array($query->with)) {
+            if (($key = array_search($this->handle, $query->with)) !== false) {
+                unset($query->with[$key]);
+            }
+        }
     }
 
     public function getContentGqlType(): Type|array
@@ -436,15 +458,16 @@ class HyperField extends Field
 
         // Prevent calls to this too early, before Hyper is initialized
         // https://github.com/verbb/hyper/issues/72
-        if (!Hyper::getInstance()) {
-            return;
+        if (Hyper::getInstance()) {
+            $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+        } else {
+            $registeredLinkTypes = [];
         }
 
-        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
-
         foreach ($linkTypes as $key => $config) {
-            // Check if the saved link type is still registered
-            if (!in_array($config['type'], $registeredLinkTypes)) {
+            // Check if the saved link type is still registered. Be sure to check if this is an early
+            // initialization where no registered link types are available - that's okay.
+            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
                 continue;
             }
 
@@ -477,13 +500,13 @@ class HyperField extends Field
     // Private Methods
     // =========================================================================
 
-    private function _getLinkTypeInfoForInput(?ElementInterface $element): array
+    private function _getLinkTypeInfoForInput(?ElementInterface $element, string $placeholderKey): array
     {
         $linkTypeInfo = [];
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK__]"));
+        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
 
         foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->enabled) {
@@ -512,7 +535,7 @@ class HyperField extends Field
         return $linkTypeInfo;
     }
 
-    private function _getLinksForInput(LinkCollection $links): array
+    private function _getLinksForInput(LinkCollection $links, string $placeholderKey): array
     {
         $preppedValues = [];
 
@@ -530,7 +553,7 @@ class HyperField extends Field
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK__]"));
+        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
 
         // For each Link element, render the fields and convert to an array
         foreach ($links as $key => $link) {
@@ -572,6 +595,9 @@ class HyperField extends Field
             $linkValueField = $fieldLayout->getField('linkValue');
             $linkValueField->field = $this;
             $linkValueField->link = $link;
+
+            // Bit of a hack here to trick `Link::getIsFresh()` that this _isn't_ a fresh block. Using `setIsFresh()` won't work.
+            $link->contentId = 99999;
 
             $form = $fieldLayout->createForm($link);
 

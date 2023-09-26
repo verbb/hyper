@@ -16,6 +16,7 @@ use presseddigital\linkit\models\Facebook;
 use presseddigital\linkit\models\Instagram;
 use presseddigital\linkit\models\LinkedIn;
 use presseddigital\linkit\models\Phone;
+use presseddigital\linkit\models\Product;
 use presseddigital\linkit\models\Twitter;
 use presseddigital\linkit\models\Url;
 use presseddigital\linkit\models\User;
@@ -31,12 +32,27 @@ class MigrateLinkitContent extends PluginContentMigration
         Email::class => linkTypes\Email::class,
         Entry::class => linkTypes\Entry::class,
         Phone::class => linkTypes\Phone::class,
+        Product::class => linkTypes\Product::class,
         Url::class => linkTypes\Url::class,
         Twitter::class => linkTypes\Url::class,
         Facebook::class => linkTypes\Url::class,
         Instagram::class => linkTypes\Url::class,
         LinkedIn::class => linkTypes\Url::class,
         User::class => linkTypes\User::class,
+
+        // Handle legacy types
+        'fruitstudios\\linkit\\models\\Asset' => linkTypes\Asset::class,
+        'fruitstudios\\linkit\\models\\Category' => linkTypes\Category::class,
+        'fruitstudios\\linkit\\models\\Email' => linkTypes\Email::class,
+        'fruitstudios\\linkit\\models\\Entry' => linkTypes\Entry::class,
+        'fruitstudios\\linkit\\models\\Phone' => linkTypes\Phone::class,
+        'fruitstudios\\linkit\\models\\Product' => linkTypes\Product::class,
+        'fruitstudios\\linkit\\models\\Url' => linkTypes\Url::class,
+        'fruitstudios\\linkit\\models\\Twitter' => linkTypes\Url::class,
+        'fruitstudios\\linkit\\models\\Facebook' => linkTypes\Url::class,
+        'fruitstudios\\linkit\\models\\Instagram' => linkTypes\Url::class,
+        'fruitstudios\\linkit\\models\\LinkedIn' => linkTypes\Url::class,
+        'fruitstudios\\linkit\\models\\User' => linkTypes\User::class,
     ];
 
     public string $oldFieldTypeClass = LinkitField::class;
@@ -65,6 +81,8 @@ class MigrateLinkitContent extends PluginContentMigration
         $linkTypeClass = $this->getLinkType($oldType);
 
         if (!$linkTypeClass) {
+            $this->stdout("    > Unable to migrate “{$oldType}” class.", Console::FG_RED);
+
             return false;
         }
 

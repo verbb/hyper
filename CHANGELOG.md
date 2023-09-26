@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.1.13 - 2023-09-25
+
+### Fixed
+- Fix missing translations.
+- Fix link block background clip.
+- Fix field handles not showing for link attributes and custom fields.
+- Fix an issue when re-ordering multiple links.
+
+## 1.1.12 - 2023-09-15
+
+### Added
+- Add support for Shopify Product links.
+
+### Changed
+- Update cache after slug/uri changes. (thanks @nateiler).
+
+### Fixed
+- Fix an error for some field setups and failing linktypes.
+- Fix fields in the settings slideout not saving correctly in some cases.
+- Fix a visual bug when dragging multiple Hyper link blocks in the element slideout.
+- Fix multi-link “Add link” buttons not working correctly for nested Hyper fields.
+- Fix field not initializing correctly in Super Table or Matrix field settings.
+- Fix being unable to pick Variants for Variant link type.
+
+## 1.1.11 - 2023-08-10
+
+### Added
+- Add `Link::checkElementUri()`.
+
+### Fixed
+- Fix some fields not having their JS initialized when used in the link type “Content” tab.
+- Fix an error with Matrix (and some other fields) caused by incorrect Linktype validation calls when saving a Hyper field.
+- Fix incorrect results when trying to eager-load Hyper fields.
+- Fix an error when Hyper fields are initialized too early, before Craft and Hyper are ready.
+- Fix lightswitch UI on Craft 4.4.16+.
+- Fix “fresh” check for blocks, affecting some defaults for some fields (Button Box) saving over content.
+
+## 1.1.10 - 2023-07-21
+
+### Added
+- Add support for `rel` in custom attributes field value, when also enabling “new window”.
+- Add extra debugging message for Linkit migration when link types cannot be migrated.
+- Add support for migrating Product link type for LinkIt.
+
+### Changed
+- The Link type dropdown now shows as disabled if only a single link type.
+
+### Fixed
+- Fix nested Hyper fields not working correctly.
+- Fix an error where checking if Craft was initialized too early results in empty Hyper fields.
+
 ## 1.1.9 - 2023-07-11
 
 ### Added

@@ -73,6 +73,8 @@ namespace modules;
 
 use craft\commerce\elements\Variant as VariantElement;
 use verbb\hyper\base\ElementLink;
+use verbb\hyper\fieldlayoutelements\LinkField;
+use verbb\hyper\fields\HyperField;
 
 class Variant extends ElementLink
 {
@@ -83,11 +85,71 @@ class Variant extends ElementLink
     {
         return VariantElement::class;
     }
+
+    public function getSettingsHtml(): ?string
+    {
+        $variables = $this->getSettingsHtmlVariables();
+
+        return Craft::$app->getView()->renderTemplate('hyper/links/_element/settings', $variables);
+    }
+    
+    public function getInputHtml(LinkField $layoutField, HyperField $field): ?string
+    {
+        $variables = $this->getInputHtmlVariables($layoutField, $field);
+
+        return Craft::$app->getView()->renderTemplate('hyper/links/_element/input', $variables);
+    }
 }
 
 ```
 
 In the above example, we've added support for Craft Commerce Variant elements to be able to be used as links. Fortunately, extending from the `ElementLink` class takes care of everything for you.
+
+We're also falling back on Hypers templates for `getSettingsHtml()` and `getInputHtml()` but you could of course write your own.
+
+One thing to note is that for element links, Hyper will only show elements for that element type that have a `uri`. If your element type does not support this, you'll need to disallow this with the `checkElementUri()` function.
+
+For example, if we had a custom link type for Formie forms, which don't have an intrinsic `uri`:
+
+```php
+<?php
+namespace modules;
+
+use Craft;
+use verbb\formie\elements\Form;
+use verbb\hyper\base\ElementLink;
+use verbb\hyper\fieldlayoutelements\LinkField;
+use verbb\hyper\fields\HyperField;
+
+class Formie extends ElementLink
+{
+    public static function elementType(): string
+    {
+        return Form::class;
+    }
+
+    public static function checkElementUri(): bool
+    {
+        return false;
+    }
+
+    public function getSettingsHtml(): ?string
+    {
+        $variables = $this->getSettingsHtmlVariables();
+
+        return Craft::$app->getView()->renderTemplate("hyper/links/_element/settings", $variables);
+    }
+    
+    public function getInputHtml(LinkField $layoutField, HyperField $field): ?string
+    {
+        $variables = $this->getInputHtmlVariables($layoutField, $field);
+
+        return Craft::$app->getView()->renderTemplate("hyper/links/_element/input", $variables);
+    }
+}
+```
+
+Without this, no Formie Form element would be selectable when creating the link in Hyper.
 
 ## Settings, Variables and Values
 As mentioned, because a single class takes care of 3 different uses (the field settings, the field input in the control panel when editing an element, the field when rendering on the front-end), the class does need to consider how to save properties.
