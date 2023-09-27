@@ -34,6 +34,12 @@ Allows users to select an Entry element to link to.
 ## Phone
 Allows users to enter a phone number. This will be prefixed automatically with `tel:`.
 
+## Product
+Allows users to select a [Commerce Product](https://plugins.craftcms.com/commerce) element to link to.
+
+## Shopify Product
+Allows users to select a [Shopify Product](https://plugins.craftcms.com/shopify) element to link to.
+
 ## Site
 Allows users to select a Site to link to.
 
@@ -52,6 +58,9 @@ For example, you could use the following:
 
 {# Generates: http://my-site.test/josh-crawford #}
 ```
+
+## Variant
+Allows users to select a [Commerce Variant](https://plugins.craftcms.com/commerce) element to link to.
 
 :::tip
 Looking to create your own link type, or extend an existing one? Check out our guide on [Link Types](docs:developers/link-type) for more.
