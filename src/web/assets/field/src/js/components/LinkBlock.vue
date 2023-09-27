@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { escapeRegExp } from 'lodash-es';
+import { set, escapeRegExp } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
@@ -299,9 +299,8 @@ export default {
                 Object.entries(e.response.data).forEach(([key, value]) => {
                     if (key === 'fields') {
                         Object.entries(value).forEach(([fieldKey, field]) => {
-                            this.link[key][fieldKey] = field;
+                            set(this.link, `${key}.${fieldKey}`, field);
                         });
-
                     } else {
                         this.link[key] = value;
                     }
