@@ -479,13 +479,10 @@ export default {
 #content :not(.meta) .hyper-body-wrapper > .flex-fields > *,
 .hyper-body-wrapper > .flex-fields > * {
     margin-bottom: 1rem !important;
-
-    &:last-child {
-        margin-bottom: 0.5rem !important;
-    }
 }
 
-#content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
+#content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before,
+.hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
     display: none;
 }
 
@@ -498,6 +495,8 @@ export default {
 
     .flex-fields {
         --row-gap: 0.5rem !important;
+
+        margin-bottom: -1rem !important;
     }
 
     .flex-fields > * {
