@@ -15,7 +15,7 @@ Hyper is a Craft CMS plugin for creating links, with a focus on user experience 
 - Plenty of template helpers to make rendering links a breeze and extensible.
 - GraphQL support for querying links.
 - Feed Me support for importing links in elements like entries.
-- One-click migrations for [Typed Link Field](https://github.com/sebastian-lenz/craft-linkfield), [Linkit](https://github.com/presseddigital/linkit) and [Link](https://github.com/flipboxfactory/craft-link) fields.
+- Quick migrations for [Typed Link Field](https://plugins.craftcms.com/typedlinkfield), [Linkit](https://plugins.craftcms.com/linkit) and [Link](https://plugins.craftcms.com/link) fields.
 - Events to write your own link types, or extend existing ones.
 
 ## Link Types
@@ -26,9 +26,12 @@ Hyper is a Craft CMS plugin for creating links, with a focus on user experience 
 - Embed (oembed)
 - Entry
 - Phone
+- Product (for [Commerce](https://plugins.craftcms.com/commerce))
+- Shopify Product (for [Shopify](https://plugins.craftcms.com/shopify))
 - Site
 - Url
 - User
+- Variants (for [Commerce](https://plugins.craftcms.com/commerce))
 
 ## Documentation
 Visit the [Hyper Plugin page](https://verbb.io/craft-plugins/hyper) for all documentation, guides, pricing and developer resources.
