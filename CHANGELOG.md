@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.14 - 2023-10-03
+
+### Fixed
+- Fix some visual inconsistencies with link blocks.
+- Fix an error for nested Hyper fields.
+- Fix save button for plugin settings.
+- Fix an error when re-ordering link blocks.
+
 ## 1.1.13 - 2023-09-25
 
 ### Fixed
