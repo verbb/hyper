@@ -33,7 +33,7 @@
     },
     "autoload": {
         "psr-4": {
-          "verbb\\hyper\\": "src/"
+            "verbb\\hyper\\": "src/"
         }
     },
     "extra": {
