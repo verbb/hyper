@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.15 - 2023-10-12
+
+### Fixed
+- Fix missing templates for Shopify Product link types.
+
 ## 1.1.14 - 2023-10-03
 
 ### Fixed
