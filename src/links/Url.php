@@ -27,15 +27,6 @@ class Url extends Link
     // Public Methods
     // =========================================================================
 
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-        
-        $rules[] = [['linkValue'], UrlValidator::class, 'enableIDN' => App::supportsIdn()];
-
-        return $rules;
-    }
-
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();
@@ -47,6 +38,19 @@ class Url extends Link
     public function defaultPlaceholder(): ?string
     {
         return rtrim(Craft::$app->getSites()->primarySite->baseUrl, '/');
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+        
+        $rules[] = [['linkValue'], UrlValidator::class, 'enableIDN' => App::supportsIdn()];
+
+        return $rules;
     }
 
 }

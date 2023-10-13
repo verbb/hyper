@@ -68,14 +68,11 @@ class Hyper extends Plugin
 
         self::$plugin = $this;
 
-        $this->_setPluginComponents();
-        $this->_setLogging();
         $this->_registerVariables();
         $this->_registerFieldTypes();
         $this->_registerFieldLayoutElements();
-        $this->_registerProjectConfigEventListeners();
-        $this->_registerCraftEventListeners();
-        $this->_registerThirdPartyEventListeners();
+        $this->_registerProjectConfigEventHandlers();
+        $this->_registerEventHandlers();
         $this->_registerGraphQl();
         $this->_registerCacheTypes();
 
@@ -141,7 +138,7 @@ class Hyper extends Plugin
         });
     }
 
-    private function _registerProjectConfigEventListeners(): void
+    private function _registerProjectConfigEventHandlers(): void
     {
         $projectConfig = Craft::$app->getProjectConfig();
 
@@ -151,10 +148,10 @@ class Hyper extends Plugin
             ->onRemove(ProjectConfig::PATH_FIELDS . '.{uid}', [$this->getService(), 'handleDeletedField']);
 
         // Special case for some fields like Matrix, that don't emit the change event for nested fields.
-        $projectConfig
-            ->onAdd(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleChangedBlockType'])
-            ->onUpdate(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleChangedBlockType'])
-            ->onRemove(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleDeletedBlockType']);
+        // $projectConfig
+        //     ->onAdd(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleChangedBlockType'])
+        //     ->onUpdate(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleChangedBlockType'])
+        //     ->onRemove(ProjectConfig::PATH_MATRIX_BLOCK_TYPES . '.{uid}', [$this->getService(), 'handleDeletedBlockType']);
 
         if (class_exists(SuperTableService::class)) {
             $projectConfig
@@ -164,7 +161,7 @@ class Hyper extends Plugin
         }
     }
 
-    private function _registerCraftEventListeners(): void
+    private function _registerEventHandlers(): void
     {
         Event::on(Elements::class, Elements::EVENT_AFTER_UPDATE_SLUG_AND_URI, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_SAVE_ELEMENT, [$this->getElementCache(), 'onSaveElement']);
@@ -172,6 +169,12 @@ class Hyper extends Plugin
         
         Event::on(Fields::class, Fields::EVENT_AFTER_SAVE_FIELD, [$this->getFieldCache(), 'onSaveField']);
         Event::on(Fields::class, Fields::EVENT_AFTER_DELETE_FIELD, [$this->getFieldCache(), 'onDeleteField']);
+
+        if (class_exists(FeedMeFields::class)) {
+            Event::on(FeedMeFields::class, FeedMeFields::EVENT_REGISTER_FEED_ME_FIELDS, function(RegisterFeedMeFieldsEvent $event) {
+                $event->fields[] = FeedMeHyperField::class;
+            });
+        }
     }
 
     private function _registerCachePreload(): void
@@ -203,15 +206,6 @@ class Hyper extends Plugin
                 }
             });
         });
-    }
-
-    private function _registerThirdPartyEventListeners(): void
-    {
-        if (class_exists(FeedMeFields::class)) {
-            Event::on(FeedMeFields::class, FeedMeFields::EVENT_REGISTER_FEED_ME_FIELDS, function(RegisterFeedMeFieldsEvent $event) {
-                $event->fields[] = FeedMeHyperField::class;
-            });
-        }
     }
 
     private function _registerGraphQl(): void

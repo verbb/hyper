@@ -195,20 +195,6 @@ abstract class Link extends Element implements LinkInterface
         return $scenarios;
     }
 
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-
-        // Validation for only when saving Hyper fields and their settings
-        $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
-
-        if ($this->isFieldRequired) {
-            $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
-        }
-
-        return $rules;
-    }
-
     public function getSettingsConfig(): array
     {
         // Return the settings used in the Vue component, and what will be saved to the field settings
@@ -293,7 +279,7 @@ abstract class Link extends Element implements LinkInterface
         }
 
         if ($this->layoutUid) {
-            $this->_fieldLayout = Hyper::$plugin->getService()->getFieldLayoutByUid($this->layoutUid);
+            $this->_fieldLayout = Craft::$app->getFields()->getLayoutByUid($this->layoutUid);
         }
 
         return $this->_fieldLayout;
@@ -515,6 +501,24 @@ abstract class Link extends Element implements LinkInterface
     public function getGqlTypeName(): string
     {
         return static::gqlTypeNameByContext($this);
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        // Validation for only when saving Hyper fields and their settings
+        $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
+
+        if ($this->isFieldRequired) {
+            $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+        }
+
+        return $rules;
     }
 
 

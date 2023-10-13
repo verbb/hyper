@@ -2,7 +2,8 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\fields\HyperField;
-use verbb\hyper\models\FieldLayout;
+use verbb\hyper\helpers\Plugin;
+use craft\models\FieldLayout;
 
 use Craft;
 use craft\base\Component;
@@ -24,41 +25,6 @@ class Service extends Component
 
     // Public Methods
     // =========================================================================
-
-    public function getFieldLayoutByUid($layoutUid): ?FieldLayout
-    {
-        if (array_key_exists($layoutUid, $this->_layoutsByUid)) {
-            return $this->_layoutsByUid[$layoutUid];
-        }
-
-        // This is a far more database-efficient way of creating a field layout, fetching the tabs alongside the layout
-        $result = (new Query)
-            ->select([
-                'layouts.id AS layoutsId',
-                'layouts.type AS layoutsType',
-                'layouts.dateCreated AS layoutsDateCreated',
-                'layouts.dateUpdated AS layoutsDateUpdated',
-                'layouts.dateDeleted AS layoutsDateDeleted',
-                'layouts.uid AS layoutsUid',
-
-                'tabs.id AS tabsId',
-                'tabs.layoutId AS tabsLayoutId',
-                'tabs.name AS tabsName',
-                'tabs.settings AS tabsSettings',
-                'tabs.elements AS tabsElements',
-                'tabs.sortOrder AS tabsSortOrder',
-                'tabs.dateCreated AS tabsDateCreated',
-                'tabs.dateUpdated AS tabsDateUpdated',
-                'tabs.uid AS tabsUid',
-            ])
-            ->from(['tabs' => Table::FIELDLAYOUTTABS])
-            ->leftJoin(['layouts' => Table::FIELDLAYOUTS], '[[tabs.layoutId]] = [[layouts.id]]')
-            ->where(['layouts.dateDeleted' => null, 'layouts.uid' => $layoutUid])
-            ->orderBy(['tabs.sortOrder' => SORT_ASC])
-            ->all();
-
-        return $this->_layoutsByUid[$layoutUid] = ($result ? new FieldLayout($result) : null);
-    }
 
     public function handleChangedField(ConfigEvent $event): void
     {
@@ -126,7 +92,7 @@ class Service extends Component
 
             // Add an extra check in here to ensure the layout exists, before deleting it. Deleting via ID may throw an error
             // if the field layout doesn't exist.
-            if ($layout = $this->getFieldLayoutByUid($layoutUid)) {
+            if ($layout = $fieldsService->getLayoutByUid($layoutUid)) {
                 $fieldsService->deleteLayout($layout);
             }
         }
@@ -164,13 +130,9 @@ class Service extends Component
         }
     }
 
-    public function isPluginInstalledAndEnabled(string $plugin): bool
+    public function isPluginInstalledAndEnabled(string $pluginHandle): bool
     {
-        $pluginsService = Craft::$app->getPlugins();
-
-        // Ensure that we check if initialized, installed and enabled. 
-        // The plugin might be installed but disabled, or installed and enabled, but missing plugin files.
-        return $pluginsService->isPluginInstalled($plugin) && $pluginsService->isPluginEnabled($plugin) && $pluginsService->getPlugin($plugin);
+        return Plugin::isPluginInstalledAndEnabled($pluginHandle);
     }
 
     public function getRelatedElementsQuery(array $params = []): ?ElementQueryInterface

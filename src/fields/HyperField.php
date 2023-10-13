@@ -42,7 +42,7 @@ class HyperField extends Field
         return Craft::t('hyper', 'Hyper');
     }
 
-    public static function valueType(): string
+    public static function phpType(): string
     {
         return sprintf('\\%s|null', LinkCollection::class);
     }
@@ -58,11 +58,11 @@ class HyperField extends Field
     public ?int $minLinks = null;
     public ?int $maxLinks = null;
     public ?int $fieldLayoutId = null;
-    public string $columnType = Schema::TYPE_TEXT;
     public array $migrationData = [];
 
     private bool $_isStatic = false;
     private array $_linkTypes = [];
+    private array $_serializedLinkTypes = [];
     private ?array $_linkTypeFields = null;
 
 
@@ -75,17 +75,10 @@ class HyperField extends Field
             $config['linkTypes'] = [];
         }
 
+        // Remove unused settings
+        unset($config['columnType']);
+
         parent::__construct($config);
-    }
-
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-
-        $rules[] = [['minLinks', 'maxLinks'], 'integer', 'min' => 0];
-        $rules[] = ['linkTypes', 'validateLinkTypes'];
-
-        return $rules;
     }
 
     public function getSettings(): array
@@ -98,11 +91,6 @@ class HyperField extends Field
         }, $this->getLinkTypes());
 
         return $settings;
-    }
-
-    public function getContentColumnType(): array|string
-    {
-        return $this->columnType;
     }
 
     public function validateLinkTypes(): void
@@ -162,7 +150,7 @@ class HyperField extends Field
         ]);
     }
 
-    public function getInputHtml(mixed $value, ?ElementInterface $element = null): string
+    protected function inputHtml(mixed $value, ?ElementInterface $element, bool $inline): string
     {
         $view = Craft::$app->getView();
         $id = Html::id($this->handle);
@@ -213,7 +201,7 @@ class HyperField extends Field
         ]);
     }
 
-    public function normalizeValue(mixed $value, ?ElementInterface $element = null): LinkCollection
+    public function normalizeValue(mixed $value, ElementInterface $element = null): mixed
     {
         if ($value instanceof LinkCollection) {
             return $value;
@@ -234,7 +222,7 @@ class HyperField extends Field
         return new LinkCollection($this, $value, $element);
     }
 
-    public function serializeValue(mixed $value, ?ElementInterface $element = null): mixed
+    public function serializeValue(mixed $value, ElementInterface $element = null): mixed
     {
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
@@ -410,7 +398,51 @@ class HyperField extends Field
 
     public function getLinkTypes(): array
     {
+        if ($this->_linkTypes) {
+            return $this->_linkTypes;
+        }
+
+        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+
+        foreach ($this->_serializedLinkTypes as $key => $config) {
+            // Check if the saved link type is still registered. Be sure to check if this is an early
+            // initialization where no registered link types are available - that's okay.
+            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
+                continue;
+            }
+
+            $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
+
+            if ($config instanceof LinkInterface) {
+                $linkType = $config;
+            } else {
+                // Some extra handling here when setting from the POST.
+                $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
+
+                $linkType = Links::createLink($config);
+            }
+
+            // Set up the field layout config - it'll be saved later
+            if (!$linkType->layoutConfig) {
+                $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
+            }
+
+            // Generate a layout UID if not already set
+            if (!$linkType->layoutUid) {
+                $linkType->layoutUid = StringHelper::UUID();
+            }
+
+            $this->_linkTypes[$sortOrder] = $linkType;
+        }
+
         return $this->_linkTypes;
+    }
+
+    public function setLinkTypes(array $linkTypes): void
+    {
+        // Set the raw, serialized link types, which are created as objects later. Doing that too early
+        // leads to a whole ream of issues, so do the work in the getter.
+        $this->_serializedLinkTypes = $linkTypes;
     }
 
     /**
@@ -452,48 +484,18 @@ class HyperField extends Field
         return $fields;
     }
 
-    public function setLinkTypes(array $linkTypes): void
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
     {
-        $this->_linkTypes = [];
+        $rules = parent::defineRules();
 
-        // Prevent calls to this too early, before Hyper is initialized
-        // https://github.com/verbb/hyper/issues/72
-        if (Hyper::getInstance()) {
-            $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
-        } else {
-            $registeredLinkTypes = [];
-        }
+        $rules[] = [['minLinks', 'maxLinks'], 'integer', 'min' => 0];
+        $rules[] = ['linkTypes', 'validateLinkTypes'];
 
-        foreach ($linkTypes as $key => $config) {
-            // Check if the saved link type is still registered. Be sure to check if this is an early
-            // initialization where no registered link types are available - that's okay.
-            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
-                continue;
-            }
-
-            $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
-
-            if ($config instanceof LinkInterface) {
-                $linkType = $config;
-            } else {
-                // Some extra handling here when setting from the POST.
-                $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
-
-                $linkType = Links::createLink($config);
-            }
-
-            // Set up the field layout config - it'll be saved later
-            if (!$linkType->layoutConfig) {
-                $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
-            }
-
-            // Generate a layout UID if not already set
-            if (!$linkType->layoutUid) {
-                $linkType->layoutUid = StringHelper::UUID();
-            }
-
-            $this->_linkTypes[$sortOrder] = $linkType;
-        }
+        return $rules;
     }
 
 
@@ -595,9 +597,6 @@ class HyperField extends Field
             $linkValueField = $fieldLayout->getField('linkValue');
             $linkValueField->field = $this;
             $linkValueField->link = $link;
-
-            // Bit of a hack here to trick `Link::getIsFresh()` that this _isn't_ a fresh block. Using `setIsFresh()` won't work.
-            $link->contentId = 99999;
 
             $form = $fieldLayout->createForm($link);
 
@@ -773,7 +772,6 @@ class HyperField extends Field
             if (is_array($value)) {
                 $value = self::_decodeStringValues($value);
             } else if (is_string($value)) {
-                // TODO: replace in Craft 4.4+ or LitEmoji 5+
                 $value = StringHelper::shortcodesToEmoji($value);
             }
 
@@ -789,7 +787,6 @@ class HyperField extends Field
             if (is_array($value)) {
                 $value = self::_encodeStringValues($value);
             } else if (is_string($value)) {
-                // TODO: replace in Craft 4.4+ or LitEmoji 5+
                 $value = StringHelper::emojiToShortcodes($value);
             }
 

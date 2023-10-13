@@ -3,6 +3,7 @@ namespace verbb\hyper\migrations;
 
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\Plugin;
 use verbb\hyper\links as linkTypes;
 
 use Craft;
@@ -180,7 +181,7 @@ class MigrateTypedLinkContent extends PluginContentMigration
                 }
 
                 // Check for Vizy fields, a little different
-                if ($this->isPluginInstalledAndEnabled('vizy')) {
+                if (Plugin::isPluginInstalledAndEnabled('vizy')) {
                     $this->migrateVizyContent($fieldData);
                 }
             }

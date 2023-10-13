@@ -4,6 +4,7 @@ namespace verbb\hyper\services;
 use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\base\ElementLink;
+use verbb\hyper\helpers\Plugin;
 use verbb\hyper\links as linkTypes;
 
 use craft\base\Component;
@@ -65,12 +66,12 @@ class Links extends Component
             linkTypes\User::class,
         ];
 
-        if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('commerce')) {
+        if (Plugin::isPluginInstalledAndEnabled('commerce')) {
             $linkTypes[] = linkTypes\Product::class;
             $linkTypes[] = linkTypes\Variant::class;
         }
 
-        if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('shopify')) {
+        if (Plugin::isPluginInstalledAndEnabled('shopify')) {
             $linkTypes[] = linkTypes\ShopifyProduct::class;
         }
 

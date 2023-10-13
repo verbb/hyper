@@ -2,6 +2,7 @@
 namespace verbb\hyper\migrations;
 
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\Plugin;
 
 use Craft;
 use craft\db\Query;
@@ -160,7 +161,7 @@ class PluginContentMigration extends PluginMigration
             }
 
             // Check for Vizy fields, a little different
-            if ($this->isPluginInstalledAndEnabled('vizy')) {
+            if (Plugin::isPluginInstalledAndEnabled('vizy')) {
                 $this->migrateVizyContent($fieldData);
             }
 

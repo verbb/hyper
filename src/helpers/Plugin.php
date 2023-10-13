@@ -4,7 +4,9 @@ namespace verbb\hyper\helpers;
 use verbb\hyper\Hyper;
 use verbb\hyper\web\assets\field\HyperAsset;
 
-class Plugin
+use verbb\base\helpers\Plugin as BasePlugin;
+
+class Plugin extends BasePlugin
 {
     // Static Methods
     // =========================================================================

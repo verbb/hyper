@@ -17,17 +17,6 @@ class Site extends Link
     // Public Methods
     // =========================================================================
 
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-
-        $rules[] = [['sites'], 'required', 'when' => function($model) {
-            return $model->enabled;
-        }];
-
-        return $rules;
-    }
-
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();
@@ -100,5 +89,20 @@ class Site extends Link
         }
 
         return Craft::$app->getSites()->getSiteByUid($this->linkValue);
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        $rules[] = [['sites'], 'required', 'when' => function($model) {
+            return $model->enabled;
+        }];
+
+        return $rules;
     }
 }

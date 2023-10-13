@@ -19,15 +19,6 @@ class Email extends Link
     // Public Methods
     // =========================================================================
 
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-        
-        $rules[] = [['linkValue'], EmailValidator::class, 'enableIDN' => App::supportsIdn()];
-
-        return $rules;
-    }
-
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();
@@ -50,6 +41,19 @@ class Email extends Link
     public function getUrlPrefix(): ?string
     {
         return $this->getLinkUrl() ? 'mailto:' : null;
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+        
+        $rules[] = [['linkValue'], EmailValidator::class, 'enableIDN' => App::supportsIdn()];
+
+        return $rules;
     }
 
 }

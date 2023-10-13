@@ -33,7 +33,7 @@ class FieldsController extends Controller
         $fieldLayout = $type::getDefaultFieldLayout();
 
         if ($fieldLayoutUid) {
-            if ($existingFieldLayout = Hyper::$plugin->getService()->getFieldLayoutByUid($fieldLayoutUid)) {
+            if ($existingFieldLayout = Craft::$app->getFields()->getLayoutByUid($fieldLayoutUid)) {
                 $fieldLayout = $existingFieldLayout;
             }
         }
@@ -122,7 +122,7 @@ class FieldsController extends Controller
 
                 $response
                     ->tabs($form->getTabMenu())
-                    ->content($form->render());
+                    ->contentHtml($form->render());
             });
     }
 

@@ -1,7 +1,7 @@
 # Requirements
 
 ## Craft CMS
-Hyper requires Craft CMS 4.0 or greater.
+Hyper requires Craft CMS 5.0 or greater.
 
 ## PHP
-Hyper requires PHP 8.0.2 or greater.
+Hyper requires PHP 8.2 or greater.

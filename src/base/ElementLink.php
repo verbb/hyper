@@ -46,17 +46,6 @@ abstract class ElementLink extends Link
     // Public Methods
     // =========================================================================
 
-    public function defineRules(): array
-    {
-        $rules = parent::defineRules();
-
-        $rules[] = [['sources'], 'required', 'when' => function($model) {
-            return $model->enabled;
-        }];
-
-        return $rules;
-    }
-
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();
@@ -208,6 +197,21 @@ abstract class ElementLink extends Link
         }
 
         return null;
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        $rules[] = [['sources'], 'required', 'when' => function($model) {
+            return $model->enabled;
+        }];
+
+        return $rules;
     }
 
 
