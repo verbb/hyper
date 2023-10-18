@@ -148,6 +148,18 @@ export default {
     created() {
         this.link.handle = this.settings.defaultLinkType;
         this.link = this.clone(this.value);
+
+        // Some important type-casting, where things can get messed up where fields are stored in a non-numerical-keyed array,
+        // which isn't something I thought possible! This causes incorrect behvaiour when sending the values to element-slideout.
+        // Using `set()` or `setWith()` won't change the property type from Array to Object.
+        // https://github.com/verbb/hyper/issues/97
+        if (this.link.fields && Array.isArray(this.link.fields)) {
+            this.link.fields = {};
+        }
+
+        if (this.link.customAttributes && Array.isArray(this.link.customAttributes)) {
+            this.link.customAttributes = {};
+        }
     },
 
     mounted() {
