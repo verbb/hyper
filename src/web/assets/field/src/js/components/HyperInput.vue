@@ -266,6 +266,10 @@ export default {
             // When finishing dragging, update all link blocks with their cached HTML to restore what was.
             // For JS, because we're re-rendering HTML, the originally-bound JS will no longer work, so we
             // append it again, but there's also smarts to prevent duplication.
+            this.updateFieldContent();
+        },
+
+        updateFieldContent() {
             Object.values(this.$refs).forEach((linkComponent) => {
                 // Slight delay required to ensure that the DOM has caught up
                 setTimeout(() => {
@@ -299,6 +303,9 @@ export default {
 
         deleteBlock(index) {
             this.proxyValue.splice(index, 1);
+
+            // Ensure that we update the name attributes of field when deleting things
+            this.updateFieldContent();
         },
     },
 };
