@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.16 - 2023-10-26
+
+### Fixed
+- Fix an error when deleting a link block.
+- Fix an error for non-multiple links and some fields in the slide-out editor.
+
 ## 1.1.15 - 2023-10-12
 
 ### Fixed
