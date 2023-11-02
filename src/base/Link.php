@@ -480,8 +480,12 @@ abstract class Link extends Element implements LinkInterface
             $this->text = $customText;
         }
 
-        if ($customText) {
+        // `linkText` shouldn't be overridden unless you know what you're doing, as this is the text defined
+        // in the field. It's here for backwards compatibility, but should be removed at the next breakpoint.
+        if ($customText = ArrayHelper::remove($attributes, 'linkText')) {
             $this->linkText = $customText;
+
+            Craft::$app->getDeprecator()->log(__METHOD__, 'Setting a link’s `linkText` has been deprecated. Use `text` instead.');
         }
 
         $attributes = $this->getLinkAttributes($attributes);
