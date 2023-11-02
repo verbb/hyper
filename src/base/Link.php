@@ -128,6 +128,7 @@ abstract class Link extends Element implements LinkInterface
     public bool $isFieldRequired = false;
 
     private ?FieldLayout $_fieldLayout = null;
+    private ?string $_text = null;
 
 
     // Public Methods
@@ -408,7 +409,18 @@ abstract class Link extends Element implements LinkInterface
 
     public function getText(?string $text = null): ?string
     {
+        // Allow custom text (defined at render) to override everything. This allows us to reference `linkText`
+        // which is the "original" link text, and `text` which is the derivative text.
+        if ($this->_text) {
+            return $this->_text; 
+        }
+
         return $this->getLinkText() ?: trim($this->getLinkUrl() . $this->getUrlSuffix()) ?: $text;
+    }
+
+    public function setText(?string $text = null): void
+    {
+        $this->_text = $text;
     }
 
     public function getTarget(): ?string
@@ -463,8 +475,10 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        // Remove overridden `linkText` or `text` and use as the text
-        $customText = ArrayHelper::remove($attributes, 'linkText') ?? ArrayHelper::remove($attributes, 'text');
+        // Allow custom overriding of `text` for the label
+        if ($customText = ArrayHelper::remove($attributes, 'text')) {
+            $this->text = $customText;
+        }
 
         if ($customText) {
             $this->linkText = $customText;

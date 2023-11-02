@@ -47,7 +47,7 @@ You can also pass in any extra attributes you require:
 {# Outputs: <a href="http://my-site.test/some-url" class="text-black font-bold" data-link="external">Some URL</a> #}
 ```
 
-You can also override the link text using `linkText` or `text`.
+You can also override the link text using `text`.
 
 ```twig
 {% set linkContent %}
@@ -56,7 +56,7 @@ You can also override the link text using `linkText` or `text`.
 {% endset %}
 
 {{ entry.myLinkField.getLink({
-    linkText: linkContent,
+    text: linkContent,
 }) }}
 ```
 
