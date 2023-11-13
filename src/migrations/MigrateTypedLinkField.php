@@ -145,17 +145,15 @@ class MigrateTypedLinkField extends PluginFieldMigration
                         $this->migrateBlockField($matrixField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if ($matrixField->context === 'global') {
-                            if (!$fieldService->saveField($matrixField)) {
-                                $errors = $matrixField->getErrors();
+                        if (!$fieldService->saveField($matrixField)) {
+                            $errors = $matrixField->getErrors();
 
-                                // Check for blocktype errors too
-                                foreach ($matrixField->getBlockTypes() as $blockType) {
-                                    $errors[$blockType->handle] = $blockType->getErrors();
-                                }
-
-                                throw new Exception(Json::encode(array_filter($errors)));
+                            // Check for blocktype errors too
+                            foreach ($matrixField->getBlockTypes() as $blockType) {
+                                $errors[$blockType->handle] = $blockType->getErrors();
                             }
+
+                            throw new Exception(Json::encode(array_filter($errors)));
                         }
                     } else {
                         $this->stdout("    > Unable to find owner Matrix field for ID “{$matrixFieldId}”." . PHP_EOL, Console::FG_RED);
@@ -182,17 +180,15 @@ class MigrateTypedLinkField extends PluginFieldMigration
                         $this->migrateBlockField($superTableField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if ($superTableField->context === 'global') {
-                            if (!$fieldService->saveField($superTableField)) {
-                                $errors = $superTableField->getErrors();
+                        if (!$fieldService->saveField($superTableField)) {
+                            $errors = $superTableField->getErrors();
 
-                                // Check for blocktype errors too
-                                foreach ($superTableField->getBlockTypes() as $blockType) {
-                                    $errors[] = $blockType->getErrors();
-                                }
-
-                                throw new Exception(Json::encode(array_filter($errors)));
+                            // Check for blocktype errors too
+                            foreach ($superTableField->getBlockTypes() as $blockType) {
+                                $errors[] = $blockType->getErrors();
                             }
+
+                            throw new Exception(Json::encode(array_filter($errors)));
                         }
                     } else {
                         $this->stdout("    > Unable to find owner Super Table field for ID “{$superTableFieldId}”." . PHP_EOL, Console::FG_RED);
