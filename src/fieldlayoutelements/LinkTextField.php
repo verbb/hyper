@@ -15,6 +15,16 @@ class LinkTextField extends TextField
 
     // Public Methods
     // =========================================================================
+
+    public function __construct($config = [])
+    {
+        unset(
+            $config['mandatory'],
+            $config['autofocus']
+        );
+
+        parent::__construct($config);
+    }
     
     public function showAttribute(): bool
     {

@@ -12,6 +12,11 @@ class TextField extends CraftTextField
 
     public function __construct($config = [])
     {
+        unset(
+            $config['mandatory'],
+            $config['autofocus']
+        );
+
         $config['placeholder'] = Craft::t('hyper', ($config['placeholder'] ?? $this->defaultPlaceholder()));
 
         parent::__construct($config);

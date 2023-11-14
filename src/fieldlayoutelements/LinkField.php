@@ -26,6 +26,7 @@ class LinkField extends TextField
     {
         unset(
             $config['mandatory'],
+            $config['autofocus'],
             $config['linkType'],
         );
 
