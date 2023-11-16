@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\models;
 
+use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 
@@ -38,6 +39,15 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 
                 if ($link && is_array($data)) {
                     $newLink = clone($link);
+
+                    // Protect against invalid values for some link types. This can happen due to migrations gone wrong
+                    // https://github.com/verbb/hyper/issues/10
+                    $linkValue = $data['linkValue'] ?? null;
+
+                    if (is_string($linkValue) && $newLink instanceof ElementLink) {
+                        $data['linkValue'] = null;
+                    }
+
                     $newLink->setAttributes($data, false);
 
                     $this->_links[] = $newLink;
