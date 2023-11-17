@@ -45,7 +45,8 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
                     $linkValue = $data['linkValue'] ?? null;
 
                     if (is_string($linkValue) && $newLink instanceof ElementLink) {
-                        $data['linkValue'] = null;
+                        // Cast to an integer to ensure it's a valid ID (it might still be a string)
+                        $data['linkValue'] = (int)$linkValue ?: null;
                     }
 
                     $newLink->setAttributes($data, false);
