@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.17 - 2023-11-25
+
+### Added
+- Add blocktype errors for Matrix and Super Table fields when migrating from Typed Link fields.
+
+### Fixed
+- Fix an error when invalid `linkValue` was set for element link types.
+- Fix an error with linkField `autofocus` being incorrectly set.
+- Fix an issue with setting custom `linkText` when rendering fields. `text` should now be used.
+
+### Deprecated
+- Deprecate setting `linkText` when calling `getLink()`. Use `text` instead.
+
 ## 1.1.16 - 2023-10-26
 
 ### Fixed
