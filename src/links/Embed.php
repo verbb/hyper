@@ -86,6 +86,15 @@ class Embed extends Link
                 ]));
             } catch (Throwable $e) {
                 $values['linkValue'] = null;
+
+                $error = Craft::t('hyper', 'Unable to fetch embed data for “{url}”: “{message}” {file}:{line}', [
+                    'url' => $url,
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+
+                Hyper::error($error);
             }
         }
 
