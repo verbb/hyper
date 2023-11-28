@@ -251,9 +251,9 @@ export default {
 
                 // Prevent multiple "Upload files" buttons when re-rendering Assets fields
                 if ($assetFields.length) {
-                    $assetFieldseach((index, element) => {
+                    $assetFields.each((index, element) => {
                         // Asset field's JS will create the button if required
-                        $(element).find('[data-icon="upload"').replaceWith('');
+                        $(element).find('[data-icon="upload"').remove();
                     });
                 }
 
