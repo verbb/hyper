@@ -5,6 +5,7 @@ use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
 use verbb\hyper\models\Settings;
 
+use Craft;
 use craft\helpers\Json;
 use craft\helpers\Template;
 
