@@ -247,6 +247,16 @@ export default {
                     });
                 }
 
+                const $assetFields = $fieldsHtml.find('[data-type="craft\\\\fields\\\\Assets"]');
+
+                // Prevent multiple "Upload files" buttons when re-rendering Assets fields
+                if ($assetFields.length) {
+                    $assetFieldseach((index, element) => {
+                        // Asset field's JS will create the button if required
+                        $(element).find('[data-icon="upload"').replaceWith('');
+                    });
+                }
+
                 let fieldsHtml = $fieldsHtml.htmlize();
 
                 // Revert to blank namespacing for `id` and `name` now that the order has changed
