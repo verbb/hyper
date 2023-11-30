@@ -58,33 +58,58 @@ class Embed extends Link
 
         if (is_string($url)) {
             try {
-                $client = new CurlClient();
-                $client->setSettings($settings->embedClientSettings);
+                if (class_exists(CurlClient::class)) {
+                    // Handle Embed v4 support
+                    $client = new CurlClient();
+                    $client->setSettings($settings->embedClientSettings);
 
-                $crawler = new Crawler($client);
-                $crawler->addDefaultHeaders($settings->embedHeaders);
+                    $crawler = new Crawler($client);
+                    $crawler->addDefaultHeaders($settings->embedHeaders);
 
-                $embed = new \Embed\Embed($crawler);
-                $embed->setSettings($settings->embedDetectorsSettings);
+                    $embed = new \Embed\Embed($crawler);
+                    $embed->setSettings($settings->embedDetectorsSettings);
 
-                $info = $embed->get($url);
+                    $info = $embed->get($url);
 
-                $values['linkValue'] = Json::decode(Json::encode([
-                    'title' => $info->title,
-                    'description' => $info->description,
-                    'url' => $info->url,
-                    'image' => $info->image,
-                    'code' => Template::raw($info->code ?: ''),
-                    'authorName' => $info->authorName,
-                    'authorUrl' => $info->authorUrl,
-                    'providerName' => $info->providerName,
-                    'providerUrl' => $info->providerUrl,
-                    'icon' => $info->icon,
-                    'favicon' => $info->favicon,
-                    'publishedTime' => $info->publishedTime?->format('c'),
-                    'license' => $info->license,
-                    'feeds' => $info->feeds,
-                ]));
+                    $values['linkValue'] = Json::decode(Json::encode([
+                        'title' => $info->title,
+                        'description' => $info->description,
+                        'url' => $info->url,
+                        'image' => $info->image,
+                        'code' => Template::raw($info->code ?: ''),
+                        'authorName' => $info->authorName,
+                        'authorUrl' => $info->authorUrl,
+                        'providerName' => $info->providerName,
+                        'providerUrl' => $info->providerUrl,
+                        'icon' => $info->icon,
+                        'favicon' => $info->favicon,
+                        'publishedTime' => $info->publishedTime?->format('c'),
+                        'license' => $info->license,
+                        'feeds' => $info->feeds,
+                    ]));
+                } else {
+                    // Handle Embed v3 support
+                    $dispatcher = new \Embed\Http\CurlDispatcher($settings->embedClientSettings);
+
+                    $info = \Embed\Embed::create($url, null, $dispatcher);
+
+                    $values['linkValue'] = Json::decode(Json::encode([
+                        'title' => $info->title,
+                        'description' => $info->description,
+                        'url' => $info->url,
+                        'image' => $info->image,
+                        'code' => Template::raw($info->code ?: ''),
+                        'authorName' => $info->authorName,
+                        'authorUrl' => $info->authorUrl,
+                        'providerName' => $info->providerName,
+                        'providerUrl' => $info->providerUrl,
+                        'icon' => $info->providerIcon,
+                        'favicon' => $info->providerIcon,
+                        'publishedTime' => $info->publishedTime?->format('c'),
+                        'license' => $info->license,
+                        'feeds' => $info->feeds,
+                    ]));
+                }
             } catch (Throwable $e) {
                 $values['linkValue'] = null;
 
