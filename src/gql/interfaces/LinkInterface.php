@@ -8,6 +8,7 @@ use Craft;
 use craft\gql\base\InterfaceType as BaseInterfaceType;
 use craft\gql\GqlEntityRegistry;
 use craft\gql\interfaces\Element;
+use craft\helpers\Json;
 
 use GraphQL\Type\Definition\InterfaceType;
 use GraphQL\Type\Definition\Type;
@@ -95,6 +96,14 @@ class LinkInterface extends BaseInterfaceType
                 'name' => 'linkUrl',
                 'description' => 'The url for the link.',
                 'type' => Type::string(),
+            ],
+            'linkValue' => [
+                'name' => 'linkValue',
+                'description' => 'The raw link data.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return Json::encode($link->linkValue);
+                },
             ],
             'newWindow' => [
                 'name' => 'newWindow',
