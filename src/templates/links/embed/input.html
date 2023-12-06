@@ -8,6 +8,9 @@
         id: fieldId,
         value: data.url ?? null,
         placeholder: link.placeholder ?? link.defaultPlaceholder(),
+        inputAttributes: {
+            'data-value': data.url ?? null,
+        },
     }) }}
 
     {{ hiddenInput('linkValue', data | json_encode, { class: 'link-embed-data' }) }}

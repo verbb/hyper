@@ -81,6 +81,15 @@ Craft.Hyper.Embed = Garnish.Base.extend({
 
         $('body').on('keyup blur change', `${fieldId} input`, debounce((e) => {
             const value = $(e.target).val();
+            const prevValue = $(e.target).attr('data-value');
+
+            // Prevent from firing unless the value has actually changed
+            if (value === prevValue) {
+                return;
+            }
+
+            // Update the previous value
+            $(e.target).attr('data-value', value);
 
             $container.find('.favicon-icon').remove();
 
