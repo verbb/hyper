@@ -9,6 +9,7 @@ use Craft;
 use craft\helpers\Json;
 use craft\helpers\Template;
 
+use DateTime;
 use Throwable;
 use Twig\Markup;
 
@@ -24,6 +25,12 @@ class Embed extends Link
     {
         /* @var Settings $settings */
         $settings = Hyper::$plugin->getSettings();
+
+        $url = trim($url);
+
+        if (!$url) {
+            return [];
+        }
 
         try {
             if (class_exists(CurlClient::class)) {
@@ -51,7 +58,7 @@ class Embed extends Link
                     'providerUrl' => $info->providerUrl,
                     'icon' => $info->icon,
                     'favicon' => $info->favicon,
-                    'publishedTime' => $info->publishedTime?->format('c'),
+                    'publishedTime' => $info->publishedTime instanceof DateTime ? $info->publishedTime->format('c') : $info->publishedTime,
                     'license' => $info->license,
                     'feeds' => $info->feeds,
                 ]));
@@ -73,7 +80,7 @@ class Embed extends Link
                     'providerUrl' => $info->providerUrl,
                     'icon' => $info->providerIcon,
                     'favicon' => $info->providerIcon,
-                    'publishedTime' => $info->publishedTime?->format('c'),
+                    'publishedTime' => $info->publishedTime instanceof DateTime ? $info->publishedTime->format('c') : $info->publishedTime,
                     'license' => $info->license,
                     'feeds' => $info->feeds,
                 ]));
@@ -115,10 +122,16 @@ class Embed extends Link
         $values = parent::getSerializedValues();
 
         // When editing the field, we'll be saving the value as a JSON string, so be sure to decode it
-        // so it doesn't get encoded twice. The field should always store an array, not the URL the user provided.
+        // so it doesn't get encoded twice.
         if (isset($values['linkValue'])) {
             if (is_string($values['linkValue'])) {
-                $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
+                if (str_starts_with($values['linkValue'], '{') || str_starts_with($values['linkValue'], '[')) {
+                    // We might be sending JSON from the CP
+                    $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
+                } else {
+                    // Or, we provided just the URL
+                    $values['linkValue'] = self::fetchEmbedData($values['linkValue']);
+                }
             }
         }
 
