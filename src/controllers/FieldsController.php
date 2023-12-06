@@ -136,10 +136,8 @@ class FieldsController extends Controller
 
     public function actionPreviewEmbed(): Response
     {
-        $link = new Embed();
-        $link->linkValue = $this->request->getParam('value');
-        $values = $link->getSerializedValues();
+        $url =$this->request->getParam('value');
 
-        return $this->asJson($values['linkValue']);
+        return $this->asJson(Embed::fetchEmbedData($url));
     }
 }

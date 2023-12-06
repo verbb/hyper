@@ -90,8 +90,13 @@ Craft.Hyper.Embed = Garnish.Base.extend({
 
                 Craft.sendActionRequest('GET', `hyper/fields/preview-embed?value=${value}`)
                     .then((response) => {
-                        if (response && response.data && response.data.icon) {
-                            $container.append(`<div class="favicon-icon"><img src="${response.data.icon}"></div>`);
+                        if (response && response.data) {
+                            // Update the hidden input with the JSON data. That's our field value, not the inputted URL
+                            $container.find('.link-embed-data').val(JSON.stringify(response.data));
+
+                            if (response.data.icon) {
+                                $container.append(`<div class="favicon-icon"><img src="${response.data.icon}"></div>`);
+                            }
                         }
                     })
                     .catch(({ response }) => {
