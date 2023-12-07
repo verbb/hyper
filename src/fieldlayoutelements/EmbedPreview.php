@@ -22,7 +22,12 @@ class EmbedPreview extends BaseUiElement
             return null;
         }
 
-        return Html::tag('div', Embed::getPreviewHtml($html));
+        return Html::tag('div', Embed::getPreviewHtml($html), $this->containerAttributes($element, $static));
+    }
+
+    public function hasCustomWidth(): bool
+    {
+        return true;
     }
 
 
