@@ -3,6 +3,7 @@ namespace verbb\hyper\links;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
+use verbb\hyper\helpers\EmbedImagesExtractor;
 use verbb\hyper\models\Settings;
 
 use Craft;
@@ -44,6 +45,10 @@ class Embed extends Link
                 $embed = new \Embed\Embed($crawler);
                 $embed->setSettings($settings->embedDetectorsSettings);
 
+                // Override the image detector to fetch the most high-res. Restores Embed v3 behaviour.
+                // There are performance concerns, as it requires us to fetch each image.
+                $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
+
                 $info = $embed->get($url);
 
                 return Json::decode(Json::encode([
@@ -66,7 +71,7 @@ class Embed extends Link
                 // Handle Embed v3 support
                 $dispatcher = new \Embed\Http\CurlDispatcher($settings->embedClientSettings);
 
-                $info = \Embed\Embed::create($url, null, $dispatcher);
+                $info = \Embed\Embed::create($url, $settings->getEmbedClientConfig(), $dispatcher);
 
                 return Json::decode(Json::encode([
                     'title' => $info->title,
