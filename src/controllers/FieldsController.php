@@ -136,8 +136,12 @@ class FieldsController extends Controller
 
     public function actionPreviewEmbed(): Response
     {
-        $url =$this->request->getParam('value');
+        $url = $this->request->getParam('value');
+        $data = Embed::fetchEmbedData($url);
 
-        return $this->asJson(Embed::fetchEmbedData($url));
+        $html = $data['code'] ?? '';
+        $preview = Embed::getPreviewHtml($html);
+
+        return $this->asJson(['data' => $data, 'preview' => $preview]);
     }
 }
