@@ -142,6 +142,13 @@ class FieldsController extends Controller
         $html = $data['code'] ?? '';
         $preview = Embed::getPreviewHtml($html);
 
-        return $this->asJson(['data' => $data, 'preview' => $preview]);
+        // Check for validation
+        $settings = Hyper::$plugin->getSettings();
+
+        if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($url)) {
+            return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+        }
+
+        return $this->asSuccess(null, ['data' => $data, 'preview' => $preview]);
     }
 }

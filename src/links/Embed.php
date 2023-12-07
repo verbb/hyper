@@ -128,6 +128,43 @@ class Embed extends Link
     // Public Methods
     // =========================================================================
 
+    public function setAttributes($values, $safeOnly = true): void
+    {
+        // Normalize the link value
+        $linkValue = $values['linkValue'] ?? null;
+
+        if (is_string($linkValue)) {
+            if (str_starts_with($linkValue, '{') || str_starts_with($linkValue, '[')) {
+                // We might be sending JSON from the CP
+                $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
+            } else {
+                // Or, we provided just the URL
+                $values['linkValue'] = self::fetchEmbedData($values['linkValue']);
+            }
+        }
+
+        parent::setAttributes($values, $safeOnly);
+    }
+
+    public function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        $settings = Hyper::$plugin->getSettings();
+
+        $rules[] = [['linkValue'], function($attribute) use ($settings) {
+            $linkValue = trim($this->$attribute['url'] ?? '');
+
+            if ($linkValue && !$settings->doesUrlMatchDomain($linkValue)) {
+                $this->addError($attribute, Craft::t('hyper', 'URL domain not allowed.'));
+            }
+        }, 'when' => function($model) use ($settings) {
+            return $settings->embedAllowedDomains;
+        }];
+
+        return $rules;
+    }
+
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();
@@ -136,34 +173,9 @@ class Embed extends Link
         return $values;
     }
 
-    public function getSerializedValues(): array
-    {
-        $values = parent::getSerializedValues();
-
-        // When editing the field, we'll be saving the value as a JSON string, so be sure to decode it
-        // so it doesn't get encoded twice.
-        if (isset($values['linkValue'])) {
-            if (is_string($values['linkValue'])) {
-                if (str_starts_with($values['linkValue'], '{') || str_starts_with($values['linkValue'], '[')) {
-                    // We might be sending JSON from the CP
-                    $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
-                } else {
-                    // Or, we provided just the URL
-                    $values['linkValue'] = self::fetchEmbedData($values['linkValue']);
-                }
-            }
-        }
-
-        return $values;
-    }
-
     public function getLinkUrl(): ?string
     {
-        if (is_array($this->linkValue)) {
-            return $this->linkValue['url'] ?? null;
-        }
-
-        return null;
+        return $this->linkValue['url'] ?? null;
     }
 
     public function getLinkText(): ?string
@@ -172,20 +184,14 @@ class Embed extends Link
             return $this->linkText;
         }
 
-        if (is_array($this->linkValue)) {
-            return $this->linkValue['title'] ?? null;
-        }
-
-        return null;
+        return $this->linkValue['title'] ?? null;
     }
 
     public function getLinkTitle(): ?string
     {
         // Use the description for the link title - only if that field is enabled
         if ($this->getFieldLayout()->isFieldIncluded('linkTitle')) {
-            if (is_array($this->linkValue)) {
-                return $this->linkValue['description'] ?? null;
-            }
+            return $this->linkValue['description'] ?? null;
         }
 
         return null;
@@ -200,12 +206,7 @@ class Embed extends Link
 
     public function getData(): ?array
     {
-        // The original URL can be saved in the field content, but that's considered invalid.
-        if (is_array($this->linkValue)) {
-            return $this->linkValue;
-        }
-
-        return null;
+        return $this->linkValue;
     }
 
     public function defaultPlaceholder(): ?string

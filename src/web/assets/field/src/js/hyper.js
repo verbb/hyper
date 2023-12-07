@@ -91,7 +91,9 @@ Craft.Hyper.Embed = Garnish.Base.extend({
             // Update the previous value
             $(e.target).attr('data-value', value);
 
+            // Reset some bits
             $container.find('.favicon-icon').remove();
+            $container.find('.link-embed-data').val(JSON.stringify());
 
             if (value) {
                 $spinner.removeClass('hidden');

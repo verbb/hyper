@@ -12,6 +12,7 @@ return [
         'embedClientSettings' => [],
         'embedHeaders' => [],
         'embedDetectorsSettings' => [],
+        'embedAllowedDomains' => [],
     ],
 ];
 ```
@@ -21,6 +22,7 @@ return [
 - `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedDetectorsSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the detectors for Embed links.
+- `embedAllowedDomains` - Define any allowed domain names for Embed links. Any embed links that are added _not_ in this list will fail to be saved. Leave empty to allow any domain. Include just the TLD with no `http://`, `https://` or `www`.
 
 ## Control Panel
 You can also manage configuration settings through the Control Panel by visiting Settings → Hyper.
