@@ -8,6 +8,7 @@ The below shows the defaults already used by Hyper, so you don't need to add the
 
 return [
     '*' => [
+        'resolveHiResEmbedImage' => false,
         'embedClientSettings' => [],
         'embedHeaders' => [],
         'embedDetectorsSettings' => [],
@@ -16,6 +17,7 @@ return [
 ```
 
 ## Configuration options
+- `resolveHiResEmbedImage` - Whether the Embed field should determine the most hi-resolution image available. Do note that there's performance implications for this, as it requires fetching every available image for the embed data and comparing them.
 - `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedDetectorsSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the detectors for Embed links.

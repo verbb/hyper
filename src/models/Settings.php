@@ -8,6 +8,7 @@ class Settings extends Model
     // Properties
     // =========================================================================
 
+    public bool $resolveHiResEmbedImage = false;
     public array $embedClientConfig = [];
     public array $embedClientSettings = [];
     public array $embedHeaders = [];

@@ -48,7 +48,9 @@ class Embed extends Link
 
                 // Override the image detector to fetch the most high-res. Restores Embed v3 behaviour.
                 // There are performance concerns, as it requires us to fetch each image.
-                $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
+                if ($settings->resolveHiResEmbedImage) {
+                    $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
+                }
 
                 $info = $embed->get($url);
 
