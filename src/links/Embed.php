@@ -160,6 +160,18 @@ class Embed extends Link
         return null;
     }
 
+    public function getLinkTitle(): ?string
+    {
+        // Use the description for the link title - only if that field is enabled
+        if ($this->getFieldLayout()->isFieldIncluded('linkTitle')) {
+            if (is_array($this->linkValue)) {
+                return $this->linkValue['description'] ?? null;
+            }
+        }
+
+        return null;
+    }
+
     public function getHtml(): ?Markup
     {
         $code = $this->linkValue['code'] ?? '';
