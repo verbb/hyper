@@ -1,6 +1,8 @@
 <?php
 namespace verbb\hyper\fieldlayoutelements;
 
+use verbb\hyper\links\Embed;
+
 use Craft;
 use craft\base\ElementInterface;
 use craft\fieldlayoutelements\BaseUiElement;
@@ -20,15 +22,7 @@ class EmbedPreview extends BaseUiElement
             return null;
         }
 
-        // Check if this contains an iframe already, if not - create one
-        if (!str_contains($html, '<iframe')) {
-            $src = htmlspecialchars('data:text/html,' . rawurlencode($html));
-            $html = Html::tag('iframe', '', ['src' => $src, 'height' => 200]);
-        }
-
-        $wrapper = Html::tag('div', $html, ['class' => 'hyper-iframe-container']);
-
-        return Html::tag('div', $wrapper);
+        return Html::tag('div', Embed::getPreviewHtml($html));
     }
 
 

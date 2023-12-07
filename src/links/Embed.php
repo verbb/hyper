@@ -7,6 +7,7 @@ use verbb\hyper\helpers\EmbedImagesExtractor;
 use verbb\hyper\models\Settings;
 
 use Craft;
+use craft\helpers\Html;
 use craft\helpers\Json;
 use craft\helpers\Template;
 
@@ -102,6 +103,17 @@ class Embed extends Link
         }
 
         return [];
+    }
+
+    public static function getPreviewHtml(string $html): ?string
+    {
+        // Check if this contains an iframe already, if not - create one
+        if (!str_contains($html, '<iframe')) {
+            $src = htmlspecialchars('data:text/html,' . rawurlencode($html));
+            $html = Html::tag('iframe', '', ['src' => $src, 'height' => 200]);
+        }
+
+        return Html::tag('div', $html, ['class' => 'hyper-iframe-container']);
     }
 
 
