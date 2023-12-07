@@ -14,9 +14,21 @@ class EmbedPreview extends BaseUiElement
 
     public function formHtml(?ElementInterface $element = null, bool $static = false): ?string
     {
-        $src = htmlspecialchars('data:text/html,' . rawurlencode($element->getHtml()));
+        $html = (string)$element->getHtml();
 
-        return Html::tag('iframe', '', ['src' => $src, 'height' => 200]);
+        if (!$html) {
+            return null;
+        }
+
+        // Check if this contains an iframe already, if not - create one
+        if (!str_contains($html, '<iframe')) {
+            $src = htmlspecialchars('data:text/html,' . rawurlencode($html));
+            $html = Html::tag('iframe', '', ['src' => $src, 'height' => 200]);
+        }
+
+        $wrapper = Html::tag('div', $html, ['class' => 'hyper-iframe-container']);
+
+        return Html::tag('div', $wrapper);
     }
 
 
