@@ -46,11 +46,8 @@ class Embed extends Link
                 $embed = new \Embed\Embed($crawler);
                 $embed->setSettings($settings->embedDetectorsSettings);
 
-                // Override the image detector to fetch the most high-res. Restores Embed v3 behaviour.
-                // There are performance concerns, as it requires us to fetch each image.
-                if ($settings->resolveHiResEmbedImage) {
-                    $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
-                }
+                // Override the image detector. Restores Embed v3 behaviour.
+                $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
 
                 $info = $embed->get($url);
 
@@ -58,7 +55,6 @@ class Embed extends Link
                     'title' => $info->title,
                     'description' => $info->description,
                     'url' => $info->url,
-                    'image' => $info->image,
                     'code' => Template::raw($info->code ?: ''),
                     'authorName' => $info->authorName,
                     'authorUrl' => $info->authorUrl,
@@ -69,6 +65,9 @@ class Embed extends Link
                     'publishedTime' => $info->publishedTime instanceof DateTime ? $info->publishedTime->format('c') : $info->publishedTime,
                     'license' => $info->license,
                     'feeds' => $info->feeds,
+
+                    // Images will always be an array to handle if we are fetching image metadata
+                    ...$info->image,
                 ]));
             } else {
                 // Handle Embed v3 support

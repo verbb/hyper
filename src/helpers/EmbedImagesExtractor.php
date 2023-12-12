@@ -1,7 +1,11 @@
 <?php
 namespace verbb\hyper\helpers;
 
+use verbb\hyper\Hyper;
+use verbb\hyper\models\Settings;
+
 use Embed\Detectors\Detector;
+use Embed\Detectors\Image;
 
 use GuzzleHttp\Client;
 
@@ -12,8 +16,19 @@ class EmbedImagesExtractor extends Detector
     // Public Methods
     // =========================================================================
 
-    public function detect(): ?UriInterface
+    public function detect(): ?array
     {
+        /* @var Settings $settings */
+        $settings = Hyper::$plugin->getSettings();
+
+        // There are performance concerns, as it requires us to fetch each image, so ensure it's opt-in.
+        if (!$settings->resolveHiResEmbedImage) {
+            // But always return an array, to ensure it's treated the one way. Fallback to the default
+            $image = (new Image($this->extractor))->detect();
+
+            return ['image' => $image];
+        }
+
         $oembed = $this->extractor->getOEmbed();
         $document = $this->extractor->getDocument();
         $metas = $this->extractor->getMetas();
@@ -48,7 +63,12 @@ class EmbedImagesExtractor extends Detector
             // Compare with the current largest image
             if ($size > $largestSize) {
                 $largestSize = $size;
-                $largestImage = $imageUrl;
+
+                $largestImage = [
+                    'image' => $imageUrl,
+                    'imageWidth' => $width,
+                    'imageHeight' => $height,
+                ];
             }
         }
 
