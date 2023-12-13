@@ -12,6 +12,7 @@ use craft\helpers\Json;
 use craft\helpers\Template;
 
 use DateTime;
+use Exception;
 use Throwable;
 use Twig\Markup;
 
@@ -51,7 +52,7 @@ class Embed extends Link
 
                 $info = $embed->get($url);
 
-                return Json::decode(Json::encode([
+                $data = Json::decode(Json::encode([
                     'title' => $info->title,
                     'description' => $info->description,
                     'url' => $info->url,
@@ -69,13 +70,20 @@ class Embed extends Link
                     // Images will always be an array to handle if we are fetching image metadata
                     ...$info->image,
                 ]));
+
+                // Flag an invalid embed URL - still a response, but no code
+                if (!trim($data['code'])) {
+                    throw new Exception('Embed URL invalid.');
+                }
+
+                return $data;
             } else {
                 // Handle Embed v3 support
                 $dispatcher = new \Embed\Http\CurlDispatcher($settings->embedClientSettings);
 
                 $info = \Embed\Embed::create($url, $settings->getEmbedClientConfig(), $dispatcher);
 
-                return Json::decode(Json::encode([
+                $data = Json::decode(Json::encode([
                     'title' => $info->title,
                     'description' => $info->description,
                     'url' => $info->url,
@@ -91,6 +99,13 @@ class Embed extends Link
                     'license' => $info->license,
                     'feeds' => $info->feeds,
                 ]));
+
+                // Flag an invalid embed URL - still a response, but no code
+                if (!trim($data['code'])) {
+                    throw new Exception('Embed URL invalid.');
+                }
+
+                return $data;
             }
         } catch (Throwable $e) {
             $error = Craft::t('hyper', 'Unable to fetch embed data for “{url}”: “{message}” {file}:{line}', [
@@ -101,6 +116,11 @@ class Embed extends Link
             ]);
 
             Hyper::error($error);
+
+            return ['error' => Craft::t('hyper', 'Unable to fetch embed data for “{url}”: “{message}”', [
+                'url' => $url,
+                'message' => $e->getMessage(),
+            ])];
         }
 
         return [];
@@ -159,6 +179,15 @@ class Embed extends Link
             }
         }, 'when' => function($model) use ($settings) {
             return $settings->embedAllowedDomains;
+        }];
+
+        // Check if we have an invalid payload
+        $rules[] = [['linkValue'], function($attribute) {
+            $fetchError = $this->$attribute['error'] ?? null;
+
+            if ($fetchError) {
+                $this->addError($attribute, $fetchError);
+            }
         }];
 
         return $rules;

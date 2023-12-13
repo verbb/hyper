@@ -139,6 +139,10 @@ class FieldsController extends Controller
         $url = $this->request->getParam('value');
         $data = Embed::fetchEmbedData($url);
 
+        if (isset($data['error'])) {
+            return $this->asFailure($data['error']);
+        }
+
         $html = $data['code'] ?? '';
         $preview = Embed::getPreviewHtml($html);
 
