@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.19 - 2023-12-20
+
+### Added
+- Add validation support for Embed fields, when supplied with an invalid URL.
+- Add `imageWidth` and `imageHeight` to embed data for Embed fields, when `resolveHiResEmbedImage` is enabled.
+
+### Fixed
+- Fix an error when fetching an invalid URL for Embed links.
+
 ## 1.1.18 - 2023-12-08
 
 ### Added
