@@ -51,6 +51,7 @@ class Embed extends Link
                 $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
 
                 $info = $embed->get($url);
+                $image = $info->image ?? [];
 
                 $data = Json::decode(Json::encode([
                     'title' => $info->title,
@@ -68,7 +69,7 @@ class Embed extends Link
                     'feeds' => $info->feeds,
 
                     // Images will always be an array to handle if we are fetching image metadata
-                    ...$info->image,
+                    ...$image,
                 ]));
 
                 // Flag an invalid embed URL - still a response, but no code
