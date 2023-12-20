@@ -17,6 +17,7 @@ class LinkField extends TextField
     public ?HyperField $field = null;
     public ?LinkInterface $link = null;
     public bool $mandatory = true;
+    public bool $requirable = true;
 
 
     // Public Methods
@@ -28,6 +29,7 @@ class LinkField extends TextField
             $config['mandatory'],
             $config['autofocus'],
             $config['linkType'],
+            $config['requirable'],
         );
 
         parent::__construct($config);

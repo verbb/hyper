@@ -203,7 +203,9 @@ abstract class Link extends Element implements LinkInterface
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
 
-        if ($this->isFieldRequired) {
+        $isRequired = $this->getFieldLayout()->getField('linkValue')->required ?? false;
+
+        if ($this->isFieldRequired || $isRequired) {
             $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
         }
 
