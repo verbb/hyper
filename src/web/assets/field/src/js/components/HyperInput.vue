@@ -258,7 +258,9 @@ export default {
             // component once it's been moved. We need to do this for all link blocks in the field because of how
             // the re-render process works (other blocks other than the one moved will update).
             Object.values(this.$refs).forEach((linkComponent) => {
-                linkComponent[0].cacheHtml();
+                if (linkComponent[0]) {
+                    linkComponent[0].cacheHtml();
+                }
             });
         },
 
@@ -266,11 +268,17 @@ export default {
             // When finishing dragging, update all link blocks with their cached HTML to restore what was.
             // For JS, because we're re-rendering HTML, the originally-bound JS will no longer work, so we
             // append it again, but there's also smarts to prevent duplication.
+            this.updateFieldContent();
+        },
+
+        updateFieldContent() {
             Object.values(this.$refs).forEach((linkComponent) => {
                 // Slight delay required to ensure that the DOM has caught up
                 setTimeout(() => {
-                    linkComponent[0].updateHtml();
-                    linkComponent[0].updateJs();
+                    if (linkComponent[0]) {
+                        linkComponent[0].updateHtml();
+                        linkComponent[0].updateJs();
+                    }
                 }, 50);
             });
         },
@@ -299,6 +307,9 @@ export default {
 
         deleteBlock(index) {
             this.proxyValue.splice(index, 1);
+
+            // Ensure that we update the name attributes of field when deleting things
+            this.updateFieldContent();
         },
     },
 };
@@ -312,6 +323,23 @@ export default {
 
     // Fix for dragging in the element slide-out
     z-index: 100;
+}
+
+.hyper-iframe-container {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding-top: 56.25%; // 16:9 Aspect Ratio
+
+    iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+    }
 }
 
 </style>

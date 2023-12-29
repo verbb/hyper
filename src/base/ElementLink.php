@@ -46,6 +46,20 @@ abstract class ElementLink extends Link
     // Public Methods
     // =========================================================================
 
+    public function setAttributes($values, $safeOnly = true): void
+    {
+        // Protect against invalid values for some link types. This can happen due to migrations gone wrong
+        // https://github.com/verbb/hyper/issues/10
+        $linkValue = $values['linkValue'] ?? null;
+
+        if (is_string($linkValue)) {
+            // Cast to an integer to ensure it's a valid ID (it might still be a string)
+            $values['linkValue'] = (int)$linkValue ?: null;
+        }
+
+        parent::setAttributes($values, $safeOnly);
+    }
+
     public function getSettingsConfig(): array
     {
         $values = parent::getSettingsConfig();

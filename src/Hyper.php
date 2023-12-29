@@ -7,18 +7,21 @@ use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
+use verbb\hyper\fieldlayoutelements\EmbedPreview;
 use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\UrlSuffixField;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\integrations\feedme\fields\Hyper as FeedMeHyperField;
+use verbb\hyper\links\Embed;
 use verbb\hyper\models\Settings;
 use verbb\hyper\variables\HyperVariable;
 
 use Craft;
 use craft\base\Plugin;
 use craft\elements\db\ElementQuery;
+use craft\events\DefineFieldLayoutElementsEvent;
 use craft\events\DefineFieldLayoutFieldsEvent;
 use craft\events\PopulateElementEvent;
 use craft\events\RegisterCacheOptionsEvent;
@@ -134,6 +137,12 @@ class Hyper extends Plugin
                 $event->fields[] = LinkTextField::class;
                 $event->fields[] = LinkTitleField::class;
                 $event->fields[] = UrlSuffixField::class;
+            }
+        });
+
+        Event::on(FieldLayout::class, FieldLayout::EVENT_DEFINE_UI_ELEMENTS, function(DefineFieldLayoutElementsEvent $event) {
+            if ($event->sender->type === Embed::class) {
+                $event->elements[] = EmbedPreview::class;
             }
         });
     }

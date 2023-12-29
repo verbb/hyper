@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.1.19 - 2023-12-20
+
+### Added
+- Add validation support for Embed fields, when supplied with an invalid URL.
+- Add `imageWidth` and `imageHeight` to embed data for Embed fields, when `resolveHiResEmbedImage` is enabled.
+
+### Fixed
+- Fix an error when fetching an invalid URL for Embed links.
+
+## 1.1.18 - 2023-12-08
+
+### Added
+- Add “allowed domains” plugin setting, to control what domains are allowed to be used in Embed link types.
+- Add `resolveHiResEmbedImage` for Embed fields to resolve hi-resolution images for embed data.
+- Add “Embed Preview” field layout UI element.
+- Add `linkValue` to GraphQL queries for Hyper fields for the raw value of the link (useful for embed link types).
+- Add extra logging when unable to render a Hyper field block.
+- Add error logging to Embed link types.
+
+### Changed
+- Improve Embed link type performance when saving elements.
+- Embed link types now fetch the most hi-res image available.
+- Embed links now include the `description` for the link’s `title` attribute, if “Link Title” field is enabled.
+
+### Fixed
+- Fix Embed link type fetching extra times when the link’s URL hasn’t changed.
+- Fix support for Embed v3 for Embed links, when other plugins (`spicyweb/craft-embedded-assets`) still use it.
+- Fix an error when deleting link blocks.
+- Fix Assets fields rendering the “Upload files” button multiple times when re-rendering.
+- Fix styles when dragging link blocks.
+
+## 1.1.17 - 2023-11-25
+
+### Added
+- Add blocktype errors for Matrix and Super Table fields when migrating from Typed Link fields.
+
+### Fixed
+- Fix an error when invalid `linkValue` was set for element link types.
+- Fix an error with linkField `autofocus` being incorrectly set.
+- Fix an issue with setting custom `linkText` when rendering fields. `text` should now be used.
+
+### Deprecated
+- Deprecate setting `linkText` when calling `getLink()`. Use `text` instead.
+
+## 1.1.16 - 2023-10-26
+
+### Fixed
+- Fix an error when deleting a link block.
+- Fix an error for non-multiple links and some fields in the slide-out editor.
+
+## 1.1.15 - 2023-10-12
+
+### Fixed
+- Fix missing templates for Shopify Product link types.
+
 ## 1.1.14 - 2023-10-03
 
 ### Fixed

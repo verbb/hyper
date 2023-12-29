@@ -148,6 +148,18 @@ export default {
     created() {
         this.link.handle = this.settings.defaultLinkType;
         this.link = this.clone(this.value);
+
+        // Some important type-casting, where things can get messed up where fields are stored in a non-numerical-keyed array,
+        // which isn't something I thought possible! This causes incorrect behvaiour when sending the values to element-slideout.
+        // Using `set()` or `setWith()` won't change the property type from Array to Object.
+        // https://github.com/verbb/hyper/issues/97
+        if (this.link.fields && Array.isArray(this.link.fields)) {
+            this.link.fields = {};
+        }
+
+        if (this.link.customAttributes && Array.isArray(this.link.customAttributes)) {
+            this.link.customAttributes = {};
+        }
     },
 
     mounted() {
@@ -232,6 +244,16 @@ export default {
                                 element.innerHTML = $newHtml.htmlize();
                             }
                         }
+                    });
+                }
+
+                const $assetFields = $fieldsHtml.find('[data-type="craft\\\\fields\\\\Assets"]');
+
+                // Prevent multiple "Upload files" buttons when re-rendering Assets fields
+                if ($assetFields.length) {
+                    $assetFields.each((index, element) => {
+                        // Asset field's JS will create the button if required
+                        $(element).find('[data-icon="upload"').remove();
                     });
                 }
 
@@ -453,7 +475,7 @@ export default {
     width: calc(100% + var(--row-gap)*2);
 
     // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
-    @media only screen and (min-width: 600px) and (max-width: 1535px) {
+    @media only screen and (min-width: 1535px) {
         > :not(h2):not(hr):not(.line-break).width-25,
         > :not(h2):not(hr):not(.line-break).width-50,
         > :not(h2):not(hr):not(.line-break):last-child.width-25,

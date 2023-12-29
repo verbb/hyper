@@ -1,22 +1,25 @@
 {% import '_includes/forms' as forms %}
 
 {% set fieldId = 'link-embed-' ~ random() %}
+{% set data = link.getData() ?? [] %}
 
 <div id="{{ fieldId }}" class="hyper-embed-field">
     {{ forms.text({
         id: fieldId,
-        name: 'linkValue',
-        value: link.linkValue.url ?? null,
+        value: data.url ?? null,
         placeholder: link.placeholder ?? link.defaultPlaceholder(),
+        inputAttributes: {
+            'data-value': data.url ?? null,
+        },
     }) }}
+
+    {{ hiddenInput('linkValue', data | json_encode, { class: 'link-embed-data' }) }}
 
     <span class="spinner hidden"></span>
 
-    {% set data = link.getData() %}
-
     {% if data %}
         <div class="favicon-icon">
-            <img src="{{ data.icon }}" />
+            <img src="{{ data.icon ?? '' }}" />
         </div>
     {% endif %}
 

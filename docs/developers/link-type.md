@@ -2,6 +2,8 @@
 You can register your own Link Type to create your own specialised links, or even extend an existing Link Type.
 
 ```php
+namespace modules\sitemodule;
+
 use craft\events\RegisterComponentTypesEvent;
 use modules\MyLinkType;
 use verbb\hyper\services\Links;
@@ -18,7 +20,7 @@ Because a link type is used to determine both the settings available for a link,
 Create the following class to house your Link Type logic.
 
 ```php
-namespace modules;
+namespace modules\sitemodule;
 
 use verbb\hyper\base\Link;
 

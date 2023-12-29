@@ -81,8 +81,19 @@ Craft.Hyper.Embed = Garnish.Base.extend({
 
         $('body').on('keyup blur change', `${fieldId} input`, debounce((e) => {
             const value = $(e.target).val();
+            const prevValue = $(e.target).attr('data-value');
 
+            // Prevent from firing unless the value has actually changed
+            if (value === prevValue) {
+                return;
+            }
+
+            // Update the previous value
+            $(e.target).attr('data-value', value);
+
+            // Reset some bits
             $container.find('.favicon-icon').remove();
+            $container.find('.link-embed-data').val(JSON.stringify());
 
             if (value) {
                 $spinner.removeClass('hidden');
@@ -90,8 +101,13 @@ Craft.Hyper.Embed = Garnish.Base.extend({
 
                 Craft.sendActionRequest('GET', `hyper/fields/preview-embed?value=${value}`)
                     .then((response) => {
-                        if (response && response.data && response.data.icon) {
-                            $container.append(`<div class="favicon-icon"><img src="${response.data.icon}"></div>`);
+                        if (response && response.data && response.data.data) {
+                            // Update the hidden input with the JSON data. That's our field value, not the inputted URL
+                            $container.find('.link-embed-data').val(JSON.stringify(response.data.data));
+
+                            if (response.data.data.icon) {
+                                $container.append(`<div class="favicon-icon"><img src="${response.data.data.icon}"></div>`);
+                            }
                         }
                     })
                     .catch(({ response }) => {

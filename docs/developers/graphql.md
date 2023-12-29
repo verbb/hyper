@@ -1,5 +1,5 @@
 # GraphQL
-Hyper supports accessing [Link](docs:developer/link) objects via GraphQL. Be sure to read about [Craft's GraphQL support](https://craftcms.com/docs/4.x/graphql.html).
+Hyper supports accessing [Link](docs:developers/link) objects via GraphQL. Be sure to read about [Craft's GraphQL support](https://craftcms.com/docs/4.x/graphql.html).
 
 ## Links
 In order to query a link, you'll need to first query the element that the Hyper field is attached to.
