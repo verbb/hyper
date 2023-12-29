@@ -209,10 +209,6 @@ class HyperField extends Field
 
         if (is_string($value) && !empty($value)) {
             $value = Json::decodeIfJson($value);
-
-            if (is_array($value)) {
-                $value = self::_decodeStringValues($value);
-            }
         }
 
         if (!is_array($value)) {
@@ -227,7 +223,7 @@ class HyperField extends Field
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
 
-            return Json::decode(Json::encode(self::_encodeStringValues($value)));
+            return Json::decode(Json::encode($value));
         }
 
         return $value;
@@ -764,35 +760,5 @@ class HyperField extends Field
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
-    }
-
-    private static function _decodeStringValues(array $values)
-    {
-        foreach ($values as $key => $value) {
-            if (is_array($value)) {
-                $value = self::_decodeStringValues($value);
-            } else if (is_string($value)) {
-                $value = StringHelper::shortcodesToEmoji($value);
-            }
-
-            $values[$key] = $value;
-        }
-
-        return $values;
-    }
-
-    private static function _encodeStringValues(array $values)
-    {
-        foreach ($values as $key => $value) {
-            if (is_array($value)) {
-                $value = self::_encodeStringValues($value);
-            } else if (is_string($value)) {
-                $value = StringHelper::emojiToShortcodes($value);
-            }
-
-            $values[$key] = $value;
-        }
-
-        return $values;
     }
 }
