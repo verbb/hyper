@@ -23,12 +23,11 @@ class FieldsController extends Controller
     public function actionLayoutDesigner(): Response
     {
         $view = Craft::$app->getView();
-        $request = Craft::$app->getRequest();
 
-        $fieldLayoutUid = $request->getParam('layoutUid');
-        $fieldIds = $request->getParam('fieldIds');
-        $type = $request->getParam('type');
-        $layoutConfig = $request->getParam('layout', []);
+        $fieldLayoutUid = $this->request->getParam('layoutUid');
+        $fieldIds = $this->request->getParam('fieldIds');
+        $type = $this->request->getParam('type');
+        $layoutConfig = $this->request->getParam('layout', []);
 
         $fieldLayout = $type::getDefaultFieldLayout();
 
