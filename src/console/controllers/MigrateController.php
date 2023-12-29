@@ -9,41 +9,63 @@ use verbb\hyper\migrations\MigrateLinkField;
 use verbb\hyper\migrations\MigrateLinkContent;
 
 use Craft;
+use craft\console\Controller;
 use craft\helpers\App;
+use craft\helpers\Console;
 
-use yii\console\Controller;
 use yii\console\ExitCode;
 
+/**
+ * Manages Hyper migrations from other plugins.
+ */
 class MigrateController extends Controller
 {
     // Public Methods
     // =========================================================================
 
+    /**
+     * Migrate Link It fields to Hyper fields.
+     */
     public function actionLinkitField(): int
     {
         return $this->_migrate(MigrateLinkitField::class);
     }
 
+    /**
+     * Migrate Link It field content to Hyper.
+     */
     public function actionLinkitContent(): int
     {
         return $this->_migrate(MigrateLinkitContent::class);
     }
 
+    /**
+     * Migrate Typed Link fields to Hyper fields.
+     */
     public function actionTypedLinkField(): int
     {
         return $this->_migrate(MigrateTypedLinkField::class);
     }
 
+    /**
+     * Migrate Typed Link field content to Hyper.
+     */
     public function actionTypedLinkContent(): int
     {
         return $this->_migrate(MigrateTypedLinkContent::class);
     }
 
+    /**
+     * Migrate Link fields to Hyper fields.
+     */
     public function actionLinkField(): int
     {
         return $this->_migrate(MigrateLinkField::class);
     }
 
+    /**
+     * Migrate Link field content to Hyper.
+     */
     public function actionLinkContent(): int
     {
         return $this->_migrate(MigrateLinkContent::class);
