@@ -45,6 +45,10 @@ class LinkField extends TextField
         return Craft::t('hyper', 'Link');
     }
 
+
+    // Protected Methods
+    // =========================================================================
+
     protected function inputHtml(ElementInterface $element = null, bool $static = false): ?string
     {
         if ($this->link) {
