@@ -258,7 +258,7 @@ export default {
             // component once it's been moved. We need to do this for all link blocks in the field because of how
             // the re-render process works (other blocks other than the one moved will update).
             Object.values(this.$refs).forEach((linkComponent) => {
-                if (linkComponent[0]) {
+                if (linkComponent && linkComponent[0]) {
                     linkComponent[0].cacheHtml();
                 }
             });
@@ -275,7 +275,7 @@ export default {
             Object.values(this.$refs).forEach((linkComponent) => {
                 // Slight delay required to ensure that the DOM has caught up
                 setTimeout(() => {
-                    if (linkComponent[0]) {
+                    if (linkComponent && linkComponent[0]) {
                         linkComponent[0].updateHtml();
                         linkComponent[0].updateJs();
                     }
