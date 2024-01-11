@@ -139,6 +139,13 @@ export default {
 
     watch: {
         'link.handle': function(newValue, oldValue) {
+            if (oldValue) {
+                // If we're switching link types, ensure that we cache the old field data before switching.
+                // Switching back would show us outdated content for fields (the original content on page load).
+                // Be sure to use the old cache key as well.
+                this.cacheHtml(`${this.link.id}-${oldValue}`);
+            }
+
             // Because the link handle is changed in `created()` this alao fires immediately.
             this.updateHtml();
             this.updateJs();
@@ -207,7 +214,7 @@ export default {
             this.fieldsHtml = this.getParsedLinkTypeHtml(this.hyperField.getCachedFieldHtml(this.cacheKey));
         },
 
-        cacheHtml() {
+        cacheHtml(cacheKey = this.cacheKey) {
             // Before dragging this block, save a copy of the current DOM to the cache. We ue this to restore back
             // when finished moving. This is because Vue's rendering will not retain any edited non-Vue HTML.
             if (this.$refs.fields) {
@@ -268,7 +275,7 @@ export default {
                 fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentId), 'g'), idPlaceholder);
                 fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentName), 'g'), namePlaceholder);
 
-                this.hyperField.setCachedFieldHtml(this.cacheKey, fieldsHtml);
+                this.hyperField.setCachedFieldHtml(cacheKey, fieldsHtml);
             }
         },
 
