@@ -154,7 +154,7 @@ class Embed extends Link
         $linkValue = $values['linkValue'] ?? null;
 
         if (is_string($linkValue)) {
-            if (str_starts_with($linkValue, '{') || str_starts_with($linkValue, '[')) {
+            if (Json::isJsonObject($linkValue)) {
                 // We might be sending JSON from the CP
                 $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
             } else {
