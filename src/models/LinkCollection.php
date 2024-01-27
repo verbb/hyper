@@ -34,7 +34,8 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         // Convert serialized data to a collection of links.
         foreach ($links as $data) {
             if (!($data instanceof LinkInterface)) {
-                $handle = $data['handle'] ?? $field->defaultLinkType;
+                // Determine the link type handle 
+                $handle = $this->_getLinkHandle($field, $data);
                 $link = $field->getLinkTypeByHandle($handle);
 
                 if ($link && is_array($data)) {
@@ -169,5 +170,35 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         }
 
         return $values;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _getLinkHandle(HyperField $field, array $data): string
+    {
+        // Determine the link type handle by either the provided handle, the first handle of the type
+        // or the default link type. This allows us to create link types programatically for say an asset
+        // by using `new \verbb\hyper\links\Asset()` which will get the first asset link type's handle
+        // rather than needing to provide the handle for the link type, which isn't shown in the UI.
+        if (isset($data['handle'])) {
+            return $data['handle'];
+        }
+
+        // Get the first link type for the field for the type of link provided. Remember that we can have multiple
+        // links of the same type for a Hyper field.
+        if (isset($data['type'])) {
+            $linkTypes = $field->getLinkTypes();
+
+            foreach ($field->getLinkTypes() as $linkType) {
+                if (get_class($linkType) === $data['type']) {
+                    return $linkType->handle;
+                }
+            }
+        }
+
+        // Return the default link type, as it wasn't provided
+        return $field->defaultLinkType;
     }
 }
