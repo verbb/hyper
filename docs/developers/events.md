@@ -6,12 +6,21 @@ The event that is triggered during a migration, when trying to convert the respe
 
 ```php
 use verbb\hyper\events\ModifyMigrationLinkEvent;
-use verbb\hyper\migrations\MigrateLinkit;
+use verbb\hyper\migrations\MigrateLinkitContent;
+use verbb\hyper\migrations\MigrateLinkitField;
 use yii\base\Event;
 
-Event::on(MigrateLinkit::class, MigrateLinkit::EVENT_MODIFY_LINK_TYPE, function(ModifyMigrationLinkEvent $event) {
+Event::on(MigrateLinkitContent::class, MigrateLinkitContent::EVENT_MODIFY_LINK_TYPE, function(ModifyMigrationLinkEvent $event) {
+    $oldClass = $event->oldClass;
+    $newClass = $event->newClass;
+    // ...
+});
+
+Event::on(MigrateLinkitField::class, MigrateLinkitField::EVENT_MODIFY_LINK_TYPE, function(ModifyMigrationLinkEvent $event) {
     $oldClass = $event->oldClass;
     $newClass = $event->newClass;
     // ...
 });
 ```
+
+Note that because migrations are split between the field and its content, you'll need to register your events for both respective classes.
