@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.20 - 2024-01-30
+
+### Added
+- Add the ability to make the `linkValue` a required field.
+
+### Fixed
+- Fix element-based link types not validating correctly when a non-uri element is selected.
+- Fix being unable to select User elements for User link type.
+- Fix when making changes to a link, switching between link types would not retain any changes.
+
 ## 1.1.19 - 2023-12-20
 
 ### Added
