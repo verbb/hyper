@@ -158,13 +158,14 @@ export default {
 
         // Some important type-casting, where things can get messed up where fields are stored in a non-numerical-keyed array,
         // which isn't something I thought possible! This causes incorrect behvaiour when sending the values to element-slideout.
-        // Using `set()` or `setWith()` won't change the property type from Array to Object.
+        // Using `set()` or `setWith()` won't change the property type from Array to Object. This is only an issue for empty arrays.
+        // Because the link data is represented by JSON, it assumes things are an array, but they need to be an object.
         // https://github.com/verbb/hyper/issues/97
-        if (this.link.fields && Array.isArray(this.link.fields)) {
+        if (this.link.fields === []) {
             this.link.fields = {};
         }
 
-        if (this.link.customAttributes && Array.isArray(this.link.customAttributes)) {
+        if (this.link.customAttributes === []) {
             this.link.customAttributes = {};
         }
     },
