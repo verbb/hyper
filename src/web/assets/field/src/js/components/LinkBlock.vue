@@ -249,7 +249,7 @@ export default {
                                 // which can't be easily replaced like Vizy placeholders can. So be sure to swap them back to what they were
                                 $newHtml.find('select').attr('id', $(element).find('select').attr('id'));
                                 $newHtml.find('select').attr('name', $(element).find('select').attr('name'));
-                                
+
                                 // Restore any selected elements
                                 $newHtml.find('select').val($(element).find('select').val());
 
