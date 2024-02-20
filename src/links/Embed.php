@@ -72,9 +72,9 @@ class Embed extends Link
                     ...$image,
                 ]));
 
-                // Flag an invalid embed URL - still a response, but no code
+                // If no embed code, create it
                 if (!trim($data['code'])) {
-                    throw new Exception('Embed URL invalid.');
+                    $data['code'] = '<iframe src="' . $info->url . '"></iframe>';
                 }
 
                 return $data;
@@ -101,9 +101,9 @@ class Embed extends Link
                     'feeds' => $info->feeds,
                 ]));
 
-                // Flag an invalid embed URL - still a response, but no code
+                // If no embed code, create it
                 if (!trim($data['code'])) {
-                    throw new Exception('Embed URL invalid.');
+                    $data['code'] = '<iframe src="' . $info->url . '"></iframe>';
                 }
 
                 return $data;
