@@ -42,6 +42,11 @@ class HyperField extends Field
         return Craft::t('hyper', 'Hyper');
     }
 
+    public static function icon(): string
+    {
+        return '@verbb/hyper/icon-mask.svg';
+    }
+
     public static function phpType(): string
     {
         return sprintf('\\%s|null', LinkCollection::class);
