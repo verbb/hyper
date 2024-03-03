@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.21 - 2024-03-04
+
+### Added
+- Add the ability to set the column type for Hyper fields.
+
+### Changed
+- Embed link types now create `<iframe>` elements when embed responses don’t contain them.
+
+### Fixed
+- Fix custom attributes not saving correctly.
+- Fix Selectize fields not working properly when re-ordering link blocks which Hyper was contained in a Matrix/Super Table field.
+
 ## 1.1.20 - 2024-01-30
 
 ### Added
