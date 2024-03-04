@@ -46,6 +46,12 @@ abstract class ElementLink extends Link
     // Public Methods
     // =========================================================================
 
+    public function count(): int|bool
+    {
+        // Override `Link::count` to not rely on a URL, as not all elements have a URL, but still have a value
+        return $this->linkValue ? true : false;
+    }
+
     public function setAttributes($values, $safeOnly = true): void
     {
         // Protect against invalid values for some link types. This can happen due to migrations gone wrong

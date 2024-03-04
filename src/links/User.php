@@ -14,4 +14,9 @@ class User extends ElementLink
     {
         return UserElement::class;
     }
+
+    public static function checkElementUri(): bool
+    {
+        return false;
+    }
 }

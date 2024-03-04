@@ -139,6 +139,13 @@ export default {
 
     watch: {
         'link.handle': function(newValue, oldValue) {
+            if (oldValue) {
+                // If we're switching link types, ensure that we cache the old field data before switching.
+                // Switching back would show us outdated content for fields (the original content on page load).
+                // Be sure to use the old cache key as well.
+                this.cacheHtml(`${this.link.id}-${oldValue}`);
+            }
+
             // Because the link handle is changed in `created()` this alao fires immediately.
             this.updateHtml();
             this.updateJs();
@@ -151,13 +158,14 @@ export default {
 
         // Some important type-casting, where things can get messed up where fields are stored in a non-numerical-keyed array,
         // which isn't something I thought possible! This causes incorrect behvaiour when sending the values to element-slideout.
-        // Using `set()` or `setWith()` won't change the property type from Array to Object.
+        // Using `set()` or `setWith()` won't change the property type from Array to Object. This is only an issue for empty arrays.
+        // Because the link data is represented by JSON, it assumes things are an array, but they need to be an object.
         // https://github.com/verbb/hyper/issues/97
-        if (this.link.fields && Array.isArray(this.link.fields)) {
+        if (this.link.fields === []) {
             this.link.fields = {};
         }
 
-        if (this.link.customAttributes && Array.isArray(this.link.customAttributes)) {
+        if (this.link.customAttributes === []) {
             this.link.customAttributes = {};
         }
     },
@@ -207,7 +215,7 @@ export default {
             this.fieldsHtml = this.getParsedLinkTypeHtml(this.hyperField.getCachedFieldHtml(this.cacheKey));
         },
 
-        cacheHtml() {
+        cacheHtml(cacheKey = this.cacheKey) {
             // Before dragging this block, save a copy of the current DOM to the cache. We ue this to restore back
             // when finished moving. This is because Vue's rendering will not retain any edited non-Vue HTML.
             if (this.$refs.fields) {
@@ -237,11 +245,16 @@ export default {
                             const $newHtml = $(this.linkType.html).find(`[data-layout-element="${fieldUid}"] .selectize`);
 
                             if ($newHtml.length) {
+                                // IDs and names will include placholders for Vizy, but if in a Matrix/Super Table field, will contain those
+                                // which can't be easily replaced like Vizy placeholders can. So be sure to swap them back to what they were
+                                $newHtml.find('select').attr('id', $(element).find('select').attr('id'));
+                                $newHtml.find('select').attr('name', $(element).find('select').attr('name'));
+
                                 // Restore any selected elements
                                 $newHtml.find('select').val($(element).find('select').val());
 
                                 // Replace the HTML with the altered original template
-                                element.innerHTML = $newHtml.htmlize();
+                                element.outerHTML = $newHtml.htmlize();
                             }
                         }
                     });
@@ -268,7 +281,7 @@ export default {
                 fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentId), 'g'), idPlaceholder);
                 fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentName), 'g'), namePlaceholder);
 
-                this.hyperField.setCachedFieldHtml(this.cacheKey, fieldsHtml);
+                this.hyperField.setCachedFieldHtml(cacheKey, fieldsHtml);
             }
         },
 
