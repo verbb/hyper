@@ -102,25 +102,3 @@
         </ul>
     {% endif %}
 </div>
-
-<hr>
-
-{% if craft.app.db.isMysql %}
-    <a class="fieldtoggle" data-target="advanced">{{ 'Advanced' | t('hyper') }}</a>
-
-    <div id="advanced" class="hidden">
-        {{ forms.selectField({
-            label: 'Column Type' | t('hyper'),
-            instructions: 'The type of column this field should get in the database.' | t('hyper'),
-            id: 'column-type',
-            name: 'columnType',
-            options: [
-                { value: 'text', label: 'text (~64KB)' },
-                { value: 'mediumtext', label: 'mediumtext (~16MB)' },
-                { value: 'longtext', label: 'longtext (~4GB)' },
-            ],
-            value: field.columnType,
-            warning: (field.id ? "Changing this may result in data loss." | t('hyper')),
-        }) }}
-    </div>
-{% endif %}
