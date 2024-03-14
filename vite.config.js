@@ -19,7 +19,7 @@ export default ({ command }) => ({
     build: {
         outDir: 'field/dist',
         emptyOutDir: true,
-        manifest: true,
+        manifest: 'manifest.json',
         sourcemap: true,
         rollupOptions: {
             input: {
