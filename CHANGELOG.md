@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.22 - 2024-03-18
+
+### Added
+- Add `backupOnMigrate` plugin setting to control whether backup are performed when migrating from another link plugin.
+
 ## 1.1.21 - 2024-03-04
 
 ### Added
