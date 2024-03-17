@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-beta.3 - 2024-03-18
+
+### Fixed
+- Fix an error when editing Hyper links in the editor slide-out.
+- Fix field settings not having their field layout changes persisted.
+- Fix reference to removed `columnType`.
+
 ## 2.0.0-beta.2 - 2024-03-05
 
 ### Fixed
