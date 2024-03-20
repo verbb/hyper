@@ -66,7 +66,11 @@ class PluginFieldMigration extends PluginMigration
             }
         }
 
-        $this->stdout('Finished migration, processed ' . $this->count . '/' . count($this->fields) . ' fields.' . PHP_EOL, Console::FG_GREEN);
+        if ($this->count) {
+            $this->stdout('Finished migration, processed ' . $this->count . '/' . count($this->fields) . ' fields.' . PHP_EOL, Console::FG_GREEN);
+        } else {
+            $this->stdout('No fields available to migrate.' . PHP_EOL, Console::FG_GREEN);
+        }
 
         return true;
     }
