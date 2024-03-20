@@ -21,6 +21,12 @@ use Exception;
 
 class PluginFieldMigration extends PluginMigration
 {
+    // Properties
+    // =========================================================================
+
+    public int $count = 0;
+
+
     // Public Methods
     // =========================================================================
 
@@ -60,7 +66,7 @@ class PluginFieldMigration extends PluginMigration
             }
         }
 
-        $this->stdout('Finished Migration' . PHP_EOL, Console::FG_GREEN);
+        $this->stdout('Finished migration, processed ' . $this->count . '/' . count($this->fields) . ' fields.' . PHP_EOL, Console::FG_GREEN);
 
         return true;
     }

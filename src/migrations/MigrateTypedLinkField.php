@@ -199,6 +199,8 @@ class MigrateTypedLinkField extends PluginFieldMigration
             }
 
             $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
+
+            $this->count++;
         }
     }
 
