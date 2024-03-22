@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\console\controllers;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\migrations\MigrateLinkitField;
 use verbb\hyper\migrations\MigrateLinkitContent;
 use verbb\hyper\migrations\MigrateTypedLinkField;
@@ -79,7 +80,9 @@ class MigrateController extends Controller
     {
         App::maxPowerCaptain();
 
-        Craft::$app->getDb()->backup();
+        if (Hyper::$plugin->getSettings()->backupOnMigrate) {
+            Craft::$app->getDb()->backup();
+        }
 
         $response = [];
 

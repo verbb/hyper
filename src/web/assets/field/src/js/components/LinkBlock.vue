@@ -1,6 +1,6 @@
 <template>
-    <div class="hyper-wrapper">
-        <div class="hyper-header">
+    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }">
+        <div v-show="showHeader" class="hyper-header">
             <div class="hyper-header-type">
                 <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">
                     <option v-for="type in settings.linkTypes" :key="type.handle" :value="type.handle">{{ type.label }}</option>
@@ -135,6 +135,22 @@ export default {
 
             return result;
         },
+
+        showHeader() {
+            if (this.settings.multipleLinks || this.settings.isStatic || this.settings.newWindow) {
+                return true;
+            }
+
+            if (this.settings.linkTypes.length > 1) {
+                return true;
+            }
+
+            if (this.linkType.tabCount > 1) {
+                return true;
+            }
+
+            return false;
+        },
     },
 
     watch: {
@@ -167,6 +183,13 @@ export default {
 
         if (this.link.customAttributes === []) {
             this.link.customAttributes = {};
+        }
+
+        // Check if the currently selected link type is in the allowed types. If not, switch to the first available one.
+        if (!(this.settings.linkTypes.map((linkType) => {
+            return linkType.type;
+        }).includes(this.link.type))) {
+            this.link = this.clone(this.settings.linkTypes[0]);
         }
     },
 
@@ -386,7 +409,6 @@ export default {
 .hyper-wrapper {
     border: 1px solid #d8dee7;
     border-radius: 6px;
-    // overflow: hidden;
 }
 
 .hyper-header {
@@ -396,6 +418,15 @@ export default {
     align-items: center;
     background-color: #f3f7fc;
     border-bottom: 1px solid #cdd9e4;
+}
+
+.hyper-wrapper.no-header {
+    border: none;
+    border-radius: 0;
+
+    .hyper-body-wrapper {
+        padding: 0.75rem 0;
+    }
 }
 
 .hyper-header-type {
@@ -526,7 +557,7 @@ export default {
     gap: 1rem;
     padding: 0.75rem 0.75rem;
     background: #fff;
-    border-radius: 0 6px 6px 0;
+    border-radius: 0 0 6px 6px;
 
     .flex-fields {
         --row-gap: 0.5rem !important;

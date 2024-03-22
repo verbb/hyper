@@ -125,6 +125,8 @@ class MigrateLinkField extends PluginFieldMigration
             Db::update('{{%fields}}', ['type' => HyperField::class, 'settings' => Json::encode($newField->settings)], ['id' => $field['id']], [], true, $this->db);
 
             $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
+
+            $this->count++;
         }
     }
 }
