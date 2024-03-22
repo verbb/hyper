@@ -10,6 +10,8 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\elements\Asset;
 
+use craft\commerce\elements\Variant;
+
 abstract class ElementLink extends Link
 {
     // Static Methods
@@ -201,7 +203,14 @@ abstract class ElementLink extends Link
     {
         if ($cached = $this->_getElementCache()) {
             // Asset links skip the cache for the moment, as they're more complicated than a `uri`
-            if (!($cached instanceof Asset)) {
+            $skippedElementTypes = [Asset::class];
+
+            // If a variant, there's some issues with it being cached and the parent product, so skip
+            if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('commerce')) {
+                $skippedElementTypes[] = Variant::class;
+            }
+
+            if (!in_array(get_class($cached), $skippedElementTypes)) {
                 return $cached->url;
             }
         }
