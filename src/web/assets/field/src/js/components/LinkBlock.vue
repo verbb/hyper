@@ -184,6 +184,13 @@ export default {
         if (this.link.customAttributes === []) {
             this.link.customAttributes = {};
         }
+
+        // Check if the currently selected link type is in the allowed types. If not, switch to the first available one.
+        if (!(this.settings.linkTypes.map((linkType) => {
+            return linkType.type;
+        }).includes(this.link.type))) {
+            this.link = this.clone(this.settings.linkTypes[0]);
+        }
     },
 
     mounted() {
