@@ -1,6 +1,6 @@
 <template>
-    <div class="hyper-wrapper">
-        <div class="hyper-header">
+    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }">
+        <div v-show="showHeader" class="hyper-header">
             <div class="hyper-header-type">
                 <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">
                     <option v-for="type in settings.linkTypes" :key="type.handle" :value="type.handle">{{ type.label }}</option>
@@ -134,6 +134,22 @@ export default {
             });
 
             return result;
+        },
+
+        showHeader() {
+            if (this.settings.multipleLinks || this.settings.isStatic || this.settings.newWindow) {
+                return true;
+            }
+
+            if (this.settings.linkTypes.length > 1) {
+                return true;
+            }
+
+            if (this.linkType.tabCount > 1) {
+                return true;
+            }
+
+            return false;
         },
     },
 
