@@ -51,7 +51,7 @@ class Embed extends Link
                 $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
 
                 $info = $embed->get($url);
-                $image = $info->image ?? [];
+                $image = array_values($info->image ?? []);
 
                 $data = Json::decode(Json::encode([
                     'title' => $info->title,
