@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.24 - 2024-03-22
+
+### Fixed
+- Fix an error when creating new link blocks, not respecting the default link type.
+
 ## 1.1.23 - 2024-03-22
 
 ### Added
