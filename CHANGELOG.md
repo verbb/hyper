@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0-beta.4 - 2024-03-22
+
+### Added
+- Add field migration note for when no fields are found to migrate.
+- Add counter to field migration utility to make it easier to troubleshoot any failed fields.
+
+### Changed
+- Link blocks no longer show a border around the block for single links, when the header is hidden.
+- Link block headers now hide the header when not required.
+
+### Fixed
+- Fix an error if an existing link block is set to a type that’s no longer in its allowed types.
+- Fix an error with Embed links with image processing.
+- Fix an error when rendering Commerce Variant links.
+- Fix UI overflow for field.
+- Fix Typed Link migration for multi-site installs.
+
 ## 2.0.0-beta.3 - 2024-03-18
 
 ### Fixed
