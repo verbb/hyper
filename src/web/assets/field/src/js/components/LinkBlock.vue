@@ -402,7 +402,6 @@ export default {
 .hyper-wrapper {
     border: 1px solid #d8dee7;
     border-radius: 6px;
-    // overflow: hidden;
 }
 
 .hyper-header {
@@ -412,6 +411,15 @@ export default {
     align-items: center;
     background-color: #f3f7fc;
     border-bottom: 1px solid #cdd9e4;
+}
+
+.hyper-wrapper.no-header {
+    border: none;
+    border-radius: 0;
+
+    .hyper-body-wrapper {
+        padding: 0.75rem 0;
+    }
 }
 
 .hyper-header-type {
