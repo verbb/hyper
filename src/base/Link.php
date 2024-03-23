@@ -13,6 +13,7 @@ use verbb\hyper\helpers\Html;
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\fieldlayoutelements\BaseNativeField;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\StringHelper;
@@ -32,6 +33,11 @@ abstract class Link extends Element implements LinkInterface
 
     // Static Methods
     // =========================================================================
+
+    public static function hasContent(): bool
+    {
+        return true;
+    }
 
     public static function classDisplayName(): string
     {
@@ -199,7 +205,7 @@ abstract class Link extends Element implements LinkInterface
     public function defineRules(): array
     {
         $rules = parent::defineRules();
-
+            
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
 
@@ -208,6 +214,14 @@ abstract class Link extends Element implements LinkInterface
 
             if ($this->isFieldRequired || $isRequired) {
                 $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+            }
+
+            foreach ($fieldLayout->getTabs() as $tab) {
+                foreach ($tab->getElements() as $layoutElement) {
+                    if ($layoutElement instanceof BaseNativeField && $layoutElement->required) {
+                        $rules[] = [[$layoutElement->attribute], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+                    }
+                }
             }
         }
 
