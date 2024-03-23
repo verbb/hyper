@@ -13,6 +13,7 @@ use verbb\hyper\helpers\Html;
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\fieldlayoutelements\BaseNativeField;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\StringHelper;
@@ -32,6 +33,11 @@ abstract class Link extends Element implements LinkInterface
 
     // Static Methods
     // =========================================================================
+
+    public static function hasContent(): bool
+    {
+        return true;
+    }
 
     public static function classDisplayName(): string
     {
@@ -534,6 +540,16 @@ abstract class Link extends Element implements LinkInterface
 
         if ($this->isFieldRequired) {
             $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+        }
+
+        if ($fieldLayout = $this->getFieldLayout()) {
+            foreach ($fieldLayout->getTabs() as $tab) {
+                foreach ($tab->getElements() as $layoutElement) {
+                    if ($layoutElement instanceof BaseNativeField && $layoutElement->required) {
+                        $rules[] = [[$layoutElement->attribute], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+                    }
+                }
+            }
         }
 
         return $rules;
