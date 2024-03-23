@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.25 - 2024-03-23
+
+### Fixed
+- Fix validation not working correctly for link blocks.
+
 ## 1.1.24 - 2024-03-22
 
 ### Fixed
