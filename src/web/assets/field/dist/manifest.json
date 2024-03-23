@@ -4,11 +4,7 @@
     "src": "field/src/js/hyper.css"
   },
   "field/src/js/hyper.js": {
-<<<<<<< HEAD
-    "file": "assets/hyper-9df197d5.js",
-=======
-    "file": "assets/hyper-b0cec4ec.js",
->>>>>>> 6754297fe716c7b211a66ab7422e194002943ad0
+    "file": "assets/hyper-38b19542.js",
     "src": "field/src/js/hyper.js",
     "isEntry": true,
     "css": [
