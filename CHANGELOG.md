@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-beta.5 - 2024-03-23
+
+### Fixed
+- Fix validation not working correctly for link blocks.
+- Fix an error when creating new link blocks, not respecting the default link type.
+
 ## 2.0.0-beta.4 - 2024-03-22
 
 ### Added
