@@ -20,9 +20,9 @@
             <button type="button" class="btn add icon menubtn">{{ t('hyper', 'New link type') }}</button>
 
             <div id="hyper-linktypes-template" class="hyper-menu" style="display: none;">
-                <ul class="padded" role="listbox" aria-hidden="true">
+                <ul>
                     <li v-for="(linkType, index) in registeredLinkTypes" :key="index">
-                        <a role="option" tabindex="-1" @click.prevent="newLinkType(linkType.value, linkType.label)">{{ linkType.label }}</a>
+                        <a class="menu-item" role="option" tabindex="-1" @click.prevent="newLinkType(linkType.value, linkType.label)">{{ linkType.label }}</a>
                     </li>
                 </ul>
             </div>
@@ -380,35 +380,53 @@ export default {
     min-width: 100px;
 }
 
-.hyper-menu ul {
-    hr {
-        margin: 5px 0;
-    }
-
-    li a {
-        position: relative;
-        padding: 10px 14px;
-        color: #3f4d5a;
-        text-decoration: none;
-        white-space: nowrap;
+.hyper-menu {
+    ul li .menu-item {
         font-size: 14px;
-        outline: 0;
-        display: block;
+        padding: 10px 10px;
+        white-space: nowrap;
+        color: #3f4d5a;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
 
         &:hover {
-            color: #3f4d5a;
             background-color: #f3f7fc;
+            color: #3f4d5a;
+        }
+    }
+
+    ul li:first-child a {
+        border-radius: 4px 4px 0 0;
+    }
+
+    ul li:last-child a {
+        border-radius: 0 0 4px 4px;
+    }
+
+    hr {
+        margin: 0;
+
+        &.padded {
+            margin: 4px 0;
+        }
+    }
+
+    li > a span.icon {
+        display: block;
+        height: 13px;
+        width: 13px;
+        margin-right: 7px;
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
 
-        &[data-icon] {
-            padding-left: 26px;
-        }
-
-        &::before {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+        svg * {
+            fill: currentColor;
         }
     }
 }

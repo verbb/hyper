@@ -22,9 +22,9 @@
                 <button type="button" class="btn dashed icon add menubtn h-add-link-btn" :class="canAdd ? '' : 'disabled'" :disabled="!canAdd">{{ t('hyper', 'Add a link') }}</button>
 
                 <div class="hyper-linktypes-template hyper-menu" style="display: none;">
-                    <ul class="padded" role="listbox" aria-hidden="true">
+                    <ul>
                         <li v-for="(linkType, index) in settings.linkTypes" :key="index">
-                            <a role="option" tabindex="-1" @click.prevent="newLinkBlock(linkType.handle)">{{ linkType.label }}</a>
+                            <a class="menu-item" role="option" tabindex="-1" @click.prevent="newLinkBlock(linkType.handle)">{{ linkType.label }}</a>
                         </li>
                     </ul>
                 </div>
