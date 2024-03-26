@@ -130,30 +130,7 @@ class PluginMigration extends Migration
 
     public function migrateVizyContent($fieldData): void
     {
-        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) {
-            // We need to flatten the data to deal with deeply-nested content like when in Matrix/Super Table.
-            foreach (ArrayHelper::flatten($data) as $flatKey => $flatContent) {
-                $searchKey = 'fields.' . $handle;
-
-                // Find from the end of the block path `fields.myLinkField`
-                if (str_ends_with($flatKey, $searchKey)) {
-                    // Sometimes stored as a JSON string
-                    if (is_string($flatContent)) {
-                        $flatContent = Json::decodeIfJson($flatContent);
-                    }
-
-                    if (!is_array($flatContent)) {
-                        $flatContent = [];
-                    }
-
-                    if ($newContent = $this->convertModel(new HyperField(), $flatContent)) {
-                        ArrayHelper::setValue($data, $flatKey, $newContent);
-                    }
-                }
-            }
-
-            return $data;
-        }, $this->db);
+        
     }
 
     public function stdout($string, $color = ''): void
