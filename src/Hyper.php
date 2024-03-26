@@ -160,9 +160,6 @@ class Hyper extends Plugin
         Event::on(Elements::class, Elements::EVENT_AFTER_UPDATE_SLUG_AND_URI, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_SAVE_ELEMENT, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_DELETE_ELEMENT, [$this->getElementCache(), 'onDeleteElement']);
-        
-        Event::on(Fields::class, Fields::EVENT_AFTER_SAVE_FIELD, [$this->getFieldCache(), 'onSaveField']);
-        Event::on(Fields::class, Fields::EVENT_AFTER_DELETE_FIELD, [$this->getFieldCache(), 'onDeleteField']);
 
         if (class_exists(FeedMeFields::class)) {
             Event::on(FeedMeFields::class, FeedMeFields::EVENT_REGISTER_FEED_ME_FIELDS, function(RegisterFeedMeFieldsEvent $event) {

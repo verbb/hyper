@@ -235,6 +235,15 @@ abstract class Link extends Element implements LinkInterface
 
     public function getSerializedValues(): array
     {
+        // Convert custom fields from using their handles to the fieldLayoutUid's
+        $fieldContent = [];
+
+        foreach ($this->fields as $fieldHandle => $value) {
+            if ($field = $this->getFieldLayout()->getFieldByHandle($fieldHandle)) {
+                $fieldContent[$field->layoutElement->uid] = $value;
+            }
+        }
+
         // Return the values used in the Vue component, and what will be saved to the content table
         return array_filter([
             'type' => get_class($this),
@@ -247,7 +256,7 @@ abstract class Link extends Element implements LinkInterface
             'linkTitle' => $this->linkTitle,
             'classes' => $this->classes,
             'customAttributes' => $this->customAttributes,
-            'fields' => $this->fields,
+            'fields' => $fieldContent,
         ], function($value) {
             // Filter out any empty values (`false` and `0` are okay)
             return ($value !== null && $value !== '' && $value !== []);
@@ -345,15 +354,34 @@ abstract class Link extends Element implements LinkInterface
                 }
             }
 
-            // Remove any custom fields that aren't included in the field layout
-            foreach ($customFields as $handle => $customField) {
-                if (!$fieldLayout->isFieldIncluded($handle)) {
-                    unset($customFields[$handle]);
+            $fieldContent = [];
+
+            // Convert from layoutElementUid saved to the database to handle
+            foreach ($customFields as $handle => $fieldValue) {
+                // Check if this is a handle or layoutElementUid - we migrated to the latter in Hyper 2.x
+                // So this check can eventually be removed at the next breakpoint, as we only store the UID
+                // But this would be a mammoth migration task trying to find all content for a Hyper field instance
+                // (note, not just a Hyper field, because you can create field instances)
+                if (str_contains($handle, '-')) {
+                    foreach ($fieldLayout->getCustomFields() as $field) {
+                        if ($field->layoutElement && $field->layoutElement->uid === $handle) {
+                            $fieldContent[$field->handle] = $fieldValue;
+                        }
+                    }
+                } else {
+                    $fieldContent[$handle] = $fieldValue;
                 }
             }
 
-            $values['fields'] = $customFields;
-            $this->setFieldValues($customFields);
+            // Remove any custom fields that aren't included in the field layout
+            foreach ($fieldContent as $handle => $fieldValue) {
+                if (!$fieldLayout->isFieldIncluded($handle)) {
+                    unset($fieldContent[$handle]);
+                }
+            }
+
+            $values['fields'] = $fieldContent;
+            $this->setFieldValues($fieldContent);
         }
 
         // Check if new window is disabled at the field level
