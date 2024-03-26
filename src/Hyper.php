@@ -50,7 +50,7 @@ class Hyper extends Plugin
     // Properties
     // =========================================================================
 
-    public bool $hasCpSettings = true;
+    public bool $hasCpSettings = false;
     public string $schemaVersion = '1.0.0';
 
 
