@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0-beta.6 - 2024-03-27
+
+### Changed
+- Swap custom fields used in link types to use their `layoutElementUid` instead of their handle.
+- Multi-link fields now use an ellipsis icon for link block actions.
+
+### Removed
+- Removed Vizy content migration.
+- Removed other link plugin migrations (no longer needed).
+- Removed plugin settings (no longer needed).
+
 ## 2.0.0-beta.5 - 2024-03-23
 
 ### Fixed
