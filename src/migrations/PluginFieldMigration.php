@@ -7,6 +7,7 @@ use verbb\hyper\fieldlayoutelements\CustomAttributesField;
 use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
+use verbb\hyper\fieldlayoutelements\UrlSuffixField;
 
 use Craft;
 use craft\db\Query;
@@ -75,7 +76,7 @@ class PluginFieldMigration extends PluginMigration
         return true;
     }
 
-    public static function getDefaultFieldLayout(bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false): FieldLayout
+    public static function getDefaultFieldLayout(bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false, bool $enableSuffix = false): FieldLayout
     {
         $fieldLayout = new FieldLayout([
             'type' => static::class,
@@ -115,8 +116,12 @@ class PluginFieldMigration extends PluginMigration
         $ariaLabelField = $enableAriaLabel ? Craft::createObject([
             'class' => AriaLabelField::class,
         ]) : null;
+
+        $suffixField = $enableSuffix ? Craft::createObject([
+            'class' => UrlSuffixField::class,
+        ]) : null;
         
-        $tab2->setElements(array_filter([$linkTitleField, $classesField, $customAttributesField, $ariaLabelField]));
+        $tab2->setElements(array_filter([$linkTitleField, $classesField, $customAttributesField, $ariaLabelField, $suffixField]));
 
         $fieldLayout->setTabs([$tab1, $tab2]);
 
