@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.26 - 2024-03-29
+
+### Added
+- Add Formie forms as a link type.
+
+### Fixed
+- Fix an error when limiting link types and removing the current link type of a link.
+- Fix Shopify Product link type label.
+- Fix Typed Link migration not including suffixes for element link types.
+- Fix an error where other field content would be cleared when Hyper field content was initialized at the same time.
+- Fix Typed Link migration not including suffixes for element link types.
+
 ## 1.1.25 - 2024-03-23
 
 ### Fixed
