@@ -161,10 +161,6 @@ export default {
 
     mounted() {
         this.$nextTick(() => {
-            // Modify the jQuery data for `ElementEditor.js`, otherwise a change will be detected, and the draft saved.
-            // This is due to jQuery kicking in and serializing the form before Vue kicks in.
-            this.updateInitialSerializedValue();
-
             // Ensure we target just _this_ Hyper field, and not any nested Hyper fields
             const $container = this.$el.querySelector(':scope > .h-add-container');
 
@@ -193,23 +189,6 @@ export default {
     },
 
     methods: {
-        updateInitialSerializedValue() {
-            const $mainForm = $('form#main-form');
-
-            if ($mainForm.length) {
-                const elementEditor = $mainForm.data('elementEditor');
-
-                if (elementEditor) {
-                    // Serialize the form again, now Vue is ready
-                    const formData = elementEditor.serializeForm(true);
-
-                    // Update the local cache, and the DOM cache
-                    elementEditor.lastSerializedValue = formData;
-                    $mainForm.data('initialSerializedValue', formData);
-                }
-            }
-        },
-
         setCache(link) {
             // For each link type, create HTML/JS. We use the Link's HTML/JS for the current link type
             // if it exists, because it may already have data. If we switch to another link type, it's fresh.

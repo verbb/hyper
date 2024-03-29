@@ -221,6 +221,7 @@ class MigrateTypedLinkContent extends PluginContentMigration
         $link->ariaLabel = $advanced['ariaLabel'] ?? null;
         $link->linkText = $advanced['customText'] ?? null;
         $link->linkTitle = $advanced['title'] ?? null;
+        $link->urlSuffix = $advanced['customQuery'] ?? null;
         $link->newWindow = ($advanced['target'] ?? '') === '_blank';
 
         if ($link instanceof ElementLink) {

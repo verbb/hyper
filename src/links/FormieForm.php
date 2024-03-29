@@ -5,20 +5,25 @@ use verbb\hyper\base\ElementLink;
 
 use Craft;
 
-use craft\shopify\elements\Product as ShopifyProductElement;
+use verbb\formie\elements\Form as FormElement;
 
-class ShopifyProduct extends ElementLink
+class FormieForm extends ElementLink
 {
     // Static Methods
     // =========================================================================
 
     public static function displayName(): string
     {
-        return Craft::t('hyper', 'Shopify Product');
+        return Craft::t('hyper', 'Form');
     }
 
     public static function elementType(): string
     {
-        return ShopifyProductElement::class;
+        return FormElement::class;
+    }
+
+    public static function checkElementUri(): bool
+    {
+        return false;
     }
 }

@@ -74,6 +74,8 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 $linkType->linkText = $defaultText;
                 $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
+                $enableSuffix = $type['allowCustomQuery'] ?? false;
+
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = $type['sources'] ?? '*';
                 } else if ($linkType instanceof linkTypes\Site) {
@@ -88,7 +90,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                     }
                 }
 
-                $fieldLayout = self::getDefaultFieldLayout($allowCustomText, $enableTitle, $enableAriaLabel);
+                $fieldLayout = self::getDefaultFieldLayout($allowCustomText, $enableTitle, $enableAriaLabel, $enableSuffix);
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 

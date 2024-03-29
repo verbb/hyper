@@ -75,6 +75,10 @@ class Links extends Component
             $linkTypes[] = linkTypes\ShopifyProduct::class;
         }
 
+        if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('formie')) {
+            $linkTypes[] = linkTypes\FormieForm::class;
+        }
+
         $event = new RegisterComponentTypesEvent([
             'types' => $linkTypes,
         ]);

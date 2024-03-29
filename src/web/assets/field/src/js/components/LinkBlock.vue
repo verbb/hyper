@@ -203,7 +203,11 @@ export default {
         if (!(this.settings.linkTypes.map((linkType) => {
             return linkType.handle;
         }).includes(this.link.handle))) {
+            // Save some settings to merge in, but not all. This is a new link type after all
+            const oldId = this.link.id;
+
             this.link = this.clone(this.settings.linkTypes[0]);
+            this.link.id = oldId;
         }
     },
 
