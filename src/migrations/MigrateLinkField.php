@@ -94,6 +94,7 @@ class MigrateLinkField extends PluginFieldMigration
             self::createDisabledLinkTypes($types, [
                 linkTypes\Custom::class,
                 linkTypes\Embed::class,
+                linkTypes\FormieForm::class,
                 linkTypes\Phone::class,
                 linkTypes\Product::class,
                 linkTypes\ShopifyProduct::class,
