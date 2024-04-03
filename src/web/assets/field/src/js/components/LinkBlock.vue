@@ -440,12 +440,14 @@ export default {
     select {
         color: #667c92;
         font-size: 12px;
-        font-weight: 500;
         border: 1px solid #cdd9e4;
         border-radius: 3px;
         padding: 3px 28px 3px 10px;
         background: #dee7ef;
         appearance: none;
+
+        // Cannot use due to Safari serif bug
+        // font-weight: 500;
     }
 
     &::after {
