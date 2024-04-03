@@ -1,26 +1,14 @@
 {
   "field/src/js/hyper.css": {
-<<<<<<< HEAD
-    "file": "assets/hyper-1b673eaa.css",
+    "file": "assets/hyper-ddbaa87a.css",
     "src": "field/src/js/hyper.css"
   },
   "field/src/js/hyper.js": {
-    "file": "assets/hyper-a4e2eb5a.js",
+    "file": "assets/hyper-62cfaa99.js",
     "src": "field/src/js/hyper.js",
     "isEntry": true,
     "css": [
-      "assets/hyper-1b673eaa.css"
-=======
-    "file": "assets/hyper-355de424.css",
-    "src": "field/src/js/hyper.css"
-  },
-  "field/src/js/hyper.js": {
-    "file": "assets/hyper-4ed80bc0.js",
-    "src": "field/src/js/hyper.js",
-    "isEntry": true,
-    "css": [
-      "assets/hyper-355de424.css"
->>>>>>> df9548f (Fix link type dropdown styling on Safari)
+      "assets/hyper-ddbaa87a.css"
     ]
   }
 }
