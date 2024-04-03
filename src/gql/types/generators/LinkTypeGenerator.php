@@ -23,13 +23,15 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
     {
         $gqlTypes = [];
 
-        foreach (Craft::$app->getFields()->getAllFields(false) as $field) {
-            if ($field instanceof HyperField) {
-                foreach ($field->getLinkTypes() as $linkType) {
-                    $linkType->field = $field;
+        foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
+            foreach ($layout->getCustomFields() as $field) {
+                if ($field instanceof HyperField) {
+                    foreach ($field->getLinkTypes() as $linkType) {
+                        $linkType->field = $field;
 
-                    $type = static::generateType($linkType);
-                    $gqlTypes[$type->name] = $type;
+                        $type = static::generateType($linkType);
+                        $gqlTypes[$type->name] = $type;
+                    }
                 }
             }
         }
