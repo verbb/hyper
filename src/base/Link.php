@@ -405,6 +405,11 @@ abstract class Link extends Element implements LinkInterface
         return get_class($this);
     }
 
+    public function getLinkType(): ?LinkInterface
+    {
+        return ArrayHelper::firstWhere($this->field->getLinkTypes(), 'handle', $this->handle);
+    }
+
     public function getNewWindow(): ?bool
     {
         return $this->newWindow;
