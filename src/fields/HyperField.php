@@ -2,6 +2,7 @@
 namespace verbb\hyper\fields;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
@@ -64,6 +65,7 @@ class HyperField extends Field
     private bool $_isStatic = false;
     private array $_linkTypes = [];
     private ?array $_linkTypeFields = null;
+    private ?ElementInterface $_originElement = null;
 
 
     // Public Methods
@@ -299,6 +301,41 @@ class HyperField extends Field
         Hyper::$plugin->getFieldCache()->setCache($this);
 
         parent::afterSave($isNew);
+    }
+
+    public function beforeElementSave(ElementInterface $element, bool $isNew): bool
+    {
+        // Check if we should propagate the chosen element (for an element-based link) for new elements.
+        // This is to replicate the Entries field where you'd pick an element, and the site-specific element would be
+        // propagated to other site content, rather than the same site-entry picked across all.
+        // https://github.com/verbb/hyper/issues/45
+        $changedValue = false;
+
+        // Only process this for other site elements, as we could be picking a link from another site on purpose
+        if ($element->propagating) {
+            $value = $element->getFieldValue($this->handle);
+
+            foreach ($value as $linkIndex => $link) {
+                // Only process this for brand-new, unsaved blocks
+                if ($link instanceof ElementLink) {
+                    // The new status is only set on the original non-propagated link block, so fetch that. We no longer have access
+                    // to the original element, and due to Craft's propagateElement function, content isn't copied to the site element here.
+                    if ($this->_originElement && $this->_originElement->getFieldValue($this->handle)[$linkIndex]?->isNew) {
+                        $link->linkSiteId = $element->siteId;
+
+                        $changedValue = true;
+                    }
+                }
+            }
+        } else {
+            $this->_originElement = $element;
+        }
+
+        if ($changedValue) {
+            $element->setFieldValue($this->handle, $value);
+        }
+
+        return parent::beforeElementSave($element, $isNew);
     }
 
     public function afterElementSave(ElementInterface $element, bool $isNew): void
@@ -546,6 +583,7 @@ class HyperField extends Field
             $link = $links->getLinks()[0] ?? $this->getLinkTypeByHandle($this->defaultLinkType);
 
             if ($link) {
+                $link->isNew = true;
                 $link->newWindow = $this->defaultNewWindow;
                 $links->setLinks([$link]);
             }
