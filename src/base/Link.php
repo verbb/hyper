@@ -117,6 +117,7 @@ abstract class Link extends Element implements LinkInterface
     public ?string $handle = null;
     public bool $enabled = true;
     public bool $isCustom = false;
+    public bool $isNew = false;
     public ?string $layoutUid = null;
     public ?array $layoutConfig = null;
 
@@ -228,6 +229,7 @@ abstract class Link extends Element implements LinkInterface
             'urlSuffix' => $this->urlSuffix,
             'linkTitle' => $this->linkTitle,
             'classes' => $this->classes,
+            'isNew' => $this->isNew,
             'customAttributes' => $this->customAttributes,
             'fields' => $this->fields,
         ];
@@ -405,6 +407,11 @@ abstract class Link extends Element implements LinkInterface
     public function getType(): string
     {
         return get_class($this);
+    }
+
+    public function getLinkType(): ?LinkInterface
+    {
+        return ArrayHelper::firstWhere($this->field->getLinkTypes(), 'handle', $this->handle);
     }
 
     public function getNewWindow(): ?bool

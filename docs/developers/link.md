@@ -42,7 +42,8 @@ The Link represents the actual value of the field, as you'd want to output in yo
 
 Attribute | Description
 --- | ---
-`type` | Returns the link type chosen for the link.
+`type` | Returns the link type class name chosen for the link.
+`linkType` | Returns the link type chosen for the link.
 `url` | The value used for the `href` for the link. Supports .env variables and aliases, and combines any prefix or suffix.
 `text` | The custom text for the label of the link. If an element link type, the title of the element will be used automatically.
 `target` | Returns `_blank` if the link should open in a new window.
