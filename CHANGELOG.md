@@ -11,6 +11,7 @@
 ### Fixed
 - Fix link type dropdown styling on Safari.
 - Fix field changes being triggered when no changes had been made.
+- Fix GraphQL queries not working correctly.
 
 ## 2.0.0-beta.7 - 2024-03-29
 
