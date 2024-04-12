@@ -34,7 +34,7 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         // Convert serialized data to a collection of links.
         foreach ($links as $data) {
             if (!($data instanceof LinkInterface)) {
-                $handle = $data['handle'] ?? $field->defaultLinkType;
+                $handle = $this->_getLinkTypeHandle($data, $field);
                 $link = $field->getLinkTypeByHandle($handle);
 
                 if ($link && is_array($data)) {
@@ -169,5 +169,29 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         }
 
         return $values;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _getLinkTypeHandle(array $data, HyperField $field): string
+    {
+        // Use either the handle of the link type, the first instance of an enabled link type
+        // (of that type) or use the default link type set by the field.
+        $handle = $data['handle'] ?? null;
+
+        if (!$handle && isset($data['type'])) {
+            foreach ($field->getLinkTypes() as $linkType) {
+                if ($linkType::class === $data['type']) {
+                    $handle = $linkType->handle;
+                    break;
+                }
+            }
+        }
+
+        $handle = $handle ?? $field->defaultLinkType;
+
+        return $handle;
     }
 }
