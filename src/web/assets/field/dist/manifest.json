@@ -1,26 +1,14 @@
 {
   "field/src/js/hyper.css": {
-<<<<<<< HEAD
     "file": "assets/hyper-ddbaa87a.css",
     "src": "field/src/js/hyper.css"
   },
   "field/src/js/hyper.js": {
-    "file": "assets/hyper-62cfaa99.js",
+    "file": "assets/hyper-dd8616f8.js",
     "src": "field/src/js/hyper.js",
     "isEntry": true,
     "css": [
       "assets/hyper-ddbaa87a.css"
-=======
-    "file": "assets/hyper-355de424.css",
-    "src": "field/src/js/hyper.css"
-  },
-  "field/src/js/hyper.js": {
-    "file": "assets/hyper-c79e49eb.js",
-    "src": "field/src/js/hyper.js",
-    "isEntry": true,
-    "css": [
-      "assets/hyper-355de424.css"
->>>>>>> origin/craft-4
     ]
   }
 }
