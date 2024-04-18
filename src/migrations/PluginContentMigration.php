@@ -5,11 +5,14 @@ use verbb\hyper\fields\HyperField;
 
 use Craft;
 use craft\db\Query;
+use craft\fields\Matrix;
 use craft\helpers\App;
 use craft\helpers\Console;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
+
+use verbb\supertable\fields\SuperTableField;
 
 class PluginContentMigration extends PluginMigration
 {
@@ -90,7 +93,7 @@ class PluginContentMigration extends PluginMigration
 
                         $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
 
-                        if ($matrixField) {
+                        if ($matrixField && $matrixField instanceof Matrix) {
                             $column = ElementHelper::fieldColumn($field->columnPrefix, $matrixBlockTypeHandle . '_' . $field->handle, $field->columnSuffix);
 
                             $content = (new Query())
@@ -131,7 +134,7 @@ class PluginContentMigration extends PluginMigration
 
                     $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
 
-                    if ($superTableField) {
+                    if ($superTableField && $superTableField instanceof SuperTableField) {
                         $column = ElementHelper::fieldColumn($field->columnPrefix, $field->handle, $field->columnSuffix);
 
                         $content = (new Query())

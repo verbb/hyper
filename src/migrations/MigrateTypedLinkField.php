@@ -8,11 +8,14 @@ use verbb\hyper\links as linkTypes;
 use Craft;
 use craft\db\Query;
 use craft\fieldlayoutelements\CustomField;
+use craft\fields\Matrix;
 use craft\helpers\Console;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 
 use Exception;
+
+use verbb\supertable\fields\SuperTableField;
 
 use lenz\linkfield\fields\LinkField;
 
@@ -143,7 +146,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 if ($matrixFieldId) {
                     $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
 
-                    if ($matrixField) {
+                    if ($matrixField && $matrixField instanceof Matrix) {
                         $this->migrateBlockField($matrixField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level
@@ -178,7 +181,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 if ($superTableFieldId) {
                     $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
 
-                    if ($superTableField) {
+                    if ($superTableField && $superTableField instanceof SuperTableField) {
                         $this->migrateBlockField($superTableField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level

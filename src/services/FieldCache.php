@@ -9,10 +9,13 @@ use craft\base\Component;
 use craft\db\Query;
 use craft\events\FieldEvent;
 use craft\fieldlayoutelements\CustomField;
+use craft\fields\Matrix;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
+
+use verbb\supertable\fields\SuperTableField;
 
 class FieldCache extends Component
 {
@@ -111,7 +114,7 @@ class FieldCache extends Component
 
                 $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
 
-                if ($matrixField) {
+                if ($matrixField && $matrixField instanceof Matrix) {
                     $contentTable = $matrixField->contentTable;
 
                     $column = ElementHelper::fieldColumn($field->columnPrefix, $matrixBlockTypeHandle . '_' . $field->handle, $field->columnSuffix);
@@ -132,7 +135,7 @@ class FieldCache extends Component
 
             $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
 
-            if ($superTableField) {
+            if ($superTableField && $superTableField instanceof SuperTableField) {
                 $contentTable = $superTableField->contentTable;
             }
         }
