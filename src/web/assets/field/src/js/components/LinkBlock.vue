@@ -191,11 +191,11 @@ export default {
         // Using `set()` or `setWith()` won't change the property type from Array to Object. This is only an issue for empty arrays.
         // Because the link data is represented by JSON, it assumes things are an array, but they need to be an object.
         // https://github.com/verbb/hyper/issues/97
-        if (this.link.fields === []) {
+        if (Array.isArray(this.link.fields) && !this.link.fields.length) {
             this.link.fields = {};
         }
 
-        if (this.link.customAttributes === []) {
+        if (Array.isArray(this.link.customAttributes) && !this.link.customAttributes.length) {
             this.link.customAttributes = {};
         }
 
