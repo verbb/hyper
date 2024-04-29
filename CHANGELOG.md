@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.28 - 2024-04-29
+
+### Changed
+- Update non-English translations.
+- Update English translations.
+
+### Fixed
+- Fix an error with custom fields retaining values after initial creation.
+- Fix other link plugin migrations where owner fields like Matrix and Super Table were incorrectly referenced.
+- Fix `Link::getText()` not using a defined fallback text value correctly.
+- Fix programatically creating links not working for some link types.
+
 ## 1.1.27 - 2024-04-10
 
 ### Added
