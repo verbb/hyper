@@ -502,9 +502,12 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        // Allow custom overriding of `text` for the label
+        // Allow custom overriding of `text` for the label, but ensure that we reset any override text
+        // in case we render the field again with no override.
         if ($customText = ArrayHelper::remove($attributes, 'text')) {
-            $this->text = $customText;
+            $this->setText($customText);
+        } else {
+            $this->setText(null);
         }
 
         // `linkText` shouldn't be overridden unless you know what you're doing, as this is the text defined

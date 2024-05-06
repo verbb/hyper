@@ -453,6 +453,14 @@
       "oAP" : "\/src\/console\/controllers\/MigrateController.php",
       "oF" : 0
     },
+    "\/src\/console\/controllers\/TypedLinkLegacyController.php" : {
+      "cB" : 0,
+      "ft" : 8192,
+      "hM" : 0,
+      "oA" : 2,
+      "oAP" : "\/src\/console\/controllers\/TypedLinkLegacyController.php",
+      "oF" : 0
+    },
     "\/src\/controllers" : {
       "ft" : 65536,
       "oA" : 1,
