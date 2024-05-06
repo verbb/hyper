@@ -68,4 +68,7 @@ return [     'Link' => 'Lien',
 'Step 1. Migrate Fields' => 'Étape 1. Importation des champs',
 'Unable to render field layout. Please resave the field settings.' => 'Impossible d’afficher le champ. Veuillez réenregistrer les paramètres du champ.',
 'Step 2. Migrate Content' => 'Étape 2. Importation du contenu',
-'Migrate Content' => 'Importation du contenu' ];
+'Migrate Content' => 'Importation du contenu',
+'New Window' => 'Nouvelle fenêtre',
+'Add a link' => 'Ajouter un lien'
+];
