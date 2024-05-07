@@ -135,7 +135,6 @@ abstract class Link extends Element implements LinkInterface
     public bool $isFieldRequired = false;
 
     private ?FieldLayout $_fieldLayout = null;
-    private ?string $_text = null;
 
 
     // Public Methods
@@ -432,20 +431,9 @@ abstract class Link extends Element implements LinkInterface
         return trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
     }
 
-    public function getText(?string $text = null): ?string
+    public function getText(?string $defaultText = null): ?string
     {
-        // Allow custom text (defined at render) to override everything. This allows us to reference `linkText`
-        // which is the "original" link text, and `text` which is the derivative text.
-        if ($this->_text) {
-            return $this->_text; 
-        }
-
-        return $this->getLinkText() ?: $text ?: trim($this->getLinkUrl() . $this->getUrlSuffix());
-    }
-
-    public function setText(?string $text = null): void
-    {
-        $this->_text = $text;
+        return $this->getLinkText() ?: $defaultText ?: trim($this->getLinkUrl() . $this->getUrlSuffix());
     }
 
     public function getTarget(): ?string
@@ -500,25 +488,12 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        // Allow custom overriding of `text` for the label, but ensure that we reset any override text
-        // in case we render the field again with no override.
-        if ($customText = ArrayHelper::remove($attributes, 'text')) {
-            $this->setText($customText);
-        } else {
-            $this->setText(null);
-        }
-
-        // `linkText` shouldn't be overridden unless you know what you're doing, as this is the text defined
-        // in the field. It's here for backwards compatibility, but should be removed at the next breakpoint.
-        if ($customText = ArrayHelper::remove($attributes, 'linkText')) {
-            $this->linkText = $customText;
-
-            Craft::$app->getDeprecator()->log(__METHOD__, 'Setting a link’s `linkText` has been deprecated. Use `text` instead.');
-        }
+        // Rip out any custom text and use that. Note that this overrides `getText()`
+        $text = ArrayHelper::remove($attributes, 'text') ?? $this->getText();
 
         $attributes = $this->getLinkAttributes($attributes);
 
-        return Template::raw(Html::tag('a', $this->getText(), $attributes));
+        return Template::raw(Html::tag('a', $text, $attributes));
     }
 
     public function getLinkAttributes(array $attributes = [], bool $asString = false): array|Markup
