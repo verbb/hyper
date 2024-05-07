@@ -6,6 +6,7 @@ return [
   'Additional CSS classes for the link.' => 'Additional CSS classes for the link.',
   'Additional HTML attributes for the link.' => 'Additional HTML attributes for the link.',
   'Add {type}' => 'Add {type}',
+  'Advanced' => 'Advanced',
   'Are you sure you want to delete “{name}”?' => 'Are you sure you want to delete “{name}”?',
   'ARIA Label' => 'ARIA Label',
   'Attribute' => 'Attribute',
