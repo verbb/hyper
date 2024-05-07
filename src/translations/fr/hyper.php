@@ -1,7 +1,7 @@
 <?php
 
 return [
-  'Add a link' => 'Add a link',
+  'Add a link' => 'Ajouter un lien',
   'Additional content appended to the link URL. e.g. `?success=true` or `#section-start`.' => 'Contenu supplémentaire à ajouter à l’URL. ex. `?success=true` or `#section-start`.',
   'Additional CSS classes for the link.' => 'Classes CSS supplémentaires pour ce lien.',
   'Additional HTML attributes for the link.' => 'Attributs HTML supplémentaires pour ce lien.',
@@ -38,7 +38,7 @@ return [
   'Migrate your Typed Link fields and content to Hyper fields.' => 'Importez vos champs et contenus à partir du plugin Typed Link.',
   'Missing Link' => 'Lien manquant',
   'New link type' => 'New link type',
-  'New Window' => 'New Window',
+  'New Window' => 'Nouvelle fenêtre',
   'No settings available.' => 'Aucun réglage disponible.',
   'Please enter a valid phone number.' => 'Saisissez un numéro de téléphone valide.',
   'Select a link type to edit.' => 'Select a link type to edit.',
