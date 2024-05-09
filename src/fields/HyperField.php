@@ -436,8 +436,8 @@ class HyperField extends Field
                 
                 foreach ($linkTypes as $linkType) {
                     $fields = $linkType->getCustomFields();
+
                     foreach ($fields as $field) {
-                        $field->columnPrefix = $fieldColumnPrefix;
                         $this->_linkTypeFields[$linkType->handle][] = $field;
                     }
                 }

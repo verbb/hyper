@@ -12,12 +12,6 @@
 {% import '_includes/forms' as forms %}
 
 {# Special case when inside another complex field (Matrix) #}
-{% if parentPath is defined %}
-    {% set prefixPath = parentPath %}
-{% else %}
-    {% set prefixPath = [handle] %}
-{% endif %}
-
 {% set classes = ['complex-field'] %}
 
 <tr class="complex-field complex-field-header">
@@ -28,7 +22,7 @@
             </div>
 
             <div class="additional-mapping-fields">
-                {% namespace 'fieldMapping[' ~ prefixPath | join('][') ~ ']' %}
+                {% namespace 'fieldMapping[' ~ path | join('][') ~ ']' %}
                     <input type="text" name="field" value="{{ className(field) }}">
                 {% endnamespace %}
             </div>
@@ -47,11 +41,13 @@
     classes: 'Classes',
 } %}
 
+{% set currentPath = path %}
+
 {% for key, col in subfields %}
     {% set nameLabel = col %}
     {% set instructionsHandle = handle ~ '[' ~ key ~ ']' %}
 
-    {% set path = prefixPath | merge ([ 'fields', key ]) %}
+    {% set path = currentPath | merge ([ 'fields', key ]) %}
 
     {% set default = {
         type: (key == 'newWindow') ? 'lightswitch' : 'text',
@@ -72,7 +68,7 @@
     {% set nameLabel = customField.name %}
     {% set instructionsHandle = handle ~ '[' ~ customField.handle ~ ']' %}
 
-    {% set parentPath = prefixPath|merge ([ 'fields', customField.handle ]) %}
+    {% set parentPath = currentPath | merge ([ 'fields', customField.handle ]) %}
 
     {% set fieldClass = craft.feedme.fields.getRegisteredField(className(customField)) %}
     {% set template = fieldClass.getMappingTemplate() %}
