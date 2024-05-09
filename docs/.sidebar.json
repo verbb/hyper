@@ -34,14 +34,5 @@
             "developers/events",
             "developers/graphql"
         ]
-    },
-    {
-        "title": "Guides",
-        "collapsable": false,
-        "children": [
-            "guides/migrating-from-typed-link",
-            "guides/migrating-from-linkit",
-            "guides/migrating-from-link"
-        ]
     }
 ]
