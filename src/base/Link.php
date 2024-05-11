@@ -431,7 +431,7 @@ abstract class Link extends Element implements LinkInterface
         return trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
     }
 
-    public function getText(?string $defaultText = null): ?string
+    public function getText(?string $defaultText = 'Read more'): ?string
     {
         return $this->getLinkText() ?: $defaultText ?: null;
     }
