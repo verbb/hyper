@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.29 - 2024-05-11
+
+### Added
+- Add console migration for Typed Link fields (legacy) for older Typed Link installs.
+
+### Changed
+- Update French translations.
+- Changed the default text for links to `Read more` when text cannot be resolved. This improves URL-based links not relying on text to be defined to render the link at all.
+
+### Fixed
+- Fix an error when setting the element cache. (thanks @boboldehampsink).
+- Fix an error where custom text set on a link is retained next time the same link is rendered (without custom text).
+
 ## 1.1.28 - 2024-04-29
 
 ### Changed
