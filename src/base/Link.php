@@ -431,8 +431,16 @@ abstract class Link extends Element implements LinkInterface
         return trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
     }
 
-    public function getText(?string $defaultText = 'Read more'): ?string
+    public function getText(?string $defaultText = null): ?string
     {
+        // Use the placeholder of the `linkText` field as fallback
+        if ($fieldLayout = $this->getFieldLayout()) {
+            $defaultText = $fieldLayout->getField('linkText')->placeholder ?? Craft::t('hyper', 'Read more');
+
+            // Swap the plugin default `e.g. Read more` to just `Read nore`;
+            $defaultText = $defaultText === Craft::t('hyper', 'e.g. Read more') ? Craft::t('hyper', 'Read more') : $defaultText;
+        }
+
         return $this->getLinkText() ?: $defaultText ?: null;
     }
 
