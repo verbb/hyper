@@ -435,7 +435,15 @@ abstract class Link extends Element implements LinkInterface
 
     public function getText(?string $defaultText = null): ?string
     {
-        return $this->getLinkText() ?: $defaultText ?: trim($this->getLinkUrl() . $this->getUrlSuffix());
+        // Use the placeholder of the `linkText` field as fallback
+        if ($fieldLayout = $this->getFieldLayout()) {
+            $defaultText = $fieldLayout->getField('linkText')->placeholder ?? Craft::t('hyper', 'Read more');
+
+            // Swap the plugin default `e.g. Read more` to just `Read nore`;
+            $defaultText = $defaultText === Craft::t('hyper', 'e.g. Read more') ? Craft::t('hyper', 'Read more') : $defaultText;
+        }
+
+        return $this->getLinkText() ?: $defaultText ?: null;
     }
 
     public function getTarget(): ?string
@@ -489,8 +497,8 @@ abstract class Link extends Element implements LinkInterface
         if (!$this->getUrl()) {
             return null;
         }
-        // Rip out any custom text and use that. Note that this overrides `getText()`
 
+        // Rip out any custom text and use that. Note that this overrides `getText()`
         $text = ArrayHelper::remove($attributes, 'text') ?? $this->getText();
 
         $attributes = $this->getLinkAttributes($attributes);

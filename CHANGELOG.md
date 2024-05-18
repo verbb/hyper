@@ -20,6 +20,36 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.1.30 - 2024-05-18
+
+### Changed
+- Hyper link’s `text` now uses the placeholder for the field if defined, otherwise falling back to “Read more”.
+
+## 1.1.29 - 2024-05-11
+
+### Added
+- Add console migration for Typed Link fields (legacy) for older Typed Link installs.
+
+### Changed
+- Update French translations.
+- Changed the default text for links to `Read more` when text cannot be resolved. This improves URL-based links not relying on text to be defined to render the link at all.
+
+### Fixed
+- Fix an error when setting the element cache. (thanks @boboldehampsink).
+- Fix an error where custom text set on a link is retained next time the same link is rendered (without custom text).
+
+## 1.1.28 - 2024-04-29
+
+### Changed
+- Update non-English translations.
+- Update English translations.
+
+### Fixed
+- Fix an error with custom fields retaining values after initial creation.
+- Fix other link plugin migrations where owner fields like Matrix and Super Table were incorrectly referenced.
+- Fix `Link::getText()` not using a defined fallback text value correctly.
+- Fix programmatically creating links not working for some link types.
+
 ## 1.1.27 - 2024-04-10
 
 ### Added

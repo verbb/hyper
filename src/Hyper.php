@@ -192,7 +192,7 @@ class Hyper extends Plugin
                     return;
                 }
 
-                if (Craft::$app->getResponse()->getIsOk()) {
+                if (Craft::$app->getResponse()->getIsOk() && $event->element->id) {
                     Hyper::$plugin->getElementCache()->addToRenderCache($event->element->id, $event->element->siteId);
                 }
             });
