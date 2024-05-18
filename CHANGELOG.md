@@ -1,81 +1,24 @@
 # Changelog
 
-## 2.0.0-beta.8 - 2024-04-12
+## 2.0.0 - 2024-05-17
 
 ### Added
 - Add `Link::getLinkType()` to return the `LinkInterface` for the link’s type.
-
-### Changed
-- New element-based links on a multi-site now propagate the linked-to element for the same owner site.
-
-### Fixed
-- Fix link type dropdown styling on Safari.
-- Fix field changes being triggered when no changes had been made.
-- Fix GraphQL queries not working correctly.
-
-## 2.0.0-beta.7 - 2024-03-29
-
-### Added
 - Add Formie forms as a link type.
-
-### Fixed
-- Fix an error when limiting link types and removing the current link type of a link.
-- Fix Shopify Product link type label.
-- Fix Typed Link migration not including suffixes for element link types.
-- Fix an error where other field content would be cleared when Hyper field content was initialized at the same time.
-- Fix Typed Link migration not including suffixes for element link types.
-
-## 2.0.0-beta.6 - 2024-03-27
-
-### Changed
-- Swap custom fields used in link types to use their `layoutElementUid` instead of their handle.
-- Multi-link fields now use an ellipsis icon for link block actions.
-
-### Removed
-- Removed Vizy content migration.
-- Removed other link plugin migrations (no longer needed).
-- Removed plugin settings (no longer needed).
-
-## 2.0.0-beta.5 - 2024-03-23
-
-### Fixed
-- Fix validation not working correctly for link blocks.
-- Fix an error when creating new link blocks, not respecting the default link type.
-
-## 2.0.0-beta.4 - 2024-03-22
-
-### Added
-- Add field migration note for when no fields are found to migrate.
-- Add counter to field migration utility to make it easier to troubleshoot any failed fields.
-
-### Changed
-- Link blocks no longer show a border around the block for single links, when the header is hidden.
-- Link block headers now hide the header when not required.
-
-### Fixed
-- Fix an error if an existing link block is set to a type that’s no longer in its allowed types.
-- Fix an error with Embed links with image processing.
-- Fix an error when rendering Commerce Variant links.
-- Fix UI overflow for field.
-- Fix Typed Link migration for multi-site installs.
-
-## 2.0.0-beta.3 - 2024-03-18
-
-### Fixed
-- Fix an error when editing Hyper links in the editor slide-out.
-- Fix field settings not having their field layout changes persisted.
-- Fix reference to removed `columnType`.
-
-## 2.0.0-beta.2 - 2024-03-05
-
-### Fixed
-- Fix an install error related to `nystudio107/craft-plugin-vite`.
-
-## 2.0.0-beta.1 - 2024-03-04
 
 ### Changed
 - Now requires PHP `8.2.0+`.
-- Now requires Craft `5.0.0-beta.1+`.
+- Now requires Craft `5.0.0+`.
+- New element-based links on a multi-site now propagate the linked-to element for the same owner site.
+
+### Fixed
+- Fix an error where custom text set on a link is retained next time the same link is rendered (without custom text).
+- Fix an error with custom fields retaining values after initial creation.
+- Fix link type dropdown styling on Safari.
+- Fix field changes being triggered when no changes had been made.
+
+### Removed
+- Remove migrations for other plugin (not supported in Craft 5).
 
 ## 1.1.27 - 2024-04-10
 
