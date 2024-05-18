@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.30 - 2024-05-18
+
+### Changed
+- Hyper link’s `text` now uses the placeholder for the field if defined, otherwise falling back to “Read more”.
+
 ## 1.1.29 - 2024-05-11
 
 ### Added
