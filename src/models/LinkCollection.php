@@ -179,16 +179,10 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
     private function _getLinkTypeHandle(array $data, HyperField $field): string
     {
         // Use either the handle of the link type, the first instance of an enabled link type
-        // or the default link type. This allows us to create link types programatically for say an asset
         // (of that type) or use the default link type set by the field.
         $handle = $data['handle'] ?? null;
-        }
 
-        // Get the first link type for the field for the type of link provided. Remember that we can have multiple
-        // links of the same type for a Hyper field.
         if (!$handle && isset($data['type'])) {
-            $linkTypes = $field->getLinkTypes();
-
             foreach ($field->getLinkTypes() as $linkType) {
                 if ($linkType::class === $data['type']) {
                     $handle = $linkType->handle;
@@ -200,6 +194,5 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         $handle = $handle ?? $field->defaultLinkType;
 
         return $handle;
-        return $field->defaultLinkType;
     }
 }
