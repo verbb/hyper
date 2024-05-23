@@ -601,7 +601,6 @@ export default {
             line-height: 1;
             margin-top: -0.2rem;
             margin-bottom: 0.5rem;
-            color: #8a97a3;
         }
     }
 
