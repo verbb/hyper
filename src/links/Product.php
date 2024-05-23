@@ -3,6 +3,8 @@ namespace verbb\hyper\links;
 
 use verbb\hyper\base\ElementLink;
 
+use Craft;
+
 use craft\commerce\elements\Product as ProductElement;
 
 class Product extends ElementLink

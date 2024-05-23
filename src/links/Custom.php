@@ -3,6 +3,8 @@ namespace verbb\hyper\links;
 
 use verbb\hyper\base\Link;
 
+use Craft;
+
 class Custom extends Link
 {
     // Static Methods

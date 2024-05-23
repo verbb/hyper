@@ -3,6 +3,7 @@ namespace verbb\hyper\links;
 
 use verbb\hyper\base\ElementLink;
 
+use Craft;
 use craft\elements\Asset as AssetElement;
 
 class Asset extends ElementLink
