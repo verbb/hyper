@@ -1,26 +1,14 @@
 {
   "field/src/js/hyper.css": {
-<<<<<<< HEAD
-    "file": "assets/hyper-ddbaa87a.css",
+    "file": "assets/hyper-df4d1173.css",
     "src": "field/src/js/hyper.css"
   },
   "field/src/js/hyper.js": {
-    "file": "assets/hyper-77e6d252.js",
+    "file": "assets/hyper-4794c376.js",
     "src": "field/src/js/hyper.js",
     "isEntry": true,
     "css": [
-      "assets/hyper-ddbaa87a.css"
-=======
-    "file": "assets/hyper-26795525.css",
-    "src": "field/src/js/hyper.css"
-  },
-  "field/src/js/hyper.js": {
-    "file": "assets/hyper-1d1e17b4.js",
-    "src": "field/src/js/hyper.js",
-    "isEntry": true,
-    "css": [
-      "assets/hyper-26795525.css"
->>>>>>> 1553d674ac3d81602d3a54083ec7ffab8c1227f4
+      "assets/hyper-df4d1173.css"
     ]
   }
 }
