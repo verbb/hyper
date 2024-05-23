@@ -31,7 +31,7 @@
 
     <h3>{{ 'Step 2. Migrate Content' | t('hyper') }}</h3>
 
-    {{ 'Once your fields have been migrated, the content for that field used in elements must be converted. You should run this in your local development environment to test everything migrates correctly. You can then deploy your field changes as run this as many times as you like on other environments. As content is stored per-environment, you\'ll need to run this step on each environment.' | t('hyper') | md }}
+    {{ 'Once your fields have been migrated, the content for that field used in elements must be converted. You should run this in your local development environment to test everything migrates correctly. You can then deploy your field changes as run this as many times as you like on other environments. As content is stored per-environment, you‘ll need to run this step on each environment.' | t('hyper') | md }}
 
     <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-content" value="{{ 'Migrate Content' | t('hyper') }}">
 {% else %}
