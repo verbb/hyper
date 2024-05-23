@@ -13,7 +13,7 @@ class Asset extends ElementLink
 
     public static function displayName(): string
     {
-        return Craft::t('hyper', 'Asset');
+        return Craft::t('app', 'Asset');
     }
 
     public static function elementType(): string

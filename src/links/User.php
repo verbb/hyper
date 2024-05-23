@@ -13,7 +13,7 @@ class User extends ElementLink
 
     public static function displayName(): string
     {
-        return Craft::t('hyper', 'User');
+        return Craft::t('app', 'User');
     }
 
     public static function elementType(): string

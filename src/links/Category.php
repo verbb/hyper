@@ -13,7 +13,7 @@ class Category extends ElementLink
 
     public static function displayName(): string
     {
-        return Craft::t('hyper', 'Category');
+        return Craft::t('app', 'Category');
     }
 
     public static function elementType(): string
