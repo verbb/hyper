@@ -558,7 +558,7 @@ class HyperField extends Field
             // Render the fields' HTML and JS to be injected in Vue, along with the config for a new link
             $linkTypeSettings = [
                 'type' => get_class($linkType),
-                'label' => $linkType->label,
+                'label' => Craft::t('hyper', $linkType->label),
                 'handle' => $linkType->handle,
                 'tabCount' => $linkType->getTabCount(),
                 'html' => $this->_getBlockHtml($view, $linkType),

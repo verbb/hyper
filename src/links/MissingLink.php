@@ -15,6 +15,15 @@ class MissingLink extends Link implements MissingComponentInterface
     use MissingComponentTrait;
 
 
+    // Static Methods
+    // =========================================================================
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Missing Link');
+    }
+
+
     // Properties
     // =========================================================================
 

@@ -10,6 +10,15 @@ use yii\validators\EmailValidator;
 
 class Email extends Link 
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Email');
+    }
+
+    
     // Properties
     // =========================================================================
 
