@@ -8,6 +8,15 @@ use craft\models\Site as SiteModel;
 
 class Site extends Link 
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Site');
+    }
+
+    
     // Properties
     // =========================================================================
 

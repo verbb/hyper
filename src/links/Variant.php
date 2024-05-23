@@ -10,6 +10,11 @@ class Variant extends ElementLink
     // Static Methods
     // =========================================================================
 
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Variant');
+    }
+
     public static function elementType(): string
     {
         return VariantElement::class;

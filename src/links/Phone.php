@@ -7,6 +7,15 @@ use Craft;
 
 class Phone extends Link
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Phone');
+    }
+
+    
     // Properties
     // =========================================================================
 

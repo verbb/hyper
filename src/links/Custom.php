@@ -5,6 +5,15 @@ use verbb\hyper\base\Link;
 
 class Custom extends Link
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Custom');
+    }
+
+    
     // Properties
     // =========================================================================
 

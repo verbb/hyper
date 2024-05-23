@@ -24,6 +24,11 @@ class Embed extends Link
     // Static Methods
     // =========================================================================
 
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Embed');
+    }
+
     public static function fetchEmbedData(string $url): array
     {
         /* @var Settings $settings */

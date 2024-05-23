@@ -10,6 +10,11 @@ class Asset extends ElementLink
     // Static Methods
     // =========================================================================
 
+    public static function displayName(): string
+    {
+        return Craft::t('hyper', 'Asset');
+    }
+
     public static function elementType(): string
     {
         return AssetElement::class;
