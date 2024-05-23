@@ -243,9 +243,4 @@ class Embed extends Link
         return $this->linkValue;
     }
 
-    public function defaultPlaceholder(): ?string
-    {
-        return '';
-    }
-
 }

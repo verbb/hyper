@@ -56,6 +56,11 @@ abstract class Link extends Element implements LinkInterface
         return StringHelper::toKebabCase(static::classDisplayName());
     }
 
+    public static function linkValuePlaceholder(): ?string
+    {
+        return null;
+    }
+
     public static function gqlTypeNameByContext(mixed $context): string
     {
         $linkTypeHandle = StringHelper::toPascalCase($context->label);
@@ -86,6 +91,7 @@ abstract class Link extends Element implements LinkInterface
             Craft::createObject([
                 'class' => LinkTextField::class,
                 'width' => 50,
+                'placeholder' => Craft::t('hyper', 'e.g. Read more'),
             ]),
         ]);
 

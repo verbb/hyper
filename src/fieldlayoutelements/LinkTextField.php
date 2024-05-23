@@ -35,9 +35,4 @@ class LinkTextField extends TextField
     {
         return Craft::t('hyper', 'Link Text');
     }
-
-    public function defaultPlaceholder(?ElementInterface $element = null, bool $static = false): ?string
-    {
-        return Craft::t('hyper', 'e.g. Read more');
-    }
 }

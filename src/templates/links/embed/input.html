@@ -7,7 +7,7 @@
     {{ forms.text({
         id: fieldId,
         value: data.url ?? null,
-        placeholder: link.placeholder ?? link.defaultPlaceholder(),
+        placeholder: link.placeholder ?? link.linkValuePlaceholder(),
         inputAttributes: {
             'data-value': data.url ?? null,
         },

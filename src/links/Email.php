@@ -18,6 +18,17 @@ class Email extends Link
         return Craft::t('hyper', 'Email');
     }
 
+    public static function linkValuePlaceholder(): ?string
+    {
+        $domain = parse_url(Craft::$app->getSites()->primarySite->baseUrl)['host'] ?? '';
+
+        if ($domain) {
+            return "info@$domain";
+        }
+
+        return null;
+    }
+
     
     // Properties
     // =========================================================================
@@ -34,17 +45,6 @@ class Email extends Link
         $values['placeholder'] = $this->placeholder;
 
         return $values;
-    }
-
-    public function defaultPlaceholder(): ?string
-    {
-        $domain = parse_url(Craft::$app->getSites()->primarySite->baseUrl)['host'] ?? '';
-
-        if ($domain) {
-            return "info@$domain";
-        }
-
-        return '';
     }
 
     public function getUrlPrefix(): ?string
