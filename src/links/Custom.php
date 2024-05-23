@@ -33,9 +33,4 @@ class Custom extends Link
         return $values;
     }
 
-    public function defaultPlaceholder(): ?string
-    {
-        return '';
-    }
-
 }

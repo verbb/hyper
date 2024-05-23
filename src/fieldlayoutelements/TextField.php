@@ -17,8 +17,6 @@ class TextField extends CraftTextField
             $config['autofocus']
         );
 
-        $config['placeholder'] = Craft::t('hyper', ($config['placeholder'] ?? $this->defaultPlaceholder()));
-
         parent::__construct($config);
     }
     
@@ -27,18 +25,12 @@ class TextField extends CraftTextField
         return true;
     }
 
-    public function defaultPlaceholder(?ElementInterface $element = null, bool $static = false): ?string
-    {
-        return '';
-    }
-
     protected function settingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate('hyper/_includes/text-field-settings', [
             'field' => $this,
             'defaultLabel' => $this->defaultLabel(),
             'defaultInstructions' => $this->defaultInstructions(),
-            'defaultPlaceholder' => $this->defaultPlaceholder(),
             'labelHidden' => !$this->showLabel(),
         ]);
     }

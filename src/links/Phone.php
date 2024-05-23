@@ -55,11 +55,6 @@ class Phone extends Link
         }
     }
 
-    public function defaultPlaceholder(): ?string
-    {
-        return '';
-    }
-
     public function getUrlPrefix(): ?string
     {
         return $this->getLinkUrl() ? 'tel:' : null;

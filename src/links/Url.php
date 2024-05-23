@@ -17,6 +17,11 @@ class Url extends Link
         return Craft::t('hyper', 'URL');
     }
 
+    public static function linkValuePlaceholder(): ?string
+    {
+        return rtrim(Craft::$app->getSites()->primarySite->baseUrl, '/');
+    }
+
 
     // Properties
     // =========================================================================
@@ -42,11 +47,6 @@ class Url extends Link
         $values['placeholder'] = $this->placeholder;
 
         return $values;
-    }
-
-    public function defaultPlaceholder(): ?string
-    {
-        return rtrim(Craft::$app->getSites()->primarySite->baseUrl, '/');
     }
 
 }
