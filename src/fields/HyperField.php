@@ -555,6 +555,9 @@ class HyperField extends Field
 
             $view->startJsBuffer();
 
+            // Create a fake link ID so that some fields like Matrix will work with this fake element
+            $linkType->id = rand();
+
             // Render the fields' HTML and JS to be injected in Vue, along with the config for a new link
             $linkTypeSettings = [
                 'type' => get_class($linkType),
@@ -600,8 +603,11 @@ class HyperField extends Field
         foreach ($links as $key => $link) {
             $view->startJsBuffer();
 
+            // Create a fake link ID so that some fields like Matrix will work with this fake element
+            $link->id = rand();
+
             $preppedValues[$key] = $link->getInputConfig();
-            $preppedValues[$key]['id'] = StringHelper::randomString(10);
+            $preppedValues[$key]['id'] = $link->id;
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);

@@ -36,10 +36,12 @@ use craft\services\Gql;
 use craft\services\ProjectConfig;
 use craft\utilities\ClearCaches;
 use craft\web\Application;
+use craft\web\Controller;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
 
+use yii\base\ActionEvent;
 use yii\base\Event;
 
 use craft\feedme\events\RegisterFeedMeFieldsEvent;
@@ -160,6 +162,19 @@ class Hyper extends Plugin
         Event::on(Elements::class, Elements::EVENT_AFTER_UPDATE_SLUG_AND_URI, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_SAVE_ELEMENT, [$this->getElementCache(), 'onSaveElement']);
         Event::on(Elements::class, Elements::EVENT_AFTER_DELETE_ELEMENT, [$this->getElementCache(), 'onDeleteElement']);
+
+        // Hijack requests to `actions/matrix/create-entry` to handle non-saved-element owners.
+        Event::on(Controller::class, Controller::EVENT_BEFORE_ACTION, function(ActionEvent $event) {
+            // For "As inline-editable blocks"
+            if ($event->action->id == 'create-entry' && $event->sender->id == 'matrix') {
+                $ownerElementType = $event->sender->request->getParam('ownerElementType');
+
+                // Only override things if this is coming from a Hyper field
+                if (is_subclass_of($ownerElementType, LinkInterface::class)) {
+                    Craft::$app->runAction('hyper/fields/create-matrix-entry')->send();
+                }
+            }
+        });
 
         if (class_exists(FeedMeFields::class)) {
             Event::on(FeedMeFields::class, FeedMeFields::EVENT_REGISTER_FEED_ME_FIELDS, function(RegisterFeedMeFieldsEvent $event) {
