@@ -439,6 +439,11 @@ abstract class Link extends Element implements LinkInterface
 
     public function getText(?string $defaultText = null): ?string
     {
+        // If there's not a valid URL for this link, don't return text even if there is a value
+        if (!$this->getUrl()) {
+            return null;
+        }
+
         $defaultText = $defaultText ?? Craft::t('hyper', 'Read more');
 
         // Use the placeholder of the `linkText` field as fallback
