@@ -439,9 +439,13 @@ abstract class Link extends Element implements LinkInterface
 
     public function getText(?string $defaultText = null): ?string
     {
+        $defaultText = $defaultText ?? Craft::t('hyper', 'Read more');
+
         // Use the placeholder of the `linkText` field as fallback
         if ($fieldLayout = $this->getFieldLayout()) {
-            $defaultText = $fieldLayout->getField('linkText')->placeholder ?? Craft::t('hyper', 'Read more');
+            if ($fieldLayout->isFieldIncluded('linkText')) {
+                $defaultText = $fieldLayout->getField('linkText')->placeholder ?? $defaultText;
+            }
 
             // Swap the plugin default `e.g. Read more` to just `Read nore`;
             $defaultText = $defaultText === Craft::t('hyper', 'e.g. Read more') ? Craft::t('hyper', 'Read more') : $defaultText;
