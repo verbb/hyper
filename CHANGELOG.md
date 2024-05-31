@@ -20,6 +20,20 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.1.31 - 2024-05-31
+
+### Changed
+- Update non-English translations.
+- Update English translations.
+- Improve instructions text contrast for sub-fields.
+
+### Fixed
+- Fix link text returning a value when an invalid link.
+- Fix an error when determining the link text automatically when the `linkText` field is excluded from the link type.
+- Fix link type placeholder not being able to be overwritten.
+- Fix Link Type labels not being translated.
+- Fix link type translations.
+
 ## 1.1.30 - 2024-05-18
 
 ### Changed
