@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.1 - 2024-05-31
+
+### Changed
+- Update non-English translations.
+- Update English translations.
+- Update French translations. (thanks @pascalminator).
+- Update German translations. (thanks @MoritzLost).
+- Improve instructions text contrast for sub-fields.
+
+### Fixed
+- Fix link text returning a value when an invalid link.
+- Fix an error when determining the link text automatically when the `linkText` field is excluded from the link type.
+- Fix link type placeholder not being able to be overwritten.
+- Fix Link Type labels not being translated.
+- Fix link type translations.
+- Fix incompatibility issues with Matrix fields
+- Fix multi-link Hyper fields showing the incorrect “more” button for a single tab link type
+- Fix link type slide-out button not working correctly
+
 ## 2.0.0 - 2024-05-17
 
 ### Added
