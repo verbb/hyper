@@ -56,7 +56,7 @@ abstract class Link extends Element implements LinkInterface
         return StringHelper::toKebabCase(static::classDisplayName());
     }
 
-    public static function lowerDisplayName(): string
+    public static function lowerClassDisplayName(): string
     {
         return StringHelper::toLowerCase(static::classDisplayName());
     }
