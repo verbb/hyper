@@ -51,12 +51,12 @@ abstract class Link extends Element implements LinkInterface
         return Craft::t('hyper', static::classDisplayName());
     }
 
-    public static function displayNameSlug(): string
+    public static function classDisplayNameSlug(): string
     {
         return StringHelper::toKebabCase(static::classDisplayName());
     }
 
-    public static function lowerDisplayName(): string
+    public static function lowerClassDisplayName(): string
     {
         return StringHelper::toLowerCase(static::classDisplayName());
     }
@@ -284,7 +284,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getSettingsHtml(): ?string
     {
-        $handle = static::displayNameSlug();
+        $handle = static::classDisplayNameSlug();
 
         $variables = $this->getSettingsHtmlVariables();
 
@@ -329,7 +329,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getInputHtml(LinkField $layoutField, HyperField $field): ?string
     {
-        $handle = static::displayNameSlug();
+        $handle = static::classDisplayNameSlug();
 
         $variables = $this->getInputHtmlVariables($layoutField, $field);
 
