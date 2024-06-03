@@ -248,6 +248,7 @@ export default {
                     }
 
                     Craft.appendBodyHtml(footHtml);
+                    Craft.initUiElements(this.$el);
                 }
             });
         },
