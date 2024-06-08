@@ -34,15 +34,16 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         // Convert serialized data to a collection of links.
         foreach ($links as $data) {
             if (!($data instanceof LinkInterface)) {
-                $handle = $this->_getLinkTypeHandle($data, $field);
-                $link = $field->getLinkTypeByHandle($handle);
+                if (is_array($data)) {
+                    if ($handle = $this->_getLinkTypeHandle($data, $field)) {
+                        if ($link = $field->getLinkTypeByHandle($handle)) {
+                            $newLink = clone($link);
 
-                if ($link && is_array($data)) {
-                    $newLink = clone($link);
+                            $newLink->setAttributes($data, false);
 
-                    $newLink->setAttributes($data, false);
-
-                    $this->_links[] = $newLink;
+                            $this->_links[] = $newLink;
+                        }
+                    }
                 }
             } else {
                 $this->_links[] = $data;
