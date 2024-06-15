@@ -39,6 +39,20 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.1.32 - 2024-06-15
+
+### Added
+- Add `Link::lowerDisplayName`.
+
+### Changed
+- Change `Link::lowerDisplayName` to `Link::lowerClassDisplayName`.
+- Change `Link::displayNameSlug` to `Link::classDisplayNameSlug`.
+
+### Fixed
+- Fix an error where min/max links are validated for non-multi link fields.
+- Fix an error for not handling invalid link content correctly.
+- Fix some JS not initializing for some fields when switching link types.
+
 ## 1.1.31 - 2024-05-31
 
 ### Changed
