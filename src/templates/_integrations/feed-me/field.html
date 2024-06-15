@@ -11,6 +11,8 @@
 {% import 'feed-me/_macros' as feedMeMacro %}
 {% import '_includes/forms' as forms %}
 
+{% set path = path ?? [handle] %}
+
 {# Special case when inside another complex field (Matrix) #}
 {% set classes = ['complex-field'] %}
 
