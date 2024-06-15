@@ -410,7 +410,7 @@ class HyperField extends Field
             }
         }
 
-        if ($this->minLinks || $this->maxLinks) {
+        if ($this->multipleLinks && ($this->minLinks || $this->maxLinks)) {
             $arrayValidator = new ArrayValidator([
                 'min' => $this->minLinks ?: null,
                 'max' => $this->maxLinks ?: null,
