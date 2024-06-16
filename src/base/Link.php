@@ -442,6 +442,11 @@ abstract class Link extends Element implements LinkInterface
         return trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
     }
 
+    public function getLinkUri(): ?string
+    {
+        return $this->getElement()?->uri ?? null;
+    }
+
     public function getText(?string $defaultText = null): ?string
     {
         // If there's not a valid URL for this link, don't return text even if there is a value
