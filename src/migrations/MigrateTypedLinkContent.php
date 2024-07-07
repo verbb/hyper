@@ -215,9 +215,16 @@ class MigrateTypedLinkContent extends PluginContentMigration
             return false;
         }
 
+        $linkValue = $oldSettings['linkedUrl'] ?? null;
+
+        // Special-case for using anchor links for URL types. These should be switched to the Custom Link Type.
+        if (is_string($linkValue) && str_starts_with($linkValue, '#') && $linkTypeClass === linkTypes\Url::class) {
+            $linkTypeClass = linkTypes\Custom::class;
+        }
+
         $link = new $linkTypeClass();
         $link->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
-        $link->linkValue = $oldSettings['linkedUrl'] ?? null;
+        $link->linkValue = $linkValue;
 
         $advanced = Json::decode($oldSettings['payload']);
         $link->ariaLabel = $advanced['ariaLabel'] ?? null;
