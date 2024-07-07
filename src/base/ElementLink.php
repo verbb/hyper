@@ -51,7 +51,7 @@ abstract class ElementLink extends Link
     public function count(): int|bool
     {
         // Override `Link::count` to not rely on a URL, as not all elements have a URL, but still have a value
-        return $this->linkValue ? true : false;
+        return $this->getElement() ? true : false;
     }
 
     public function setAttributes($values, $safeOnly = true): void
