@@ -820,7 +820,9 @@ class HyperField extends Field
                 $value = self::_decodeStringValues($value);
             } else if (is_string($value)) {
                 // TODO: replace in Craft 4.4+ or LitEmoji 5+
-                $value = StringHelper::shortcodesToEmoji($value);
+                if ($key !== 'linkValue') {
+                    $value = StringHelper::shortcodesToEmoji($value);
+                }
             }
 
             $values[$key] = $value;
