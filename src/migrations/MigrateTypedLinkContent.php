@@ -7,6 +7,7 @@ use verbb\hyper\links as linkTypes;
 
 use Craft;
 use craft\db\Query;
+use craft\db\Table;
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\Matrix;
 use craft\helpers\Console;
@@ -236,6 +237,16 @@ class MigrateTypedLinkContent extends PluginContentMigration
         if ($link instanceof ElementLink) {
             $link->linkSiteId = $oldSettings['siteId'] ?? $oldSettings['linkedSiteId'] ?? null;
             $link->linkValue = $oldSettings['linkedId'] ?? null;
+        }
+
+        if ($link instanceof linkTypes\Site) {
+            $siteId = $oldSettings['linkedSiteId'] ?? null;
+
+            if ($siteId) {
+                if ($siteUid = Db::uidById(Table::SITES, $siteId)) {
+                    $link->linkValue = $siteUid;
+                }
+            }
         }
 
         return [$link->getSerializedValues()];
