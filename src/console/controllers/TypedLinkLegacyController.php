@@ -20,11 +20,17 @@ use lenz\linkfield\records\LinkRecord;
 
 use verbb\supertable\fields\SuperTableField;
 
+/**
+ * Manages Hyper migrations from Typed Link (legacy).
+ */
 class TypedLinkLegacyController extends Controller
 {
     // Public Methods
     // =========================================================================
 
+    /**
+     * Migrates Typed Link fields (legacy) to the latest Typed Link field schema.
+     */
     public function actionIndex(): int
     {
         $this->_updateAllSettings();

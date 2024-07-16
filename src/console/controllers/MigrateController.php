@@ -15,36 +15,57 @@ use craft\helpers\App;
 use yii\console\Controller;
 use yii\console\ExitCode;
 
+/**
+ * Manages Hyper migrations from other link plugins.
+ */
 class MigrateController extends Controller
 {
     // Public Methods
     // =========================================================================
 
+    /**
+     * Migrates LinkIt fields to Hyper links.
+     */
     public function actionLinkitField(): int
     {
         return $this->_migrate(MigrateLinkitField::class);
     }
 
+    /**
+     * Migrates LinkIt field content to Hyper links.
+     */
     public function actionLinkitContent(): int
     {
         return $this->_migrate(MigrateLinkitContent::class);
     }
 
+    /**
+     * Migrates Typed Link fields to Hyper links.
+     */
     public function actionTypedLinkField(): int
     {
         return $this->_migrate(MigrateTypedLinkField::class);
     }
 
+    /**
+     * Migrates Typed Link field content to Hyper links.
+     */
     public function actionTypedLinkContent(): int
     {
         return $this->_migrate(MigrateTypedLinkContent::class);
     }
 
+    /**
+     * Migrates Link fields to Hyper links.
+     */
     public function actionLinkField(): int
     {
         return $this->_migrate(MigrateLinkField::class);
     }
 
+    /**
+     * Migrates Link field content to Hyper links.
+     */
     public function actionLinkContent(): int
     {
         return $this->_migrate(MigrateLinkContent::class);
