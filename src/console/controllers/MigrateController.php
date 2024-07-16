@@ -20,8 +20,26 @@ use yii\console\ExitCode;
  */
 class MigrateController extends Controller
 {
+    // Properties
+    // =========================================================================
+
+    /**
+     * @var bool Whether to create a backup before running migration tasks.
+     */
+    public ?bool $createBackup = null;
+
+
     // Public Methods
     // =========================================================================
+
+    public function options($actionID): array
+    {
+        $options = parent::options($actionID);
+
+        $options[] = 'createBackup';
+
+        return $options;
+    }
 
     /**
      * Migrates LinkIt fields to Hyper links.
@@ -79,7 +97,9 @@ class MigrateController extends Controller
     {
         App::maxPowerCaptain();
 
-        if (Hyper::$plugin->getSettings()->backupOnMigrate) {
+        $createBackup = $this->createBackup ?? Hyper::$plugin->getSettings()->backupOnMigrate;
+
+        if ($createBackup) {
             Craft::$app->getDb()->backup();
         }
 
