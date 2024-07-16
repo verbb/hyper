@@ -5,6 +5,7 @@
 
 {% set selectedNavItem = 'link' %}
 {% set fullPageForm = response is not defined %}
+{% set settings = craft.hyper.plugin.settings %}
 
 {% block actionButton %}{% endblock %}
 
@@ -20,6 +21,17 @@
     {{ 'This will **permanently** modify all your Link fields and cannot be reverted. We‘ll make a backup before the migration is run if you need to restore back to it.' | t('hyper') | md }}
 
     {{ 'This is a 2-step process. First, to migrate your fields. Second, to migrate your content.' | t('hyper') | md }}
+
+    <hr>
+
+    {{ forms.checkbox({
+        name: 'createBackup',
+        id: 'create-backup',
+        label: 'Create backup' | t('hyper'),
+        checked: settings.backupOnMigrate,
+    }) }}
+
+    <hr>
 
     <h3>{{ 'Step 1. Migrate Fields' | t('hyper') }}</h3>
 

@@ -58,7 +58,7 @@ class MigrationsController extends Controller
     {
         App::maxPowerCaptain();
 
-        if (Hyper::$plugin->getSettings()->backupOnMigrate) {
+        if ($this->request->getParam('createBackup')) {
             Craft::$app->getDb()->backup();
         }
 
