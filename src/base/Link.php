@@ -216,7 +216,7 @@ abstract class Link extends Element implements LinkInterface
     public function defineRules(): array
     {
         $rules = parent::defineRules();
-            
+
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
 
@@ -324,7 +324,17 @@ abstract class Link extends Element implements LinkInterface
         }
 
         if ($this->layoutUid) {
-            $this->_fieldLayout = Hyper::$plugin->getService()->getFieldLayoutByUid($this->layoutUid);
+            $fieldLayout = null;
+            $layouts = Craft::$app->getFields()->getLayoutsByType(static::class);
+
+            foreach ($layouts as $layout) {
+                if ($layout->uid === $this->layoutUid) {
+                    $fieldLayout = $layout;
+                    break;
+                }
+            }
+
+            $this->_fieldLayout = $fieldLayout;
         }
 
         return $this->_fieldLayout;
