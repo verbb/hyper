@@ -250,7 +250,7 @@ class HyperField extends Field
         $changedValue = false;
 
         // Only process this for other site elements, as we could be picking a link from another site on purpose
-        if ($element->propagating) {
+        if ($element->propagating && !$element->duplicateOf) {
             $value = $element->getFieldValue($this->handle);
 
             foreach ($value as $linkIndex => $link) {
