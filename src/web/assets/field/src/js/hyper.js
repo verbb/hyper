@@ -68,6 +68,10 @@ Craft.Hyper.ElementSelect = Garnish.Base.extend({
                         $siteId.val(event.elements[0].siteId);
                     }
                 });
+
+                elementSelect.on('removeElements', (event) => {
+                    $siteId.val('');
+                });
             }
         }
     },
