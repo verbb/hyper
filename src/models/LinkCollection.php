@@ -102,6 +102,18 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         return $this->_links;
     }
 
+    public function __clone()
+    {
+        // Ensure that when we clone this collection, we deep-clone
+        $this->_field = clone $this->_field;
+        $this->_element = $this->_element ? clone $this->_element : null;
+        $this->_firstLink = $this->_firstLink ? clone $this->_firstLink : null;
+
+        foreach ($this->_links as $key => $link) {
+            $this->_links[$key] = clone $link;
+        }
+    }
+
     public function getIterator(): ArrayIterator
     {
         return new ArrayIterator($this->_links);
