@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.3 - 2024-07-21
+
+### Added
+- Add `Link::linkUri`.
+
+### Changed
+- Change element-based links properly checking if their linked-to element is “empty”. For example, linking to a disabled element will now make `isEmpty` return true.
+
+### Fixed
+- Fix an error for multi-site installs where element links were being incorrectly propagated.
+- Fix element links not having their `linkSiteId` value reset when removing a linked element.
+
 ## 2.0.2 - 2024-06-15
 
 ### Added
