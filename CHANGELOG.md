@@ -54,6 +54,23 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.2.0 - 2024-07-21
+
+### Added
+- Add `Link::linkUri`.
+- Add “Create backup” checkbox for migrations.
+- Add `create-backup` console command option for migrations.
+- Add missing descriptions for console commands.
+
+### Changed
+- Change element-based links properly checking if their linked-to element is “empty”. For example, linking to a disabled element will now make `isEmpty` return true.
+- Improve GraphQL Schema generation performance. (thanks @markhuot).
+- Handle migration of anchor-only URLs for Typed Link fields.
+
+### Fixed
+- Fix Typed Link migration for Site link types.
+- Fix parsing emoji's in link URLs. (thanks @sfsmfc).
+
 ## 1.1.32 - 2024-06-15
 
 ### Added
