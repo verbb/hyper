@@ -194,24 +194,27 @@ export default {
 
     methods: {
         updateInitialSerializedValue() {
-            const $mainForm = $('form#main-form');
+            // Give it a second for everything to be ready
+            setTimeout(() => {
+                const $mainForm = $('form#main-form');
 
-            // We only ever want to do this once, after Vue has loaded, as they'll be determined to be changed data, when it's not (on-load)
-            if ($mainForm.length && !$mainForm.data('vue-serialized-element-content')) {
-                const elementEditor = $mainForm.data('elementEditor');
+                // We only ever want to do this once, after Vue has loaded, as they'll be determined to be changed data, when it's not (on-load)
+                if ($mainForm.length && !$mainForm.data('vue-serialized-element-content')) {
+                    const elementEditor = $mainForm.data('elementEditor');
 
-                if (elementEditor) {
-                    // Serialize the form again, now Vue is ready
-                    const formData = elementEditor.serializeForm(true);
+                    if (elementEditor) {
+                        // Serialize the form again, now Vue is ready
+                        const formData = elementEditor.serializeForm(true);
 
-                    // Update the local cache, and the DOM cache
-                    elementEditor.lastSerializedValue = formData;
-                    $mainForm.data('initialSerializedValue', formData);
+                        // Update the local cache, and the DOM cache
+                        elementEditor.lastSerializedValue = formData;
+                        $mainForm.data('initialSerializedValue', formData);
 
-                    // Mark the form as "vue-loaded" so that we don't re-serialize content when new components are created
-                    $mainForm.data('vue-serialized-element-content', true);
+                        // Mark the form as "vue-loaded" so that we don't re-serialize content when new components are created
+                        $mainForm.data('vue-serialized-element-content', true);
+                    }
                 }
-            }
+            }, 500);
         },
 
         setCache(link) {
