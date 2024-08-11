@@ -365,7 +365,7 @@ export default {
             const params = {
                 fieldId: this.settings.fieldId,
                 blockIndex: this.blockIndex,
-                data: this.linkData,
+                data: JSON.stringify(this.linkData),
             };
 
             this.slideout = new Craft.CpScreenSlideout('hyper/fields/input-settings', { params });

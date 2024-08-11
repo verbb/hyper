@@ -4,7 +4,11 @@
     "src": "field/src/js/hyper.css"
   },
   "field/src/js/hyper.js": {
+<<<<<<< HEAD
     "file": "assets/hyper-51c21d8f.js",
+=======
+    "file": "assets/hyper-983e4ae8.js",
+>>>>>>> origin/craft-4
     "src": "field/src/js/hyper.js",
     "isEntry": true,
     "css": [

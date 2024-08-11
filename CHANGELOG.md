@@ -66,6 +66,11 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.2.1 - 2024-08-08
+
+### Fixed
+- Fix a compatibility issue with Craft 4.11.x.
+
 ## 1.2.0 - 2024-07-21
 
 ### Added
