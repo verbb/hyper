@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.4 - 2024-08-11
+
+### Fixed
+- Fix compatibility with Vizy.
+
 ## 2.0.3 - 2024-07-21
 
 ### Added
