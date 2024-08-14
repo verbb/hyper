@@ -145,6 +145,11 @@ class LinkInterface extends BaseInterfaceType
                 'description' => 'The url suffix for the link.',
                 'type' => Type::string(),
             ],
+            'linkUri' => [
+                'name' => 'linkUri',
+                'description' => 'The uri for the link (if an element-based link).',
+                'type' => Type::string(),
+            ],
         ], self::getName());
     }
 }

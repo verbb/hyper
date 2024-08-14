@@ -49,6 +49,7 @@ Attribute | Description
 `target` | Returns `_blank` if the link should open in a new window.
 `newWindow` | Whether the link should open in a new window.
 `linkUrl` | The link URL. Supports `.env` variables and aliases.
+`linkUri` | The link URI, if an element-based link.
 `linkValue` | The value of the link. This will vary depending on the link type.
 `linkText` | The custom text for the link. e.g. `Read more`.
 `ariaLabel` | The value for the `aria-label` attribute for the link.
