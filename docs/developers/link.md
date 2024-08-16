@@ -56,7 +56,7 @@ Attribute | Description
 `urlSuffix` | The suffix value to append to the URL.
 `linkTitle` | The value for the `title` attribute for the link.
 `classes` | The value for the `class` attribute for the link.
-`customAttributes` | Any custom attributes for the link.
+`customAttributes` | Any custom HTML attributes for the link.
 
 ### Methods
 
@@ -64,8 +64,8 @@ Method | Description
 --- | ---
 `getElement(status)` | Returns the linked element if an element-based link type. `status` can be supplied to filter based on the status (by default, only live elements will be returned).
 `hasElement(status)` | Returns whether linked to an element, or an element-based link type. `status` can be supplied to filter based on the status (by default, only live elements will be returned).
-`getLink(attributes)` | Returns an `<a>` anchor element. Pass in an array of attributes to override any.
-`getLinkAttributes(attributes, asString)` | Returns a collection of attributes to be used when creating an `<a>` HTML element. You can also have this returned as a string instead of an array.
+`getLink(attributes)` | Returns an `<a>` anchor element. Pass in an array of HTML attributes to override any.
+`getLinkAttributes(attributes, asString)` | Returns a collection of HTML attributes to be used when creating an `<a>` HTML element. You can also have this returned as a string instead of an array.
 
 ## Element Link
 An Element Link is an extension of a regular Link object, and is inherited by all element-base link types like an Entry, Category, etc.
