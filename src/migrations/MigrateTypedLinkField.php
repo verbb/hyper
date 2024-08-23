@@ -156,6 +156,12 @@ class MigrateTypedLinkField extends PluginFieldMigration
                             // Check for blocktype errors too
                             foreach ($matrixField->getBlockTypes() as $blockType) {
                                 $errors[$blockType->handle] = $blockType->getErrors();
+
+                                if ($fieldLayout = $blockType->getFieldLayout()) {
+                                    foreach ($fieldLayout->getCustomFields() as $blockTypeField) {
+                                        $errors[$blockType->handle . '_' . $blockTypeField->handle] = $blockTypeField->getErrors();
+                                    }
+                                }
                             }
 
                             throw new Exception(Json::encode(array_filter($errors)));
@@ -191,6 +197,12 @@ class MigrateTypedLinkField extends PluginFieldMigration
                             // Check for blocktype errors too
                             foreach ($superTableField->getBlockTypes() as $blockType) {
                                 $errors[] = $blockType->getErrors();
+
+                                if ($fieldLayout = $blockType->getFieldLayout()) {
+                                    foreach ($fieldLayout->getCustomFields() as $blockTypeField) {
+                                        $errors[$blockType->handle . '_' . $blockTypeField->handle] = $blockTypeField->getErrors();
+                                    }
+                                }
                             }
 
                             throw new Exception(Json::encode(array_filter($errors)));
