@@ -402,9 +402,15 @@ export default {
                 return [];
             }
 
+            const excludedInputs = ['id', 'isNew'];
+
             for (const propertyKey in data) {
                 let property = data[propertyKey];
                 const name = prepend ? `${prepend}[${propertyKey}]` : propertyKey;
+
+                if (excludedInputs.includes(propertyKey)) {
+                    continue;
+                }
 
                 if (typeof property === 'object') {
                     this.generateInputData(property, name, items);
