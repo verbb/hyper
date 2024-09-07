@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 - 2024-09-07
+
+### Added
+- Add extra error logging for Matrix and Super Table fields for Typed Link field migration.
+- Add “safe” attributes for various link properties to allow `setAttributes` correctly.
+- Add `linkUri` to the GraphQL `LinkInterface` class.
+
 ## 1.2.1 - 2024-08-08
 
 ### Fixed
