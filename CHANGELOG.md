@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.5 - 2024-09-07
+
+### Added
+- Add extra error logging for Matrix and Super Table fields for Typed Link field migration.
+- Add “safe” attributes for various link properties to allow `setAttributes` correctly.
+- Add `linkUri` to the GraphQL `LinkInterface` class.
+
+### Fixed
+- Fix use of `initialSerializedValue` changes that were meant to address draft change behaviour.
+- Fix some properties of a link block being serialized when they don’t need to be.
+
 ## 2.0.4 - 2024-08-11
 
 ### Fixed
