@@ -581,6 +581,8 @@ abstract class Link extends Element implements LinkInterface
     {
         $rules = parent::defineRules();
 
+        $rules[] = [['label', 'handle', 'enabled', 'newWindow', 'linkValue', 'linkText', 'ariaLabel', 'urlSuffix', 'linkTitle', 'classes', 'customAttributes'], 'safe'];
+
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
 
