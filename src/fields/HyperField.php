@@ -16,6 +16,7 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\base\MergeableFieldInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\ArrayHelper;
@@ -33,7 +34,7 @@ use Throwable;
 
 use GraphQL\Type\Definition\Type;
 
-class HyperField extends Field
+class HyperField extends Field implements MergeableFieldInterface
 {
     // Static Methods
     // =========================================================================
