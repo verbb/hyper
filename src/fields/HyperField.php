@@ -96,7 +96,7 @@ class HyperField extends Field
 
         // Serialize the link types as arrays instead of arrays of Link classes
         $settings['linkTypes'] = array_map(function($linkType) {
-            return $linkType->getSettingsConfig();
+            return $linkType->getSettingsConfigForDb();
         }, $this->getLinkTypes());
 
         return $settings;
@@ -493,21 +493,9 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
-        // Prevent calls to this too early, before Hyper is initialized
-        // https://github.com/verbb/hyper/issues/72
-        if (Hyper::getInstance()) {
-            $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
-        } else {
-            $registeredLinkTypes = [];
-        }
+        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
         foreach ($linkTypes as $key => $config) {
-            // Check if the saved link type is still registered. Be sure to check if this is an early
-            // initialization where no registered link types are available - that's okay.
-            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
-                continue;
-            }
-
             $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
 
             if ($config instanceof LinkInterface) {
@@ -516,7 +504,7 @@ class HyperField extends Field
                 // Some extra handling here when setting from the POST.
                 $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
 
-                $linkType = Links::createLink($config);
+                $linkType = Hyper::$plugin->getLinks()->createLink($config);
             }
 
             // Set up the field layout config - it'll be saved later
@@ -612,6 +600,14 @@ class HyperField extends Field
 
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
+        if ($link instanceof linkTypes\MissingLink) {
+            $error = Craft::t('hyper', 'Link type class \'{type}\' is invalid.', [
+                'type' => $link->expectedType,
+            ]);
+
+            return Html::tag('div', $error, ['class' => 'error']);
+        }
+
         try {
             // Render just the first tab
             $linkFieldLayout = $link->getFieldLayout();
@@ -679,7 +675,7 @@ class HyperField extends Field
                 continue;
             }
 
-            $linkType = Links::createLink($linkTypeClass);
+            $linkType = Hyper::$plugin->getLinks()->createLink($linkTypeClass);
             $linkTypes[] = $this->_getLinkTypeSettingsConfig($linkType);
         }
 

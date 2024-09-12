@@ -1,28 +1,36 @@
 {% import '_includes/forms' as forms %}
 
-<h4>{{ '{name} Link' | t('hyper', { name: linkType.displayName() }) }}</h4>
+{% set isMissing = className(linkType) == 'verbb\\hyper\\links\\MissingLink' %}
+
+{% if isMissing %}
+    <p class="error">{{ 'Link type class \'{type}\' is invalid.' | t('hyper', { type: linkType.expectedType }) }}</p>
+{% else %}
+    <h4>{{ '{name} Link' | t('hyper', { name: linkType.displayName() }) }}</h4>
+{% endif %}
 
 {% set isCustom = isCustom ?? false %}
 
-{% namespace 'linkTypes[__LINK_TYPE__]' %}
-    {{ hiddenInput('type', className(linkType)) }}
-    {{ hiddenInput('handle', '__LINK_TYPE__') }}
+<div class="{{ isMissing ? 'hidden' }}">
+    {% namespace 'linkTypes[__LINK_TYPE__]' %}
+        {{ hiddenInput('type', isMissing ? linkType.expectedType : className(linkType)) }}
+        {{ hiddenInput('handle', '__LINK_TYPE__') }}
 
-    {% if isCustom %}
-        {{ hiddenInput('isCustom', true) }}
-    {% endif %}
+        {% if isCustom %}
+            {{ hiddenInput('isCustom', true) }}
+        {% endif %}
 
-    {{ forms.textField({
-        label: 'Label' | t('hyper'),
-        instructions: 'The label for this link type in the control panel.' | t('hyper'),
-        name: 'label',
-        required: true,
-        value: linkType.label,
-        errors: linkType.getErrors('label'),
-        inputAttributes: {
-            'data-label-field': true,
-        },
-    }) }}
+        {{ forms.textField({
+            label: 'Label' | t('hyper'),
+            instructions: 'The label for this link type in the control panel.' | t('hyper'),
+            name: 'label',
+            required: true,
+            value: linkType.label,
+            errors: linkType.getErrors('label'),
+            inputAttributes: {
+                'data-label-field': true,
+            },
+        }) }}
 
-    {{ linkType.getSettingsHtml() | raw }}
-{% endnamespace %}
+        {{ linkType.getSettingsHtml() | raw }}
+    {% endnamespace %}
+</div>

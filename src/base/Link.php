@@ -9,6 +9,7 @@ use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\helpers\Html;
+use verbb\hyper\links\MissingLink;
 
 use Craft;
 use craft\base\Element;
@@ -248,7 +249,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getSettingsConfig(): array
     {
-        // Return the settings used in the Vue component, and what will be saved to the field settings
+        // Return the settings used in the Vue component
         return [
             'type' => get_class($this),
             'label' => $this->label,
@@ -258,6 +259,12 @@ abstract class Link extends Element implements LinkInterface
             'layoutUid' => $this->layoutUid,
             'layoutConfig' => $this->layoutConfig,
         ];
+    }
+
+    public function getSettingsConfigForDb(): array
+    {
+        // Return the config that will be saved to the field settings
+        return $this->getSettingsConfig();
     }
 
     public function getInputConfig(): array
