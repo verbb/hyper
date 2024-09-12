@@ -66,6 +66,11 @@ abstract class Link extends Element implements LinkInterface
         return null;
     }
 
+    public static function getRequiredPlugins(): array
+    {
+        return [];
+    }
+
     public static function gqlTypeNameByContext(mixed $context): string
     {
         $linkTypeHandle = StringHelper::toPascalCase($context->label);

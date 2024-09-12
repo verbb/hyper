@@ -17,6 +17,11 @@ class Variant extends ElementLink
         return Craft::t('hyper', 'Variant');
     }
 
+    public static function getRequiredPlugins(): array
+    {
+        return ['commerce'];
+    }
+
     public static function elementType(): string
     {
         return VariantElement::class;

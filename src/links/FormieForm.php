@@ -17,6 +17,11 @@ class FormieForm extends ElementLink
         return Craft::t('hyper', 'Form');
     }
 
+    public static function getRequiredPlugins(): array
+    {
+        return ['formie'];
+    }
+
     public static function elementType(): string
     {
         return FormElement::class;
