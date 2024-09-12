@@ -29,6 +29,7 @@ use craft\web\View;
 
 use yii\db\Schema;
 
+use Exception;
 use Throwable;
 
 use GraphQL\Type\Definition\Type;
@@ -492,6 +493,12 @@ class HyperField extends Field
     public function setLinkTypes(array $linkTypes): void
     {
         $this->_linkTypes = [];
+
+        // Protect against calls before Craft is initialized
+        // https://github.com/verbb/hyper/issues/72
+        if (!Hyper::getInstance()) {
+            throw new Exception('Hyper is being called before Craft is fully initialized. Ensure all element queries are wrapped with a `Craft::$app->onInit()` check.');
+        }
 
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
