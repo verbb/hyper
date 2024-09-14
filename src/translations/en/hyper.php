@@ -32,6 +32,7 @@ return [
   'Link Fields' => 'Link Fields',
   'Link Text' => 'Link Text',
   'Link Title' => 'Link Title',
+  'Link type class \\\'{type}\\\' is invalid.' => 'Link type class \\\'{type}\\\' is invalid.',
   'Link Types' => 'Link Types',
   'Max Links' => 'Max Links',
   'Min Links' => 'Min Links',

@@ -17,6 +17,11 @@ class ShopifyProduct extends ElementLink
         return Craft::t('hyper', 'Shopify Product');
     }
 
+    public static function getRequiredPlugins(): array
+    {
+        return ['shopify'];
+    }
+
     public static function elementType(): string
     {
         return ShopifyProductElement::class;

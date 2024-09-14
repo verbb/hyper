@@ -17,6 +17,11 @@ class Product extends ElementLink
         return Craft::t('hyper', 'Product');
     }
 
+    public static function getRequiredPlugins(): array
+    {
+        return ['commerce'];
+    }
+
     public static function elementType(): string
     {
         return ProductElement::class;

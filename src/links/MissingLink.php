@@ -4,17 +4,9 @@ namespace verbb\hyper\links;
 use verbb\hyper\base\Link;
 
 use Craft;
-use craft\base\MissingComponentInterface;
-use craft\base\MissingComponentTrait;
 
-class MissingLink extends Link implements MissingComponentInterface
+class MissingLink extends Link
 {
-    // Traits
-    // =========================================================================
-
-    use MissingComponentTrait;
-
-
     // Static Methods
     // =========================================================================
 
@@ -26,17 +18,62 @@ class MissingLink extends Link implements MissingComponentInterface
 
     // Properties
     // =========================================================================
+    
+    public ?string $expectedType = null;
+    public ?string $errorMessage = null;
 
-    public ?int $linkSiteId = null;
-    public string|array|null $sources = '*';
-    public ?string $selectionLabel = null;
+    private array $_missingProperties = [];
 
 
-    // Static Methods
+    // Public Methods
     // =========================================================================
 
-    public static function displayName(): string
+    public function __construct(array $config = [])
     {
-        return Craft::t('hyper', 'Missing Link');
+        Craft::configure($this, $config);
+    }
+
+    public function __set($name, $value)
+    {
+        // Check if the property exists in the class, if so, set it directly
+        if (property_exists($this, $name)) {
+            $this->$name = $value;
+        } else {
+            // Otherwise, store it as an unknown property
+            $this->_missingProperties[$name] = $value;
+        }
+    }
+
+    public function getMissingProperties(): array
+    {
+        return $this->_missingProperties;
+    }
+
+    public function applyMissingProperties($target)
+    {
+        foreach ($this->_missingProperties as $name => $value) {
+            if (property_exists($target, $name)) {
+                $target->$name = $value;
+            }
+        }
+    }
+
+    public function getSettingsConfigForDb(): array
+    {
+        $values = parent::getSettingsConfigForDb();
+
+        // Before saving the field's link type settings, swap out the link type in case it comes back
+        $values['type'] = $this->expectedType;
+
+        foreach ($this->_missingProperties as $key => $value) {
+            $values[$key] = $value;
+        }
+
+        return $values;
+    }
+
+    public function getLinkUrl(): ?string
+    {
+        return null;
     }
 }

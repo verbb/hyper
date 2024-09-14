@@ -8,7 +8,7 @@
 
                         <input type="hidden" :name="getName(`linkTypes[${element.handle}][sortOrder]`)" :value="index">
 
-                        <span class="hc-label-text">{{ element.label }}</span>
+                        <span class="hc-label-text">{{ element.label }} {{ element.type === 'verbb\\hyper\\links\\MissingLink' ? '⚠️' : '' }}</span>
 
                         <drag-handle class="hc-sidebar-item-move hc-move">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 944.1 945.2"><path d="M630.2,787.7c0-87-70.5-157.5-157.5-157.5s-157.5,70.5-157.5,157.5s70.5,157.5,157.5,157.5S630.2,874.7,630.2,787.7zM315.1,472.6c0-87-70.5-157.5-157.5-157.5S0,385.6,0,472.6s70.5,157.5,157.5,157.5S315.1,559.6,315.1,472.6z M630.2,157.5C630.2,70.5,559.6,0,472.6,0S315.1,70.5,315.1,157.5s70.5,157.5,157.5,157.5S630.2,244.5,630.2,157.5z M944.1,472.6c0-86.4-70-156.4-156.4-156.4s-156.4,70-156.4,156.4S701.3,629,787.7,629S944.1,559,944.1,472.6L944.1,472.6z" /></svg>
@@ -39,7 +39,7 @@
             <div v-for="(linkType) in proxyLinkTypes" :key="linkType.handle" :class="selectedLinkType.handle === linkType.handle ? '' : 'hidden'">
                 <div v-html="getParsedLinkTypeHtml(linkType.html, linkType.handle)"></div>
 
-                <div v-show="selectedLinkType.handle === linkType.handle" class="field">
+                <div v-show="selectedLinkType.handle === linkType.handle && linkType.type !== 'verbb\\hyper\\links\\MissingLink'" class="field">
                     <div class="heading">
                         <label id="layout-field-label" class="required" for="layout">{{ t('hyper', 'Link Fields') }}</label>
                     </div>
