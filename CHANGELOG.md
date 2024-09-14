@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 - Unreleased
+
+### Added
+- Add a more descriptive warning when Hyper is initialized before Craft is.
+- Link types now can specify any required plugins via `getRequiredPlugins()`.
+
+### Changed
+- Improve handling of link types that are invalid (removed or unavailable).
+- Hyper will now throw a fatal error if an element query is made before Craft is initialized (as per Craft best practices).
+
 ## 2.0.5 - 2024-09-07
 
 ### Added
