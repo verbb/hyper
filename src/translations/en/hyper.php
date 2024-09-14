@@ -39,6 +39,7 @@ return [
   'Links migrated.' => 'Links migrated.',
   'Link Text' => 'Link Text',
   'Link Title' => 'Link Title',
+  'Link type class \\\'{type}\\\' is invalid.' => 'Link type class \\\'{type}\\\' is invalid.',
   'Link Types' => 'Link Types',
   'Max Links' => 'Max Links',
   'Migrate Content' => 'Migrate Content',
