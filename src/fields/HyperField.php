@@ -18,6 +18,7 @@ use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
+use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Gql;
 use craft\helpers\Html;
@@ -419,37 +420,45 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
-        // Protect against calls before Craft is initialized
-        // https://github.com/verbb/hyper/issues/72
-        if (!Hyper::getInstance()) {
-            throw new Exception('Hyper is being called before Craft is fully initialized. Ensure all element queries are wrapped with a `Craft::$app->onInit()` check.');
-        }
+        try {
+            $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
-        $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
+            foreach ($linkTypes as $key => $config) {
+                $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
 
-        foreach ($linkTypes as $key => $config) {
-            $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
+                if ($config instanceof LinkInterface) {
+                    $linkType = $config;
+                } else {
+                    // Some extra handling here when setting from the POST.
+                    $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
 
-            if ($config instanceof LinkInterface) {
-                $linkType = $config;
-            } else {
-                // Some extra handling here when setting from the POST.
-                $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
+                    $linkType = Hyper::$plugin->getLinks()->createLink($config);
+                }
 
-                $linkType = Hyper::$plugin->getLinks()->createLink($config);
+                // Set up the field layout config - it'll be saved later
+                if (!$linkType->layoutConfig) {
+                    $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
+                }
+
+                // Generate a layout UID if not already set
+                if (!$linkType->layoutUid) {
+                    $linkType->layoutUid = StringHelper::UUID();
+                }
+
+                $this->_linkTypes[$sortOrder] = $linkType;
             }
+        } catch (Throwable $e) {
+            // Protect against calls before Craft is initialized
+            // https://github.com/verbb/hyper/issues/72
 
-            // Set up the field layout config - it'll be saved later
-            if (!$linkType->layoutConfig) {
-                $linkType->layoutConfig = $linkType::getDefaultFieldLayout()->getConfig();
-            }
+            // This field is being loaded before Craft is ready, so we can't determine the link types. But, this field will
+            // already have been "prepped" and won't be processed again due to an internal cache with the fields service.
+            // It's a bit heavy-handed, but we clear out the field cache so that when Craft is ready, it'll prep the field properly.
+            Craft::$app->getFields()->refreshFields();
 
-            // Generate a layout UID if not already set
-            if (!$linkType->layoutUid) {
-                $linkType->layoutUid = StringHelper::UUID();
-            }
-
-            $this->_linkTypes[$sortOrder] = $linkType;
+            // Log the error and stack trace
+            Hyper::error('Hyper is being called before Craft is fully initialized. Ensure all element queries are wrapped with a `Craft::$app->onInit()` check.');
+            Hyper::error($e);
         }
     }
 

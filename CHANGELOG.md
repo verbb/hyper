@@ -92,6 +92,11 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.1 - 2024-09-17
+
+### Fixed
+- Add back handling for when Hyper is initialised before Craft is ready, but log exception and stack trace.
+
 ## 1.3.0 - 2024-09-14
 
 ### Added
