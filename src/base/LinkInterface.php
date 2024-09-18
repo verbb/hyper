@@ -1,7 +1,9 @@
 <?php
 namespace verbb\hyper\base;
 
-interface LinkInterface
+use craft\base\ComponentInterface;
+
+interface LinkInterface extends ComponentInterface
 {
 
 }

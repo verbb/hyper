@@ -14,6 +14,7 @@ use verbb\hyper\links\MissingLink;
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\base\Component;
 use craft\fieldlayoutelements\BaseNativeField;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
@@ -24,12 +25,14 @@ use craft\models\FieldLayoutTab;
 
 use Twig\Markup;
 
-abstract class Link extends Element implements LinkInterface
+abstract class Link extends Component implements LinkInterface
 {
     // Constants
     // =========================================================================
 
     public const SCENARIO_SETTINGS = 'settings';
+    public const SCENARIO_ESSENTIALS = 'essentials';
+    public const SCENARIO_LIVE = 'live';
 
 
     // Static Methods
@@ -157,14 +160,6 @@ abstract class Link extends Element implements LinkInterface
     // Public Methods
     // =========================================================================
 
-    public function init(): void
-    {
-        parent::init();
-
-        // Needed to override the element title
-        $this->title = $this->linkTitle;
-    }
-
     public function __toString(): string
     {
         return (string)$this->getUrl();
@@ -215,6 +210,8 @@ abstract class Link extends Element implements LinkInterface
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_SETTINGS] = [];
+        $scenarios[self::SCENARIO_ESSENTIALS] = [];
+        $scenarios[self::SCENARIO_LIVE] = [];
 
         return $scenarios;
     }

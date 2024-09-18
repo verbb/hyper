@@ -1,12 +1,13 @@
 <?php
 namespace verbb\hyper\services;
 
+use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\Plugin;
-use craft\models\FieldLayout;
 
 use Craft;
 use craft\base\Component;
+use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\db\Table;
 use craft\elements\Entry;
@@ -14,6 +15,8 @@ use craft\elements\db\ElementQueryInterface;
 use craft\events\ConfigEvent;
 use craft\helpers\ArrayHelper;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
+use craft\models\FieldLayout;
+use craft\models\FieldLayoutForm;
 
 class Service extends Component
 {
@@ -182,5 +185,23 @@ class Service extends Component
         Craft::configure($elementQuery, $elementParams);
 
         return $elementQuery;
+    }
+
+
+    public function createForm(FieldLayout $fieldLayout, ?LinkInterface $link = null, bool $static = false, array $config = []): FieldLayoutForm
+    {
+        $element = new \verbb\hyper\models\FakeElement();
+
+        // Create a fake link ID so that some fields like Matrix will work with this fake element
+        $element->id = rand();
+        $element->fieldLayoutId = $fieldLayout->id;
+
+        foreach ($link->fields as $fieldHandle => $value) {
+            if ($field = $link->getFieldLayout()->getFieldByHandle($fieldHandle)) {
+                $element->setFieldValues([$fieldHandle => $value]);
+            }
+        }
+
+        return $fieldLayout->createForm($element);
     }
 }

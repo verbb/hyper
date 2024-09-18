@@ -420,7 +420,7 @@ class HyperField extends Field
     {
         $this->_linkTypes = [];
 
-        try {
+        // try {
             $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
             foreach ($linkTypes as $key => $config) {
@@ -447,19 +447,19 @@ class HyperField extends Field
 
                 $this->_linkTypes[$sortOrder] = $linkType;
             }
-        } catch (Throwable $e) {
-            // Protect against calls before Craft is initialized
-            // https://github.com/verbb/hyper/issues/72
+        // } catch (Throwable $e) {
+        //     // Protect against calls before Craft is initialized
+        //     // https://github.com/verbb/hyper/issues/72
 
-            // This field is being loaded before Craft is ready, so we can't determine the link types. But, this field will
-            // already have been "prepped" and won't be processed again due to an internal cache with the fields service.
-            // It's a bit heavy-handed, but we clear out the field cache so that when Craft is ready, it'll prep the field properly.
-            Craft::$app->getFields()->refreshFields();
+        //     // This field is being loaded before Craft is ready, so we can't determine the link types. But, this field will
+        //     // already have been "prepped" and won't be processed again due to an internal cache with the fields service.
+        //     // It's a bit heavy-handed, but we clear out the field cache so that when Craft is ready, it'll prep the field properly.
+        //     Craft::$app->getFields()->refreshFields();
 
-            // Log the error and stack trace
-            Hyper::error('Hyper is being called before Craft is fully initialized. Ensure all element queries are wrapped with a `Craft::$app->onInit()` check.');
-            Hyper::error($e);
-        }
+        //     // Log the error and stack trace
+        //     Hyper::error('Hyper is being called before Craft is fully initialized. Ensure all element queries are wrapped with a `Craft::$app->onInit()` check.');
+        //     Hyper::error($e);
+        // }
     }
 
 
@@ -560,9 +560,6 @@ class HyperField extends Field
 
             $view->startJsBuffer();
 
-            // Create a fake link ID so that some fields like Matrix will work with this fake element
-            $linkType->id = rand();
-
             // Render the fields' HTML and JS to be injected in Vue, along with the config for a new link
             $linkTypeSettings = [
                 'type' => get_class($linkType),
@@ -608,11 +605,7 @@ class HyperField extends Field
         foreach ($links as $key => $link) {
             $view->startJsBuffer();
 
-            // Create a fake link ID so that some fields like Matrix will work with this fake element
-            $link->id = rand();
-
             $preppedValues[$key] = $link->getInputConfig();
-            $preppedValues[$key]['id'] = $link->id;
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);
@@ -656,7 +649,7 @@ class HyperField extends Field
             $linkValueField->field = $this;
             $linkValueField->link = $link;
 
-            $form = $fieldLayout->createForm($link);
+            $form = Hyper::$plugin->getService()->createForm($fieldLayout, $link);
 
             // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
             // because the form HTML is for JavaScript; not returned by inputHtml().
