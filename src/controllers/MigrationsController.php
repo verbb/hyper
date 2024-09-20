@@ -5,6 +5,7 @@ use verbb\hyper\Hyper;
 use verbb\hyper\migrations\MigrateLinkitField;
 use verbb\hyper\migrations\MigrateLinkitContent;
 use verbb\hyper\migrations\MigrateTypedLinkField;
+use verbb\hyper\migrations\MigrateTypedLinkFieldLegacy;
 use verbb\hyper\migrations\MigrateTypedLinkContent;
 use verbb\hyper\migrations\MigrateLinkField;
 use verbb\hyper\migrations\MigrateLinkContent;
@@ -28,6 +29,11 @@ class MigrationsController extends Controller
     public function actionLinkitContent(): void
     {
         $this->_migrate(MigrateLinkitContent::class);
+    }
+
+    public function actionTypedLinkFieldLegacy(): void
+    {
+        $this->_migrate(MigrateTypedLinkFieldLegacy::class);
     }
 
     public function actionTypedLinkField(): void

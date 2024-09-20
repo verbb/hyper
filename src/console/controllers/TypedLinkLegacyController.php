@@ -25,24 +25,10 @@ use verbb\supertable\fields\SuperTableField;
  */
 class TypedLinkLegacyController extends Controller
 {
-    // Public Methods
+    // Static Methods
     // =========================================================================
 
-    /**
-     * Migrates Typed Link fields (legacy) to the latest Typed Link field schema.
-     */
-    public function actionIndex(): int
-    {
-        $this->_updateAllSettings();
-
-        return ExitCode::OK;
-    }
-
-
-    // Private Methods
-    // =========================================================================
-
-    private function _updateAllSettings(): void
+    public static function updateAllSettings(): void
     {
         Db::update(Table::FIELDS, [
             'type' => 'lenz\\linkfield\\fields\\LinkField',
@@ -58,14 +44,14 @@ class TypedLinkLegacyController extends Controller
 
         foreach ($rows as $row) {
             Db::update(Table::FIELDS, [
-                'settings' => $this->_updateSettings($row['settings']),
+                'settings' => self::updateSettings($row['settings']),
             ], [
                 'id' => $row['id'],
             ]);
         }
     }
 
-    private function _updateSettings(string $settings): string
+    public static function updateSettings(string $settings): string
     {
         $settings = Json::decode($settings);
         
@@ -98,5 +84,19 @@ class TypedLinkLegacyController extends Controller
         unset($settings['allowedLinkNames']);
 
         return Json::encode($settings);
+    }
+    
+
+    // Public Methods
+    // =========================================================================
+
+    /**
+     * Migrates Typed Link fields (legacy) to the latest Typed Link field schema.
+     */
+    public function actionIndex(): int
+    {
+        self::updateAllSettings();
+
+        return ExitCode::OK;
     }
 }
