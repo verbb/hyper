@@ -1,5 +1,5 @@
 <template>
-    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }">
+    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }" data-exclude-serialization>
         <div v-show="showHeader" class="hyper-header">
             <div class="hyper-header-type">
                 <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">
@@ -54,17 +54,12 @@
             </div>
         </div>
 
-        <!-- Generate inputs for all properties and custom fields in a single location -->
-        <!-- This helps to consolidate values coming from all over (Vue, server-rendered fields, slide-out) -->
-        <!-- Also note this is _before_ the `fieldsHtml` which override these values as they aren't stored in Vue -->
-        <input v-for="(input, index) in generateInputData(linkData)" :key="index" type="hidden" :name="input.name" :value="input.value">
-
-        <link-block-fields v-if="fieldsHtml" ref="fields" class="hyper-body-wrapper" :template="fieldsHtml" />
+        <link-block-fields v-if="fieldsHtml" ref="fields" class="hyper-body-wrapper" :template="fieldsHtml" @update="onFieldUpdate" />
     </div>
 </template>
 
 <script>
-import { set, escapeRegExp } from 'lodash-es';
+import { set, escapeRegExp, merge } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
@@ -98,13 +93,13 @@ export default {
             default: () => { return {}; },
         },
 
-        value: {
+        modelValue: {
             type: Object,
             default: () => { return {}; },
         },
     },
 
-    emits: ['delete'],
+    emits: ['delete', 'update:modelValue'],
 
     data() {
         return {
@@ -184,7 +179,7 @@ export default {
 
     created() {
         this.link.handle = this.settings.defaultLinkType;
-        this.link = this.clone(this.value);
+        this.link = this.clone(this.modelValue);
 
         // Some important type-casting, where things can get messed up where fields are stored in a non-numerical-keyed array,
         // which isn't something I thought possible! This causes incorrect behvaiour when sending the values to element-slideout.
@@ -227,7 +222,7 @@ export default {
                     html = html.replace(/<(?:input|textarea|select)\s[^>]*/ig, '$& disabled');
                 }
 
-                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), this.blockIndex);
+                return html.replace(new RegExp('__HYPER_BLOCK__', 'g'), this.link.id);
             }
 
             return '';
@@ -239,7 +234,7 @@ export default {
                 let footHtml = this.hyperField.getCachedFieldJs(this.cacheKey);
                 footHtml = this.getParsedLinkTypeHtml(footHtml);
 
-                const $script = document.querySelector(`#hyper-${this.settings.namespacedId}-${this.blockIndex}-script`);
+                const $script = document.querySelector(`#hyper-${this.link.id}-script`);
 
                 if (footHtml) {
                     // But first check if already output. Otherwise, multiple bindings!
@@ -312,23 +307,10 @@ export default {
                     });
                 }
 
-                let fieldsHtml = $fieldsHtml.htmlize();
-
-                // Revert to blank namespacing for `id` and `name` now that the order has changed
-                const idPlaceholder = `${this.settings.namespacedId}-__HYPER_BLOCK_${this.settings.placeholderKey}__`;
-                const namePlaceholder = `${this.settings.namespacedName}[__HYPER_BLOCK_${this.settings.placeholderKey}__]`;
-                const currentId = `${this.settings.namespacedId}-${this.blockIndex}`;
-                const currentName = `${this.settings.namespacedName}[${this.blockIndex}]`;
-
-                fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentId), 'g'), idPlaceholder);
-                fieldsHtml = fieldsHtml.replace(new RegExp(escapeRegExp(currentName), 'g'), namePlaceholder);
+                const fieldsHtml = $fieldsHtml.htmlize();
 
                 this.hyperField.setCachedFieldHtml(cacheKey, fieldsHtml);
             }
-        },
-
-        getName(name) {
-            return namespaceString(`${this.settings.namespacedName}[${this.blockIndex}]`, name);
         },
 
         initSettingsMenu() {
@@ -382,6 +364,8 @@ export default {
                         this.link[key] = value;
                     }
                 });
+
+                this.$emit('update:modelValue', this.link);
             });
 
             if (this.tippy) {
@@ -397,32 +381,23 @@ export default {
             this.$emit('delete', this.blockIndex);
         },
 
-        generateInputData(data, prepend, items = []) {
-            if (this.settings.isStatic) {
-                return [];
+        onFieldUpdate() {
+            // We don't want to update serialized content on-load, because this can trigger a false-positive that something has changed
+            // when there are nested fields. Instead, wait until we're okay to make changes (the field has been interacted with)
+            if (!this.hyperField.listenForChanges) {
+                return;
             }
 
-            const excludedInputs = ['id', 'isNew'];
+            const postData = Garnish.getPostData(this.$refs.fields.$el);
+            const content = Craft.expandPostArray(postData);
 
-            for (const propertyKey in data) {
-                let property = data[propertyKey];
-                const name = prepend ? `${prepend}[${propertyKey}]` : propertyKey;
+            // This will be in the format `hyperData[267267872][linkValue]...`, and for nested setups, it'll all be one level
+            // so ensure that we grab the correct data for this block.
+            const blockContent = content.hyperData[this.link.id] || [];
 
-                if (excludedInputs.includes(propertyKey)) {
-                    continue;
-                }
+            this.link = merge(this.link, blockContent);
 
-                if (typeof property === 'object') {
-                    this.generateInputData(property, name, items);
-                } else {
-                    // Special-case for booleans, we don't want to output `false` as the value, instead omit it
-                    property = (property === false) ? null : property;
-
-                    items.push({ name: this.getName(name), value: property });
-                }
-            }
-
-            return items;
+            this.$emit('update:modelValue', this.link);
         },
     },
 };

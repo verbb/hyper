@@ -1,5 +1,7 @@
 <template>
     <div class="hyper-links">
+        <slot></slot>
+
         <slick-list
             v-if="settings.multipleLinks"
             v-model:list="proxyValue"
@@ -9,12 +11,12 @@
             @sort-end="onEndDrag"
         >
             <slick-item v-for="(element, index) in proxyValue" :key="element.id" :index="index" class="hyper-link">
-                <link-block :ref="`block-${index}`" :key="element.id" :value="element" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
+                <link-block :ref="`block-${index}`" :key="element.id" v-model="proxyValue[index]" :block-index="index" :hyper-field="this" @delete="deleteBlock" />
             </slick-item>
         </slick-list>
 
         <div v-else>
-            <link-block v-for="(link, index) in proxyValue" :key="index" :value="link" :block-index="index" :hyper-field="this" />
+            <link-block v-for="(link, index) in proxyValue" :key="index" v-model="proxyValue[index]" :block-index="index" :hyper-field="this" />
         </div>
 
         <div v-if="settings.multipleLinks && !settings.isStatic" class="h-add-container">
@@ -59,12 +61,6 @@ export default {
     },
 
     props: {
-        name: {
-            type: String,
-            required: true,
-            default: '',
-        },
-
         handle: {
             type: String,
             required: true,
@@ -105,14 +101,22 @@ export default {
             type: String,
             default: '',
         },
+
+        valueResources: {
+            type: String,
+            default: '',
+        },
     },
 
     data() {
         return {
             tippy: null,
             proxyValue: [],
+            proxyValueResources: [],
             cachedFieldHtml: {},
             cachedFieldJs: {},
+            rendered: false,
+            listenForChanges: false,
         };
     },
 
@@ -141,12 +145,37 @@ export default {
         },
     },
 
+    watch: {
+        proxyValue: {
+            deep: true,
+            handler(newValue) {
+                // Don't update the DOM until we want to
+                if (this.rendered && this.$el) {
+                    const $dataStore = this.$el.querySelector('[data-store]');
+                    const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
+
+                    if ($dataStore) {
+                        $dataStore.value = JSON.stringify(newValue);
+                    }
+
+                    if ($dataStoreDebug) {
+                        $dataStoreDebug.innerHTML = JSON.stringify(newValue);
+                    }
+                }
+            },
+        },
+    },
+
     created() {
         this.proxyValue = JSON.parse(this.clone(this.value));
+        this.proxyValueResources = JSON.parse(this.clone(this.valueResources));
 
         // Prepare all link blocks by caching their HTML/JS
-        this.proxyValue.forEach((link) => {
-            this.setCache(link);
+        this.proxyValue.forEach((link, index) => {
+            // Server-generated HTML/JS is stored separate to the model values
+            const resources = this.proxyValueResources[index] || [];
+
+            this.setCache(link, resources);
         });
 
         // Check if under the threshold of min links, and create new ones
@@ -185,16 +214,25 @@ export default {
                     });
                 }
             }
+
+            // Let the component know we're finished rendering, and to start updating changes
+            this.rendered = true;
+
+            // Once the field has settled, we can start listening for changes. This helps any PHP/JS JSON inconsistencies
+            // that would otherwise trigger a change in the field.
+            setTimeout(() => {
+                this.listenForChanges = true;
+            }, 1000);
         });
     },
 
     methods: {
-        setCache(link) {
+        setCache(link, resources) {
             // For each link type, create HTML/JS. We use the Link's HTML/JS for the current link type
             // if it exists, because it may already have data. If we switch to another link type, it's fresh.
             this.settings.linkTypes.forEach((linkType) => {
-                let blockHtml = get(link, `html.${linkType.handle}`);
-                let blockJs = get(link, `js.${linkType.handle}`);
+                let blockHtml = get(resources, `html.${linkType.handle}`);
+                let blockJs = get(resources, `js.${linkType.handle}`);
 
                 if (!blockHtml) {
                     blockHtml = linkType.html;

@@ -1,5 +1,3 @@
-<input type="hidden" name="{{ name }}">
-
 {% do view.registerTranslations('hyper', [
     'Add a link',
     'Add {type}',
@@ -9,13 +7,17 @@
 <div class="hyper-input-component" v-cloak>
     <hyper-input
         value="{{ value | json_encode }}"
+        value-resources="{{ valueResources | json_encode }}"
         input-settings="{{ settings | json_encode }}"
-        name="{{ name }}"
         handle="{{ field.handle }}"
         :element-id="{{ element.id ?: 'null' }}"
         element-type="{{ className(element) }}"
         :element-site-id="{{ element.siteId ?: 'null' }}"
         :element-draft-id="{{ element.draftId ?: 'null' }}"
         :element-revision-id="{{ element.revisionId ?: 'null' }}"
-    ></hyper-input>
+    >
+        {# Render here so that ElementEditor.js doesn't detect a change from server-render to when Vue kicks in #}
+        <div v-if="$isDebug" data-store-debug class="input text" style="margin-bottom: 20px;">{{ value | json_encode }}</div>
+        <input data-store type="hidden" name="{{ name }}" value="{{ value | json_encode }}">
+    </hyper-input>
 </div>

@@ -502,14 +502,22 @@ class HyperField extends Field
         ];
 
         // Prepare the link types and HTML for fields
-        $placeholderKey = StringHelper::randomString(10);
-        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element, $placeholderKey);
+        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element);
         $settings['linkTypes'] = $linkTypeInfo['linkTypes'] ?? [];
         $settings['js'] = $linkTypeInfo['js'] ?? [];
-        $settings['placeholderKey'] = $placeholderKey;
 
         // Prepare the link element values for the field, including pre-rendered HTML
-        $value = $this->_getLinksForInput($value, $placeholderKey);
+        $value = $this->_getLinksForInput($value);
+
+        $valueResources = [];
+
+        // Extract HTML/JS for each link block and provide separately
+        foreach ($value as $k => &$v) {
+            $valueResources[$k] = [
+                'html' => ArrayHelper::remove($v, 'html'),
+                'js' => ArrayHelper::remove($v, 'js'),
+            ];
+        }
 
         // Create the Hyper Input Vue component
         $js = 'new Craft.Hyper.Input("' . $view->namespaceInputId($id) . '");';
@@ -521,6 +529,7 @@ class HyperField extends Field
             'field' => $this,
             'element' => $element,
             'value' => $value,
+            'valueResources' => $valueResources,
             'settings' => $settings,
         ]);
     }
@@ -543,13 +552,16 @@ class HyperField extends Field
     // Private Methods
     // =========================================================================
 
-    private function _getLinkTypeInfoForInput(?ElementInterface $element, string $placeholderKey): array
+    private function _getLinkTypeInfoForInput(?ElementInterface $element): array
     {
         $linkTypeInfo = [];
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
+
+        // Disable deltas while we render our fields
+        $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
+        $view->setIsDeltaRegistrationActive(false);
 
         foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->enabled) {
@@ -561,6 +573,9 @@ class HyperField extends Field
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $linkType->id = rand();
 
+            // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
+            $view->setNamespace('hyperData[__HYPER_BLOCK__]');
+
             // Render the fields' HTML and JS to be injected in Vue, along with the config for a new link
             $linkTypeSettings = [
                 'type' => get_class($linkType),
@@ -571,17 +586,18 @@ class HyperField extends Field
             ];
 
             $js = $view->clearJsBuffer(false);
-            $linkTypeSettings['js'] = '<script id="hyper-' . $view->namespaceInputId('script') . '">' . $js . '</script>';
+            $linkTypeSettings['js'] = '<script id="hyper-__HYPER_BLOCK__-script">' . $js . '</script>';
 
             $linkTypeInfo['linkTypes'][] = $linkTypeSettings;
         }
 
         $view->setNamespace($oldNamespace);
+        $view->setIsDeltaRegistrationActive($isDeltaRegistrationActive);
 
         return $linkTypeInfo;
     }
 
-    private function _getLinksForInput(LinkCollection $links, string $placeholderKey): array
+    private function _getLinksForInput(LinkCollection $links): array
     {
         $preppedValues = [];
 
@@ -600,7 +616,10 @@ class HyperField extends Field
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
-        $view->setNamespace($view->namespaceInputName("$this->handle[__HYPER_BLOCK_{$placeholderKey}__]"));
+
+        // Disable deltas while we render our fields
+        $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
+        $view->setIsDeltaRegistrationActive(false);
 
         // For each Link element, render the fields and convert to an array
         foreach ($links as $key => $link) {
@@ -609,15 +628,19 @@ class HyperField extends Field
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $link->id = rand();
 
+            // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
+            $view->setNamespace('hyperData[__HYPER_BLOCK__]');
+
             $preppedValues[$key] = $link->getInputConfig();
             $preppedValues[$key]['id'] = $link->id;
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);
-            $preppedValues[$key]['js'][$link->handle] = '<script id="hyper-' . $view->namespaceInputId('script') . '">' . $js . '</script>';
+            $preppedValues[$key]['js'][$link->handle] = '<script id="hyper-__HYPER_BLOCK__-script">' . $js . '</script>';
         }
 
         $view->setNamespace($oldNamespace);
+        $view->setIsDeltaRegistrationActive($isDeltaRegistrationActive);
 
         return $preppedValues;
     }
