@@ -1,5 +1,5 @@
 <template>
-    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }" data-exclude-serialization>
+    <div class="hyper-wrapper" :class="{ 'no-header': !showHeader }">
         <div v-show="showHeader" class="hyper-header">
             <div class="hyper-header-type">
                 <select v-model="link.handle" :disabled="settings.isStatic || settings.linkTypes.length < 2">

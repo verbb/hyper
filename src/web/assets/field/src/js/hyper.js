@@ -137,4 +137,19 @@ $(document).ready(() => {
     Craft.HyperReady = true;
 
     document.dispatchEvent(new CustomEvent('vite-script-loaded', { detail: { path: 'field/src/js/hyper.js' } }));
+
+    // We don't want to send the Hyper block data to the server, as the content is serialized ourselves with the field.
+    // We do this by changing the namespace of field content to `hyperData`, which is used in our Hyper field data JSON.
+    // This method hooks into the ElementEditor.js serialization
+    const $mainForm = $('form#main-form');
+
+    if ($mainForm.length) {
+        const elementEditor = $mainForm.data('elementEditor');
+
+        if (elementEditor) {
+            elementEditor.on('serializeForm', (e) => {
+                e.data.serialized = e.data.serialized.replace(/&hyperData[^&]*/g, '');
+            });
+        }
+    }
 });
