@@ -16,6 +16,7 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\base\MergeableFieldInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\App;
@@ -35,7 +36,7 @@ use Throwable;
 
 use GraphQL\Type\Definition\Type;
 
-class HyperField extends Field
+class HyperField extends Field implements MergeableFieldInterface
 {
     // Static Methods
     // =========================================================================
@@ -98,6 +99,30 @@ class HyperField extends Field
         $settings['linkTypes'] = array_map(function($linkType) {
             return $linkType->getSettingsConfigForDb();
         }, $this->getLinkTypes());
+
+        // Override this behaviour when using the field merge tools so that it can effectively compare Hyper field
+        // due to their field layouts for link types not returning as the same.
+        if (Craft::$app->getRequest()->getIsConsoleRequest()) {
+            $route = Craft::$app->getRequest()->getParams()[0] ?? null;
+
+            if ($route === 'fields/auto-merge' || $route === 'fields/merge') {
+                foreach ($settings['linkTypes'] as $linkTypeKey => &$linkType) {
+                    unset($linkType['layoutUid']);
+
+                    if (isset($linkType['layoutConfig']['tabs']) && is_array($linkType['layoutConfig']['tabs'])) {
+                        foreach ($linkType['layoutConfig']['tabs'] as $layoutTabKey => &$layoutTab) {
+                            unset($layoutTab['uid']);
+
+                            if (isset($layoutTab['elements']) && is_array($layoutTab['elements'])) {
+                                foreach ($layoutTab['elements'] as $layoutElementKey => &$layoutElement) {
+                                    unset($layoutElement['uid']);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         return $settings;
     }
