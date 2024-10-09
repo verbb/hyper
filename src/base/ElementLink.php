@@ -200,12 +200,12 @@ abstract class ElementLink extends Link
             }
 
             if (!in_array(get_class($cached), $skippedElementTypes)) {
-                return $cached->url;
+                return $cached->getUrl();
             }
         }
 
         if ($element = $this->getElement()) {
-            return $element->url;
+            return $element->getUrl();
         }
 
         return null;
@@ -218,7 +218,7 @@ abstract class ElementLink extends Link
         }
 
         if ($cached = $this->_getElementCache()) {
-            return $cached->title;
+            return $cached->getTitle();
         }
 
         if ($element = $this->getElement()) {
@@ -264,7 +264,7 @@ abstract class ElementLink extends Link
             $element = new $elementType($cached);
 
             // Ensure we only return for "live" elements
-            if ($element && $element->status === Element::STATUS_ENABLED) {
+            if ($element && $element->getStatus() === Element::STATUS_ENABLED) {
                 return $this->_elementCache = $element;
             }
         }
