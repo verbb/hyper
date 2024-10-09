@@ -1,13 +1,19 @@
 # Changelog
-## 2.1.0 - Unreleased
+
+## 2.1.0 - 2024-10-09
 
 ### Added
 - Add a more descriptive warning when Hyper is initialized before Craft is.
 - Link types now can specify any required plugins via `getRequiredPlugins()`.
+- Add the ability to merge identical Hyper fields via `fields/merge` and `fields/auto-merge`.
+- Add support for ElementEditor.js serialization event (introduced in Craft 5.5) to improve change detection of Hyper field content.
 
 ### Changed
 - Improve handling of link types that are invalid (removed or unavailable).
 - Hyper will now throw a fatal error if an element query is made before Craft is initialized (as per Craft best practices).
+
+### Fixed
+- Fix en error with element links in Craft 5.4.7+.
 
 ## 2.0.5 - 2024-09-07
 
