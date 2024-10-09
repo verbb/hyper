@@ -12,7 +12,7 @@ use craft\elements\Asset;
 
 use craft\commerce\elements\Variant;
 
-abstract class ElementLink extends Link
+abstract class ElementLink extends Link implements ElementLinkInterface
 {
     // Static Methods
     // =========================================================================
