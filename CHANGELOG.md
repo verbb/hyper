@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.2 - 2024-10-09
+
+### Added
+- Typed Link field migrations now include an “Update Legacy Fields” button as a first-step in the migration process to fix incorrect Typed Link fields
+
+### Changed
+- Typed Link Field Content Migration now prioritize `linkedSiteId` over `siteId` to support cross site relations. (thanks @internetztube).
+
+### Fixed
+- Fix link types from initializing too early.
+
 ## 1.3.1 - 2024-09-17
 
 ### Fixed
