@@ -235,7 +235,7 @@ class MigrateTypedLinkContent extends PluginContentMigration
         $link->newWindow = ($advanced['target'] ?? '') === '_blank';
 
         if ($link instanceof ElementLink) {
-            $link->linkSiteId = $oldSettings['siteId'] ?? $oldSettings['linkedSiteId'] ?? null;
+            $link->linkSiteId = $oldSettings['linkedSiteId'] ?? $oldSettings['siteId'] ?? null;
             $link->linkValue = $oldSettings['linkedId'] ?? null;
         }
 
