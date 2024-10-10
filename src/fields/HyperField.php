@@ -321,9 +321,15 @@ class HyperField extends Field
             foreach ($value as $linkIndex => $link) {
                 // Only process this for brand-new, unsaved blocks
                 if ($link instanceof ElementLink) {
-                    // The new status is only set on the original non-propagated link block, so fetch that. We no longer have access
-                    // to the original element, and due to Craft's propagateElement function, content isn't copied to the site element here.
-                    if ($this->_originElement && $this->_originElement->getFieldValue($this->handle)[$linkIndex]?->isNew) {
+                    // Check if this is a new Hyper link, and that we should propagate it to other sites
+                    $isNewLink = $this->_originElement?->getFieldValue($this->handle)[$linkIndex]?->isNew ?? null;
+
+                    // When being triggered by a resave, check if this is a new element, that should also trigger propagation
+                    if ($element->resaving && $element->isNewForSite) {
+                        $isNewLink = true;
+                    }
+
+                    if ($isNewLink) {
                         $link->linkSiteId = $element->siteId;
 
                         $changedValue = true;
