@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 - 2024-10-10
+
+### Fixed
+- Fix en error with element links in Craft 5.4.7+.
+
 ## 2.1.0 - 2024-10-09
 
 ### Added
