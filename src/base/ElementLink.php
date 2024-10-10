@@ -218,7 +218,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         }
 
         if ($cached = $this->_getElementCache()) {
-            return $cached->getTitle();
+            return $cached->title;
         }
 
         if ($element = $this->getElement()) {
