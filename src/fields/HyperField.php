@@ -324,8 +324,8 @@ class HyperField extends Field
                     // Check if this is a new Hyper link, and that we should propagate it to other sites
                     $isNewLink = $this->_originElement?->getFieldValue($this->handle)[$linkIndex]?->isNew ?? null;
 
-                    // When being triggered by a resave, check if this is a new element, that should also trigger propagation
-                    if ($element->resaving && $element->isNewForSite) {
+                    // When being saved for a new site element, that should also trigger propagation
+                    if ($element->isNewForSite) {
                         $isNewLink = true;
                     }
 
