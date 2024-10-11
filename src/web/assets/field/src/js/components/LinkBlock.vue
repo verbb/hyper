@@ -103,6 +103,7 @@ export default {
 
     data() {
         return {
+            mounted: false,
             tippy: null,
             slideout: null,
             fieldsHtml: '',
@@ -163,6 +164,12 @@ export default {
     },
 
     watch: {
+        'link.newWindow': function(newValue, oldValue) {
+            if (this.mounted) {
+                this.$emit('update:modelValue', this.link);
+            }
+        },
+
         'link.handle': function(newValue, oldValue) {
             if (oldValue) {
                 // If we're switching link types, ensure that we cache the old field data before switching.
@@ -211,6 +218,8 @@ export default {
             if (this.settings.multipleLinks) {
                 this.initSettingsMenu();
             }
+
+            this.mounted = true;
         });
     },
 
