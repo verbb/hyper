@@ -569,8 +569,8 @@ abstract class Link extends Element implements LinkInterface
         }
 
         // Merge attributes in a specific order to allow template-provided attributes to override everything.
-        // Combine "Custom Attributes" in field settings with derived attributes (above) with template-provided ones.
-        $attributes = $this->_mergeAttributes($this->getCustomAttributes(), $attr, $attributes);
+        // The order should be built-in (above), Custom Attribute field settings, and template-provided attributes.
+        $attributes = $this->_mergeAttributes($attr, $this->getCustomAttributes(), $attributes);
         $attributes = array_filter($attributes);
 
         if ($asString) {
@@ -631,7 +631,7 @@ abstract class Link extends Element implements LinkInterface
             $attributes['class'] = array_unique($attributes['class']);
         }
 
-        // Handle `rel` attributes which have custom added support for merging
+        // Handle `rel` attributes which can be an array
         if (isset($attributes['rel']) && is_array($attributes['rel'])) {
             $attributes['rel'] = implode(' ', $attributes['rel']);
         }
