@@ -27,6 +27,7 @@ class Links extends Component
     {
         $linkTypes = [
             linkTypes\Asset::class,
+            linkTypes\CalendarEvent::class,
             linkTypes\Category::class,
             linkTypes\Custom::class,
             linkTypes\Email::class,
