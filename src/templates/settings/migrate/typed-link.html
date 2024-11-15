@@ -1,0 +1,67 @@
+{% extends 'hyper/_layouts/settings' %}
+
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% set selectedNavItem = 'typedLink' %}
+{% set fullPageForm = response is not defined %}
+{% set settings = craft.hyper.plugin.settings %}
+
+{% block actionButton %}{% endblock %}
+
+{% block blockContent %}
+
+{{ redirectInput('hyper/settings/migrate/typed-link') }}
+
+<h2 class="first">{{ 'Migrate Typed Link Fields' | t('hyper') }}</h2>
+
+{% if response is not defined %}
+    <p>{{ 'Migrate your Typed Link fields and content to Hyper fields.' | t('hyper') }}</p>
+
+    {{ 'This will **permanently** modify all your Typed Link fields and cannot be reverted. We‘ll make a backup before the migration is run if you need to restore back to it.' | t('hyper') | md }}
+
+    {{ 'This is a 3-step process. First, to ensure Typed Link links are up to date, second to migrate your fields. Thirdly, to migrate your content.' | t('hyper') | md }}
+
+    <hr>
+
+    {{ forms.checkbox({
+        name: 'createBackup',
+        id: 'create-backup',
+        label: 'Create backup' | t('hyper'),
+        checked: settings.backupOnMigrate,
+    }) }}
+
+    <hr>
+
+    <h3>{{ 'Step 1. Update Legacy Fields' | t('hyper') }}</h3>
+
+    {{ 'Typed Link fields may not have been updated in a previous release of their plugin. This step ensures all your Typed Link fields are up to date first, so that Hyper can migrate them.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-field-legacy" value="{{ 'Update Legacy Fields' | t('hyper') }}">
+
+    <hr>
+
+    <h3>{{ 'Step 2. Migrate Fields' | t('hyper') }}</h3>
+
+    {{ 'You should first migrate your fields over in an environment with `allowAdminChanges` set to `true`. Once migrated successfully, you can then migrate the content for those fields.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-field" value="{{ 'Migrate Fields' | t('hyper') }}">
+
+    <hr>
+
+    <h3>{{ 'Step 3. Migrate Content' | t('hyper') }}</h3>
+
+    {{ 'Once your fields have been migrated, the content for that field used in elements must be converted. You should run this in your local development environment to test everything migrates correctly. You can then deploy your field changes as run this as many times as you like on other environments. As content is stored per-environment, you‘ll need to run this step on each environment.' | t('hyper') | md }}
+
+    <input type="submit" class="btn submit formsubmit" data-action="hyper/migrations/typed-link-content" value="{{ 'Migrate Content' | t('hyper') }}">
+{% else %}
+    {% for formId, output in response %}
+        {{ output | raw }}
+    {% endfor %}
+
+    <hr>
+
+    <a class="btn submit" href="{{ cpUrl('hyper/settings/migrate/typed-link') }}">{{ 'Done' | t('hyper') }}</a>
+{% endif %}
+
+{% endblock %}
