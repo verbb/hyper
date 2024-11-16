@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0 - 2024-11-16
+
+### Added
+- Add migration for [Linkit](https://plugins.craftcms.com/linkit?craft5) for Craft 5.
+- Add migration for [Typed Link Field](https://plugins.craftcms.com/typedlinkfield?craft5) for Craft 5.
+
 ## 2.1.2 - 2024-10-20
 
 ### Added
