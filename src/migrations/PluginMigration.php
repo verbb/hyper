@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\migrations;
 
+use verbb\hyper\base\LinkInterface;
 use verbb\hyper\events\ModifyMigrationLinkEvent;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
@@ -67,10 +68,10 @@ class PluginMigration extends Migration
         return $event->newClass;
     }
 
-    public static function getDefaultFieldLayout(bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false): FieldLayout
+    public static function getDefaultFieldLayout(LinkInterface $linkType, bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false): FieldLayout
     {
         $fieldLayout = new FieldLayout([
-            'type' => static::class,
+            'type' => $linkType::class,
         ]);
 
         // Populate the field layout

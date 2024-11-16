@@ -79,7 +79,7 @@ class MigrateLinkitField extends PluginFieldMigration
                     $linkType->placeholder = $type['customPlaceholder'] ?? null;
                 }
 
-                $fieldLayout = self::getDefaultFieldLayout($allowCustomText);
+                $fieldLayout = self::getDefaultFieldLayout($linkType, $allowCustomText);
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 

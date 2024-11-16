@@ -4,8 +4,12 @@ namespace verbb\hyper\migrations;
 use verbb\hyper\fields\HyperField;
 
 use Craft;
+use craft\base\ElementInterface;
+use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\fields\Matrix;
+use craft\fieldlayoutelements\BaseField;
+use craft\fieldlayoutelements\CustomField;
 use craft\helpers\App;
 use craft\helpers\Console;
 use craft\helpers\Db;
@@ -13,6 +17,8 @@ use craft\helpers\ElementHelper;
 use craft\helpers\Json;
 
 use verbb\supertable\fields\SuperTableField;
+
+use yii\base\InvalidArgumentException;
 
 class PluginContentMigration extends PluginMigration
 {
@@ -49,112 +55,40 @@ class PluginContentMigration extends PluginMigration
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);
 
             if ($field) {
-                $column = ElementHelper::fieldColumn($field->columnPrefix, $field->handle, $field->columnSuffix);
-
                 // Handle global field content
                 if ($field->context === 'global') {
-                    $content = (new Query())
-                        ->select([$column, 'id', 'elementId'])
-                        ->from('{{%content}}')
-                        ->where(['not', [$column => null]])
-                        ->andWhere(['not', [$column => '']])
-                        ->all();
+                    // We have to use field instances, not just the field
+                    foreach ($this->findFieldUsages($field) as $fieldLayoutUid) {
+                        // Find content rows for each field instance
+                        $sql = Craft::$app->getDb()->getQueryBuilder()->jsonExtract('elements_sites.content', [$fieldLayoutUid]);
 
-                    foreach ($content as $row) {
-                        $settings = $this->convertModel($field, Json::decode($row[$column]));
-
-                        if ($settings) {
-                            Db::update('{{%content}}', [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
-
-                            $this->stdout('    > Migrated content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
-                        } else {
-                            // Null model is okay, that's just an empty field content
-                            if ($settings !== null) {
-                                $this->stdout('    > Unable to convert content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
-                            }
-                        }
-                    }
-                }
-
-                // Handle Matrix field content
-                if (str_contains($field->context, 'matrixBlockType')) {
-                    // Get the Matrix field, and the content table
-                    $blockTypeUid = explode(':', $field->context)[1];
-
-                    $matrixInfo = (new Query())
-                        ->select(['fieldId', 'handle'])
-                        ->from('{{%matrixblocktypes}}')
-                        ->where(['uid' => $blockTypeUid])
-                        ->one();
-
-                    if ($matrixInfo) {
-                        $matrixFieldId = $matrixInfo['fieldId'];
-                        $matrixBlockTypeHandle = $matrixInfo['handle'];
-
-                        $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
-
-                        if ($matrixField && $matrixField instanceof Matrix) {
-                            $column = ElementHelper::fieldColumn($field->columnPrefix, $matrixBlockTypeHandle . '_' . $field->handle, $field->columnSuffix);
-
-                            $content = (new Query())
-                                ->select([$column, 'id', 'elementId'])
-                                ->from($matrixField->contentTable)
-                                ->where(['not', [$column => null]])
-                                ->andWhere(['not', [$column => '']])
-                                ->all();
-
-                            foreach ($content as $row) {
-                                $settings = $this->convertModel($field, Json::decode($row[$column]));
-                                
-                                if ($settings) {
-                                    Db::update($matrixField->contentTable, [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
-                                
-                                    $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
-                                } else {
-                                    // Null model is okay, that's just an empty field content
-                                    if ($settings !== null) {
-                                        $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Handle Super Table field content
-                if (str_contains($field->context, 'superTableBlockType')) {
-                    // Get the Super Table field, and the content table
-                    $blockTypeUid = explode(':', $field->context)[1];
-
-                    $superTableFieldId = (new Query())
-                        ->select(['fieldId'])
-                        ->from('{{%supertableblocktypes}}')
-                        ->where(['uid' => $blockTypeUid])
-                        ->scalar();
-
-                    $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
-
-                    if ($superTableField && $superTableField instanceof SuperTableField) {
-                        $column = ElementHelper::fieldColumn($field->columnPrefix, $field->handle, $field->columnSuffix);
-
-                        $content = (new Query())
-                            ->select([$column, 'id', 'elementId'])
-                            ->from($superTableField->contentTable)
-                            ->where(['not', [$column => null]])
-                            ->andWhere(['not', [$column => '']])
+                        $rows = (new Query())
+                            ->select(['content', 'id', 'elementId'])
+                            ->from('{{%elements_sites}}')
+                            ->where([
+                                'and',
+                                ['not', ['content' => null]],
+                                $sql . ' IS NOT NULL',
+                            ])
                             ->all();
 
-                        foreach ($content as $row) {
-                            $settings = $this->convertModel($field, Json::decode($row[$column]));
+                        foreach ($rows as $row) {
+                            $elementContent = Json::decode($row['content']) ?? [];
+                            $fieldContent = Json::decode($elementContent[$fieldLayoutUid] ?? '') ?? [];
+
+                            $settings = $this->convertModel($field, $fieldContent);
 
                             if ($settings) {
-                                Db::update($superTableField->contentTable, [$column => Json::encode($settings)], ['id' => $row['id']], [], true, $this->db);
-                            
-                                $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
+                                $elementContent[$fieldLayoutUid] = Json::encode($settings);
+
+                                // Direct database save on the content for performance, and not to mess with saving elements
+                                Db::update('{{%elements_sites}}', ['content' => Db::prepareForJsonColumn($elementContent, $this->db)], ['id' => $row['id']]);
+
+                                $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
                             } else {
                                 // Null model is okay, that's just an empty field content
                                 if ($settings !== null) {
-                                    $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
+                                    $this->stdout('    > Unable to convert content for element #' . $row['elementId'], Console::FG_RED);
                                 }
                             }
                         }
@@ -169,5 +103,55 @@ class PluginContentMigration extends PluginMigration
 
             $this->stdout("    > Field “{$field['handle']}” content migrated." . PHP_EOL, Console::FG_GREEN);
         }
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function findFieldUsages(FieldInterface $field): array
+    {
+        $uids = [];
+
+        foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
+            try {
+                $fieldLayoutField = $layout->getField(fn(BaseField $layoutField) => (
+                    $layoutField instanceof CustomField && $layoutField->getFieldUid() === $field->uid
+                ));
+
+                if ($fieldLayoutField) {
+                    $uids[] = $fieldLayoutField->uid;
+                }
+            } catch (InvalidArgumentException) {
+
+            }
+        }
+
+        return $uids;
+    }
+
+    protected function getElementContentForField(ElementInterface $element, FieldInterface $field): array
+    {
+        $fieldContent = [];
+
+        // Get the field content as JSON, indexed by field layout element UID
+        if ($fieldLayout = $element->getFieldLayout()) {
+            foreach ($fieldLayout->getCustomFields() as $fieldLayoutField) {
+                if ($field->handle === $fieldLayoutField->handle) {
+                    $serializedValue = $fieldLayoutField->serializeValue($element->getFieldValue($fieldLayoutField->handle), $element);
+                
+                    $fieldContent[$fieldLayoutField->layoutElement->uid] = $serializedValue;
+                }
+            }
+        }
+
+        // Fetch the current JSON content so we can merge in the new field content
+        $oldContent = Json::decode((new Query())
+            ->select(['content'])
+            ->from('{{%elements_sites}}')
+            ->where(['elementId' => $element->id, 'siteId' => $element->siteId])
+            ->scalar() ?? '') ?? [];
+
+        return array_merge($oldContent, $fieldContent);
     }
 }

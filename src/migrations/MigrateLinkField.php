@@ -76,7 +76,7 @@ class MigrateLinkField extends PluginFieldMigration
                     $linkType->placeholder = $type['placeholder'] ?? null;
                 }
 
-                $fieldLayout = self::getDefaultFieldLayout($allowText);
+                $fieldLayout = self::getDefaultFieldLayout($linkType, $allowText);
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 

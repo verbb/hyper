@@ -54,131 +54,37 @@ class MigrateTypedLinkContent extends PluginContentMigration
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);
 
             if ($field) {
-                $content = (new Query())
+                $contentRows = (new Query())
                     ->select(['*'])
                     ->from('{{%lenz_linkfield}}')
                     ->where(['fieldId' => $field['id']])
                     ->all();
 
-                // Find the empty content column (created when we saved the field for the new type)
-                $column = ElementHelper::fieldColumn($field->columnPrefix, $field->handle, $field->columnSuffix);
-
                 // Handle global field content
                 if ($field->context === 'global') {
-                    foreach ($content as $row) {
+                    foreach ($contentRows as $row) {
                         $settings = $this->convertModel($field, $row);
 
-                        // Find the content row to update
-                        $contentRow = (new Query())
-                            ->select(['id', 'elementId'])
-                            ->from('{{%content}}')
-                            ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
-                            ->one();
+                        // Fetch the element, as we need to get the field layout among other things
+                        $element = Craft::$app->getElements()->getElementById($row['elementId'], null, $row['siteId']);
 
-                        if ($contentRow) {
+                        if ($element) {
                             if ($settings) {
-                                Db::update('{{%content}}', [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
+                                // Get the JSON content for the element with our new content merged in, ready to go
+                                $newContent = $this->getElementContentForField($element, $field);
 
-                                $this->stdout('    > Migrated content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_GREEN);
+                                // Direct database save on the content for performance, and not to mess with saving elements
+                                Db::update('{{%elements_sites}}', ['content' => Db::prepareForJsonColumn($newContent, $this->db)], ['elementId' => $row['elementId'], 'siteId' => $row['siteId']]);
+
+                                $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
                             } else {
                                 // Null model is okay, that's just an empty field content
                                 if ($settings !== null) {
-                                    $this->stdout('    > Unable to convert content #' . $contentRow['id'] . ' for element #' . $contentRow['elementId'], Console::FG_RED);
+                                    $this->stdout('    > Unable to convert content for element #' . $row['elementId'], Console::FG_RED);
                                 }
                             }
                         } else {
-                            $this->stdout('    > Unable to find content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
-                        }
-                    }
-                }
-
-                // Handle Matrix field content
-                if (str_contains($field->context, 'matrixBlockType')) {
-                    // Get the Matrix field, and the content table
-                    $blockTypeUid = explode(':', $field->context)[1];
-
-                    $matrixInfo = (new Query())
-                        ->select(['fieldId', 'handle'])
-                        ->from('{{%matrixblocktypes}}')
-                        ->where(['uid' => $blockTypeUid])
-                        ->one();
-
-                    if ($matrixInfo) {
-                        $matrixFieldId = $matrixInfo['fieldId'];
-                        $matrixBlockTypeHandle = $matrixInfo['handle'];
-
-                        $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
-
-                        $column = ElementHelper::fieldColumn($field->columnPrefix, $matrixBlockTypeHandle . '_' . $field->handle, $field->columnSuffix);
-
-                        if ($matrixField && $matrixField instanceof Matrix) {
-                            foreach ($content as $row) {
-                                $settings = $this->convertModel($field, $row);
-
-                                // Find the content row to update
-                                $contentRow = (new Query())
-                                    ->select(['id', 'elementId'])
-                                    ->from($matrixField->contentTable)
-                                    ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
-                                    ->one();
-
-                                if ($contentRow) {
-                                    if ($settings) {
-                                        Db::update($matrixField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
-
-                                        $this->stdout('    > Migrated “' . $field->handle . ':' . $matrixBlockTypeHandle . '” Matrix content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
-                                    } else {
-                                        // Null model is okay, that's just an empty field content
-                                        if ($settings !== null) {
-                                            $this->stdout('    > Unable to convert Matrix content “' . $field->handle . ':' . $matrixBlockTypeHandle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
-                                        }
-                                    }
-                                } else {
-                                    $this->stdout('    > Unable to find Matrix content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Handle Super Table field content
-                if (str_contains($field->context, 'superTableBlockType')) {
-                    // Get the Super Table field, and the content table
-                    $blockTypeUid = explode(':', $field->context)[1];
-
-                    $superTableFieldId = (new Query())
-                        ->select(['fieldId'])
-                        ->from('{{%supertableblocktypes}}')
-                        ->where(['uid' => $blockTypeUid])
-                        ->scalar();
-
-                    $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
-
-                    if ($superTableField && $superTableField instanceof SuperTableField) {
-                        foreach ($content as $row) {
-                            $settings = $this->convertModel($field, $row);
-
-                            // Find the content row to update
-                            $contentRow = (new Query())
-                                ->select(['id', 'elementId'])
-                                ->from($superTableField->contentTable)
-                                ->where(['elementId' => $row['elementId'], 'siteId' => $row['siteId']])
-                                ->one();
-
-                            if ($contentRow) {
-                                if ($settings) {
-                                    Db::update($superTableField->contentTable, [$column => Json::encode($settings)], ['id' => $contentRow['id']], [], true, $this->db);
-
-                                    $this->stdout('    > Migrated “' . $field->handle . '” Super Table content #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_GREEN);
-                                } else {
-                                    // Null model is okay, that's just an empty field content
-                                    if ($settings !== null) {
-                                        $this->stdout('    > Unable to convert Super Table content “' . $field->handle . '” #' . $row['id'] . ' for element #' . $row['elementId'], Console::FG_RED);
-                                    }
-                                }
-                            } else {
-                                $this->stdout('    > Unable to find Super Table content row for element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
-                            }
+                            $this->stdout('    > Unable to find element #' . $row['elementId'] . ' and site #' . $row['siteId'], Console::FG_RED);
                         }
                     }
                 }

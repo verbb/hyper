@@ -93,7 +93,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                     }
                 }
 
-                $fieldLayout = self::getDefaultFieldLayout($allowCustomText, $enableTitle, $enableAriaLabel, $enableSuffix);
+                $fieldLayout = self::getDefaultFieldLayout($linkType, $allowCustomText, $enableTitle, $enableAriaLabel, $enableSuffix);
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 
