@@ -5,6 +5,7 @@
 ### Added
 - Add migration for [Linkit](https://plugins.craftcms.com/linkit?craft5) for Craft 5.
 - Add migration for [Typed Link Field](https://plugins.craftcms.com/typedlinkfield?craft5) for Craft 5.
+- Element links now have a “Show Site Menu” setting for multi-sites.
 
 ## 2.1.2 - 2024-10-20
 
