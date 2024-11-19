@@ -48,6 +48,7 @@ import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light-border.css';
 
 import { getId } from '@utils/string';
+import { normalizeJson } from '@utils/object';
 
 import LinkBlock from './LinkBlock.vue';
 
@@ -155,11 +156,11 @@ export default {
                     const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
 
                     if ($dataStore) {
-                        $dataStore.value = JSON.stringify(newValue);
+                        $dataStore.value = this.serializeValue(newValue);
                     }
 
                     if ($dataStoreDebug) {
-                        $dataStoreDebug.innerHTML = JSON.stringify(newValue);
+                        $dataStoreDebug.innerHTML = this.serializeValue(newValue);
                     }
                 }
             },
@@ -327,6 +328,13 @@ export default {
 
             // Ensure that we update the name attributes of field when deleting things
             this.updateFieldContent();
+        },
+
+        serializeValue(value) {
+            // Ensure that we normalize this object first, to ensure it's consistent with PHP-JSON notation
+            const serialized = JSON.stringify(normalizeJson(value));
+
+            return serialized;
         },
     },
 };
