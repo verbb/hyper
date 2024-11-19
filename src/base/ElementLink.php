@@ -59,14 +59,32 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     {
         // Protect against invalid values for some link types. This can happen due to migrations gone wrong
         // https://github.com/verbb/hyper/issues/10
-        $linkValue = $values['linkValue'] ?? null;
+        $linkValue = $values['linkValue'] ?? [];
 
-        if (is_string($linkValue)) {
-            // Cast to an integer to ensure it's a valid ID (it might still be a string)
-            $values['linkValue'] = (int)$linkValue ?: null;
+        // Normalize to an array. The value is only ever a single ID, but this help with change-detection in Vue
+        // as the element select field produces an array as its value.
+        if (!is_array($linkValue)) {
+            $linkValue = [$linkValue];
         }
 
+        foreach ($linkValue as $key => $value) {
+            if (is_string($value)) {
+                // Cast to an integer to ensure it's a valid ID (it might still be a string)
+                $linkValue[$key] = (int)$value ?: null;
+            }
+        }
+
+        $values['linkValue'] = $linkValue;
+
         parent::setAttributes($values, $safeOnly);
+    }
+
+    public function getInputConfig(): array
+    {
+        $values = parent::getInputConfig();
+        $values['linkSiteId'] = $this->linkSiteId;
+
+        return $values;
     }
 
     public function getSettingsConfig(): array
@@ -83,11 +101,6 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     {
         $values = parent::getSerializedValues();
         $values['linkSiteId'] = $this->linkSiteId;
-
-        // Don't save element link values as IDs, which come from the element select
-        if (isset($values['linkValue']) && is_array($values['linkValue'])) {
-            $values['linkValue'] = $values['linkValue'][0] ?? null;
-        }
 
         return $values;
     }
