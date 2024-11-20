@@ -591,7 +591,7 @@ export default {
         }
 
         .copytextbtn .copytextbtn__icon {
-            margin-top: -2px;
+            margin-top: 2px;
             padding: 0;
             width: 8px;
             font-size: 9px;
