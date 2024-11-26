@@ -3,6 +3,7 @@ namespace verbb\hyper\gql\interfaces;
 
 use verbb\hyper\base\Link;
 use verbb\hyper\gql\types\generators\LinkTypeGenerator;
+use verbb\hyper\gql\types\ArrayType;
 
 use Craft;
 use craft\gql\base\InterfaceType as BaseInterfaceType;
@@ -149,6 +150,14 @@ class LinkInterface extends BaseInterfaceType
                 'name' => 'linkUri',
                 'description' => 'The uri for the link (if an element-based link).',
                 'type' => Type::string(),
+            ],
+            'customAttributes' => [
+                'name' => 'customAttributes',
+                'type' => ArrayType::getType(),
+                'description' => 'The custom attributes for the link.',
+                'resolve' => function($link) {
+                    return $link->getCustomAttributes();
+                },
             ],
         ], self::getName());
     }
