@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.1 - 2024-12-02
+
+### Added
+- Add `LinkInterface::customAttributes` for GraphQL queries.
+- Element links now have a “Show Site Menu” setting for multi-sites.
+
+### Fixed
+- Fix an error with Typed Link migration.
+- Fix “copy field handle” button style issue.
+- Fix field changes being triggered for element-based links.
+
 ## 2.2.0 - 2024-11-16
 
 ### Added
