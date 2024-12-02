@@ -122,6 +122,15 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.4 - 2024-12-02
+
+### Added
+- Add `LinkInterface::customAttributes` for GraphQL queries.
+- Element links now have a “Show Site Menu” setting for multi-sites.
+
+### Fixed
+- Fix an error with Typed Link migration.
+
 ## 1.3.3 - 2024-10-20
 
 ### Added

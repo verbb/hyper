@@ -113,7 +113,7 @@ For the available native fields, you can access them as you'd expect as attribut
 
 ```twig
 {{ entry.myLinkField.ariaLabel }}
-{{ entry.myLinkField.customText }}
+{{ entry.myLinkField.linkText }}
 {{ entry.myLinkField.title }}
 {{ entry.myLinkField.urlSuffix }}
 ```
