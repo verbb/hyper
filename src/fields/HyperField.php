@@ -559,9 +559,12 @@ class HyperField extends Field implements MergeableFieldInterface
             'name' => $this->handle,
             'field' => $this,
             'element' => $element,
-            'value' => $value,
-            'valueResources' => $valueResources,
-            'settings' => $settings,
+            'isDebug' => Plugin::isDebug(),
+
+            // Prevent nested JSON content from being escaped, and don't encode special characters
+            'value' => Json::encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'valueResources' => Json::encode($valueResources, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'settings' => Json::encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         ]);
     }
 

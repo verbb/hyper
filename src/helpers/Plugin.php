@@ -36,4 +36,9 @@ class Plugin extends BasePlugin
         }
     }
 
+    public static function isDebug(): bool
+    {
+        return Hyper::$plugin->getVite()->devServerRunning();
+    }
+
 }

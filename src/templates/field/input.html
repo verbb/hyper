@@ -6,9 +6,9 @@
 
 <div class="hyper-input-component" v-cloak>
     <hyper-input
-        value="{{ value | json_encode }}"
-        value-resources="{{ valueResources | json_encode }}"
-        input-settings="{{ settings | json_encode }}"
+        value="{{ value }}"
+        value-resources="{{ valueResources }}"
+        input-settings="{{ settings }}"
         handle="{{ field.handle }}"
         :element-id="{{ element.id ?: 'null' }}"
         element-type="{{ className(element) }}"
@@ -17,7 +17,11 @@
         :element-revision-id="{{ element.revisionId ?: 'null' }}"
     >
         {# Render here so that ElementEditor.js doesn't detect a change from server-render to when Vue kicks in #}
-        <div v-if="$isDebug" data-store-debug class="input text" style="margin-bottom: 20px;">{{ value | json_encode }}</div>
-        <input data-store type="hidden" name="{{ name }}" value="{{ value | json_encode }}">
+        {% if isDebug %}
+            <div class="input text" style="margin-bottom: 20px;">{{ value }}</div>
+            <div data-store-debug class="input text" style="margin-bottom: 20px;">{{ value }}</div>
+        {% endif %}
+
+        <input data-store type="hidden" name="{{ name }}" value="{{ value }}">
     </hyper-input>
 </div>
