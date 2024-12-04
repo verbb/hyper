@@ -518,6 +518,12 @@ class HyperField extends Field implements MergeableFieldInterface
             $this->defaultLinkType = $enabledLinkTypes[0]->handle ?? null;
         }
 
+        // Cache the placeholder key for the fields' JS. Because we're caching the block type HTML/JS
+        // we also need to cache the placeholder key to match that cached data.
+        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->getCacheKey('placeholderKey'), function() {
+            return StringHelper::randomString(10);
+        });
+
         $settings = [
             'fieldId' => $this->id,
             'handle' => $this->handle,
@@ -530,15 +536,16 @@ class HyperField extends Field implements MergeableFieldInterface
             'namespacedName' => $view->namespaceInputName($this->handle),
             'namespacedId' => $view->namespaceInputId($this->handle),
             'isStatic' => $this->_isStatic,
+            'placeholderKey' => $placeholderKey,
         ];
 
         // Prepare the link types and HTML for fields
-        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element);
+        $linkTypeInfo = $this->_getLinkTypeInfoForInput($element, $placeholderKey);
         $settings['linkTypes'] = $linkTypeInfo['linkTypes'] ?? [];
         $settings['js'] = $linkTypeInfo['js'] ?? [];
 
         // Prepare the link element values for the field, including pre-rendered HTML
-        $value = $this->_getLinksForInput($value);
+        $value = $this->_getLinksForInput($value, $placeholderKey);
 
         $valueResources = [];
 
@@ -586,7 +593,7 @@ class HyperField extends Field implements MergeableFieldInterface
     // Private Methods
     // =========================================================================
 
-    private function _getLinkTypeInfoForInput(?ElementInterface $element): array
+    private function _getLinkTypeInfoForInput(?ElementInterface $element, string $placeholderKey): array
     {
         $linkTypeInfo = [];
 
@@ -608,7 +615,7 @@ class HyperField extends Field implements MergeableFieldInterface
             $linkType->id = rand();
 
             // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
-            $view->setNamespace('hyperData[__HYPER_BLOCK__]');
+            $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
 
             // Render the fields' HTML and JS to be injected in Vue, along with the config for a new link
             $linkTypeSettings = [
@@ -620,7 +627,7 @@ class HyperField extends Field implements MergeableFieldInterface
             ];
 
             $js = $view->clearJsBuffer(false);
-            $linkTypeSettings['js'] = '<script id="hyper-__HYPER_BLOCK__-script">' . $js . '</script>';
+            $linkTypeSettings['js'] = '<script id="hyper-__HYPER_BLOCK_' . $placeholderKey . '__-script">' . $js . '</script>';
 
             $linkTypeInfo['linkTypes'][] = $linkTypeSettings;
         }
@@ -631,7 +638,7 @@ class HyperField extends Field implements MergeableFieldInterface
         return $linkTypeInfo;
     }
 
-    private function _getLinksForInput(LinkCollection $links): array
+    private function _getLinksForInput(LinkCollection $links, string $placeholderKey): array
     {
         $preppedValues = [];
 
@@ -663,14 +670,14 @@ class HyperField extends Field implements MergeableFieldInterface
             $link->id = rand();
 
             // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
-            $view->setNamespace('hyperData[__HYPER_BLOCK__]');
+            $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
 
             $preppedValues[$key] = $link->getInputConfig();
             $preppedValues[$key]['id'] = $link->id;
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);
-            $preppedValues[$key]['js'][$link->handle] = '<script id="hyper-__HYPER_BLOCK__-script">' . $js . '</script>';
+            $preppedValues[$key]['js'][$link->handle] = '<script id="hyper-__HYPER_BLOCK_' . $placeholderKey . '__-script">' . $js . '</script>';
         }
 
         $view->setNamespace($oldNamespace);
@@ -885,5 +892,10 @@ class HyperField extends Field implements MergeableFieldInterface
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
+    }
+
+    private function getCacheKey(string $key): string
+    {
+        return $this->id . '-' . $this->handle . '-' . $key;
     }
 }

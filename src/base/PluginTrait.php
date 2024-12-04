@@ -2,6 +2,7 @@
 namespace verbb\hyper\base;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\services\Cache;
 use verbb\hyper\services\Content;
 use verbb\hyper\services\ElementCache;
 use verbb\hyper\services\FieldCache;
@@ -37,6 +38,7 @@ trait PluginTrait
 
         return [
             'components' => [
+                'cache' => Cache::class,
                 'content' => Content::class,
                 'elementCache' => ElementCache::class,
                 'fieldCache' => FieldCache::class,
@@ -60,6 +62,11 @@ trait PluginTrait
 
     // Public Methods
     // =========================================================================
+
+    public function getCache(): Cache
+    {
+        return $this->get('cache');
+    }
 
     public function getContent(): Content
     {

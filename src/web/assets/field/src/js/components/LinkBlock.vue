@@ -231,7 +231,7 @@ export default {
                     html = html.replace(/<(?:input|textarea|select)\s[^>]*/ig, '$& disabled');
                 }
 
-                return html.replace(new RegExp('__HYPER_BLOCK__', 'g'), this.link.id);
+                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), this.link.id);
             }
 
             return '';
