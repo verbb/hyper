@@ -131,7 +131,7 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->_links[$offset] = $item;
+        $this->_links[$offset] = $value;
     }
 
     public function offsetUnset(mixed $offset): void
