@@ -313,10 +313,12 @@ class HyperField extends Field
         // propagated to other site content, rather than the same site-entry picked across all.
         // https://github.com/verbb/hyper/issues/45
         $changedValue = false;
+        $value = null;
 
         // Only process this for other site elements, as we could be picking a link from another site on purpose
-        if ($element->propagating) {
-            $value = $element->getFieldValue($this->handle);
+        if ($element->propagating && !$element->duplicateOf) {
+            // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
+            $value = clone $element->getFieldValue($this->handle);
 
             foreach ($value as $linkIndex => $link) {
                 // Only process this for brand-new, unsaved blocks
@@ -340,7 +342,7 @@ class HyperField extends Field
             $this->_originElement = $element;
         }
 
-        if ($changedValue) {
+        if ($changedValue && $value) {
             $element->setFieldValue($this->handle, $value);
         }
 
