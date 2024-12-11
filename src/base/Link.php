@@ -74,7 +74,7 @@ abstract class Link extends Element implements LinkInterface
 
     public static function gqlTypeNameByContext(mixed $context): string
     {
-        $linkTypeHandle = StringHelper::toPascalCase($context->label);
+        $linkTypeHandle = $context::classDisplayName();
 
         return $context->field->handle . '_' . $linkTypeHandle . '_LinkType';
     }
