@@ -73,22 +73,30 @@ class PluginContentMigration extends PluginMigration
                             ->all();
 
                         foreach ($rows as $row) {
-                            $elementContent = Json::decode($row['content']) ?? [];
-                            $fieldContent = Json::decode($elementContent[$fieldLayoutUid] ?? '') ?? [];
+                            if (Json::isJsonObject($row['content'])) {
+                                $elementContent = Json::decode($row['content']) ?? [];
+                                $fieldContent = $elementContent[$fieldLayoutUid] ?? '';
 
-                            $settings = $this->convertModel($field, $fieldContent);
+                                if (is_string($fieldContent) && Json::isJsonObject($fieldContent)) {
+                                    $fieldContent = Json::decode($fieldContent) ?? [];
+                                }
 
-                            if ($settings) {
-                                $elementContent[$fieldLayoutUid] = Json::encode($settings);
+                                if ($fieldContent) {
+                                    $settings = $this->convertModel($field, $fieldContent);
 
-                                // Direct database save on the content for performance, and not to mess with saving elements
-                                Db::update('{{%elements_sites}}', ['content' => Db::prepareForJsonColumn($elementContent, $this->db)], ['id' => $row['id']]);
+                                    if ($settings) {
+                                        $elementContent[$fieldLayoutUid] = Json::encode($settings);
 
-                                $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
-                            } else {
-                                // Null model is okay, that's just an empty field content
-                                if ($settings !== null) {
-                                    $this->stdout('    > Unable to convert content for element #' . $row['elementId'], Console::FG_RED);
+                                        // Direct database save on the content for performance, and not to mess with saving elements
+                                        Db::update('{{%elements_sites}}', ['content' => Db::prepareForJsonColumn($elementContent, $this->db)], ['id' => $row['id']]);
+
+                                        $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
+                                    } else {
+                                        // Null model is okay, that's just an empty field content
+                                        if ($settings !== null) {
+                                            $this->stdout('    > Unable to convert content for element #' . $row['elementId'], Console::FG_RED);
+                                        }
+                                    }
                                 }
                             }
                         }
