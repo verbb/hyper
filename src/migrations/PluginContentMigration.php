@@ -88,7 +88,7 @@ class PluginContentMigration extends PluginMigration
                                         $elementContent[$fieldLayoutUid] = Json::encode($settings);
 
                                         // Direct database save on the content for performance, and not to mess with saving elements
-                                        Db::update('{{%elements_sites}}', ['content' => Db::prepareForJsonColumn($elementContent, $this->db)], ['id' => $row['id']]);
+                                        Db::update('{{%elements_sites}}', ['content' => Json::encode($elementContent, $this->db)], ['id' => $row['id']]);
 
                                         $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
                                     } else {
