@@ -145,7 +145,9 @@ class PluginContentMigration extends PluginMigration
         // Get the field content as JSON, indexed by field layout element UID
         if ($fieldLayout = $element->getFieldLayout()) {
             foreach ($fieldLayout->getCustomFields() as $fieldLayoutField) {
-                if ($field->handle === $fieldLayoutField->handle) {
+                $sourceHandle = $fieldLayoutField->layoutElement?->getOriginalHandle() ?? $fieldLayoutField->handle;
+
+                if ($field->handle === $sourceHandle) {
                     $fieldContent[$fieldLayoutField->layoutElement->uid] = $fieldValue;
                 }
             }
