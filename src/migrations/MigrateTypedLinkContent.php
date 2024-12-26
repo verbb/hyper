@@ -71,10 +71,10 @@ class MigrateTypedLinkContent extends PluginContentMigration
                         if ($element) {
                             if ($settings) {
                                 // Get the JSON content for the element with our new content merged in, ready to go
-                                $newContent = $this->getElementContentForField($element, $field);
+                                $newContent = $this->getElementContentForField($element, $field, $settings);
 
                                 // Direct database save on the content for performance, and not to mess with saving elements
-                                Db::update('{{%elements_sites}}', ['content' => Json::encode($newContent)], ['elementId' => $row['elementId'], 'siteId' => $row['siteId']]);
+                                Db::update('{{%elements_sites}}', ['content' => $newContent], ['elementId' => $row['elementId'], 'siteId' => $row['siteId']]);
 
                                 $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
                             } else {

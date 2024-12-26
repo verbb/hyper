@@ -88,7 +88,7 @@ class PluginContentMigration extends PluginMigration
                                         $elementContent[$fieldLayoutUid] = Json::encode($settings);
 
                                         // Direct database save on the content for performance, and not to mess with saving elements
-                                        Db::update('{{%elements_sites}}', ['content' => Json::encode($elementContent, $this->db)], ['id' => $row['id']]);
+                                        Db::update('{{%elements_sites}}', ['content' => $elementContent], ['id' => $row['id']]);
 
                                         $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
                                     } else {
@@ -138,7 +138,7 @@ class PluginContentMigration extends PluginMigration
         return $uids;
     }
 
-    protected function getElementContentForField(ElementInterface $element, FieldInterface $field): array
+    protected function getElementContentForField(ElementInterface $element, FieldInterface $field, array $fieldValue): array
     {
         $fieldContent = [];
 
@@ -146,9 +146,7 @@ class PluginContentMigration extends PluginMigration
         if ($fieldLayout = $element->getFieldLayout()) {
             foreach ($fieldLayout->getCustomFields() as $fieldLayoutField) {
                 if ($field->handle === $fieldLayoutField->handle) {
-                    $serializedValue = $fieldLayoutField->serializeValue($element->getFieldValue($fieldLayoutField->handle), $element);
-                
-                    $fieldContent[$fieldLayoutField->layoutElement->uid] = $serializedValue;
+                    $fieldContent[$fieldLayoutField->layoutElement->uid] = $fieldValue;
                 }
             }
         }
@@ -159,6 +157,11 @@ class PluginContentMigration extends PluginMigration
             ->from('{{%elements_sites}}')
             ->where(['elementId' => $element->id, 'siteId' => $element->siteId])
             ->scalar() ?? '') ?? [];
+
+        // Another sanity check just in cases where content is double encoded
+        if (is_string($oldContent) && Json::isJsonObject($oldContent)) {
+            $oldContent = Json::decode($oldContent);
+        }
 
         return array_merge($oldContent, $fieldContent);
     }
