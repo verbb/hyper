@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.2 - 2024-12-27
+
+### Fixed
+- Fix GraphQL `LinkType` using the translated link type label.
+- Fix a migration error for other link fields when renaming field instance handles.
+- Fix `Db::prepareForJsonColumn` deprecation and handling.
+- Fix content migration for some link plugins (LinkIt) for certain versions.
+- Fix field change warnings for Custom or URL link types.
+
 ## 2.2.1 - 2024-12-02
 
 ### Added
