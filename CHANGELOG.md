@@ -133,6 +133,12 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.5 - 2024-12-27
+
+### Fixed
+- Fix GraphQL `LinkType` using the translated link type label.
+- Backport propagation fix from Hyper 2.
+
 ## 1.3.4 - 2024-12-02
 
 ### Added
