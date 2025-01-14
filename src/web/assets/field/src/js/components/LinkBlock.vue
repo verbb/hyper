@@ -563,6 +563,12 @@ export default {
     margin-bottom: 1rem !important;
 }
 
+#content :not(.meta) .hyper-body-wrapper > .flex-fields {
+    --row-gap: 0.5rem !important;
+
+    margin-bottom: -1rem !important;
+}
+
 #content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before,
 .hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
     display: none;
@@ -574,12 +580,6 @@ export default {
     padding: 0.75rem 0.75rem;
     background: #fff;
     border-radius: 0 0 6px 6px;
-
-    .flex-fields {
-        --row-gap: 0.5rem !important;
-
-        margin-bottom: -1rem !important;
-    }
 
     .flex-fields > * {
         .copytextbtn.small {
