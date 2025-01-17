@@ -76,6 +76,13 @@ abstract class Link extends Element implements LinkInterface
     {
         $linkTypeHandle = $context::classDisplayName();
 
+        // For a custom link type, use the label. Definitely not a permanent solution
+        // TODO remove this and replace with link type handles when done.
+        // See https://github.com/verbb/hyper/issues/224 and https://github.com/verbb/hyper/issues/218
+        if (!str_starts_with($context->handle, 'default-')) {
+            $linkTypeHandle = StringHelper::toPascalCase($context->label);
+        }
+
         return $context->field->handle . '_' . $linkTypeHandle . '_LinkType';
     }
 
