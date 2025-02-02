@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.6 - 2025-02-02
+
+### Fixed
+- Fix GraphQL link type definitions for custom link types.
+
 ## 1.3.5 - 2024-12-27
 
 ### Fixed
