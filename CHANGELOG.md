@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.3 - 2025-02-02
+
+### Fixed
+- Fix GraphQL link type definitions for custom link types.
+- Fix link block spacing in element slide-outs.
+
 ## 2.2.2 - 2024-12-27
 
 ### Fixed
