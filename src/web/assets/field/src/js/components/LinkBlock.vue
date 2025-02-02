@@ -535,11 +535,9 @@ export default {
     width: calc(100% + var(--row-gap)*2);
 
     // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
-    @media only screen and (min-width: 1535px) {
-        > :not(h2):not(hr):not(.line-break).width-25,
-        > :not(h2):not(hr):not(.line-break).width-50,
-        > :not(h2):not(hr):not(.line-break):last-child.width-25,
-        > :not(h2):not(hr):not(.line-break):last-child.width-50 {
+    @container (min-width: calc(50rem)) {
+        > :not(h2,hr,.line-break).width-50,
+        > :not(h2,hr,.line-break):last-child.width-50 {
             width: 50%;
         }
     }
