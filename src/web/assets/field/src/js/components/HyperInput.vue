@@ -332,9 +332,7 @@ export default {
 
         serializeValue(value) {
             // Ensure that we normalize this object first, to ensure it's consistent with PHP-JSON notation
-            const serialized = JSON.stringify(normalizeJson(value));
-
-            return serialized;
+            return JSON.stringify(normalizeJson(value));
         },
     },
 };

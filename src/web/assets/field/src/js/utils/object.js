@@ -9,28 +9,26 @@ export const clone = function(value) {
 export const normalizeJson = function(data) {
     if (Array.isArray(data)) {
         return data.map((item) => {
-            if (typeof item === 'string' && !isNaN(item) && item.trim() !== '') {
-                // Convert string numbers to actual numbers
-                return Number(item);
-            }
-
             return normalizeJson(item);
         });
     }
+
+    // Ensure that we check for valid numbers before casting it.
+    // For example, a phone number `+44...` would strip `+` and be considered a number.
+    const isConvertibleNumber = function(value) {
+        return /^[0-9]+(\.[0-9]+)?$/.test(value);
+    };
 
     if (data && typeof data === 'object') {
         const normalized = {};
 
         for (const [key, value] of Object.entries(data)) {
             if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-                // Normalize empty objects to empty arrays
-                normalized[key] = [];
+                normalized[key] = []; // Convert empty objects to empty arrays
             } else if (value === '') {
-                // Convert empty strings to null
-                normalized[key] = null;
-            } else if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
-                // Ensure numbers are properly cast (e.g., "123" -> 123)
-                normalized[key] = Number(value);
+                normalized[key] = null; // Convert empty strings to null
+            } else if (typeof value === 'string' && isConvertibleNumber(value)) {
+                normalized[key] = Number(value); // Convert only safe numeric strings
             } else {
                 normalized[key] = normalizeJson(value);
             }
