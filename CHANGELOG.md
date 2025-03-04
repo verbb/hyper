@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.4 - 2025-03-05
+
+### Fixed
+- Fix an error when embedding URLs with special characters.
+- Fix an error where international phone numbers were being stripped due to JSON normalization.
+
 ## 2.2.3 - 2025-02-02
 
 ### Fixed
