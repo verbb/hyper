@@ -60,7 +60,7 @@ class PluginContentMigration extends PluginMigration
                     // We have to use field instances, not just the field
                     foreach ($this->findFieldUsages($field) as $fieldLayoutUid) {
                         // Find content rows for each field instance
-                        $sql = Craft::$app->getDb()->getQueryBuilder()->jsonExtract('elements_sites.content', [$fieldLayoutUid]);
+                        $sql = Craft::$app->getDb()->getQueryBuilder()->jsonExtract('content', [$fieldLayoutUid]);
 
                         $rows = (new Query())
                             ->select(['content', 'id', 'elementId'])
