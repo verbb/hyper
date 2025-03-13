@@ -77,6 +77,12 @@ class Site extends Link
             return strcmp($a['label'], $b['label']);
         });
 
+        // Add a placeholder at the start of the list
+        array_unshift($options, [
+            'label' => Craft::t('hyper', 'Select an option'),
+            'value' => '',
+        ]);
+
         return $options;
     }
 
