@@ -8,6 +8,7 @@ use verbb\hyper\gql\interfaces\LinkInterface;
 use verbb\hyper\gql\types\LinkType;
 
 use Craft;
+use craft\errors\GqlException;
 use craft\gql\base\Generator;
 use craft\gql\base\GeneratorInterface;
 use craft\gql\base\ObjectType;
@@ -39,22 +40,45 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
         return $gqlTypes;
     }
 
-    public static function generateType(mixed $context): ObjectType
+    public static function generateType(mixed $context): mixed
     {
         $typeName = Link::gqlTypeNameByContext($context);
 
-        if ($createdType = GqlEntityRegistry::getEntity($typeName)) {
-            return $createdType;
-        }
-
-        $contentFieldGqlTypes = self::getContentFields($context);
-        $linkTypeFields = array_merge(LinkInterface::getFieldDefinitions(), $contentFieldGqlTypes);
-
-        return GqlEntityRegistry::createEntity($typeName, new LinkType([
+        return GqlEntityRegistry::getOrCreate($typeName, fn() => new LinkType([
             'name' => $typeName,
-            'fields' => function() use ($linkTypeFields, $typeName) {
+            'fields' => function() use ($context, $typeName) {
+                $contentFieldGqlTypes = self::getContentFields($context);
+                $linkTypeFields = array_merge(LinkInterface::getFieldDefinitions(), $contentFieldGqlTypes);
+
                 return Craft::$app->getGql()->prepareFieldDefinitions($linkTypeFields, $typeName);
             },
         ]));
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected static function getContentFields($context): array
+    {
+        try {
+            $schema = Craft::$app->getGql()->getActiveSchema();
+        } catch (GqlException $e) {
+            Craft::warning("Could not get the active GraphQL schema: {$e->getMessage()}", __METHOD__);
+            Craft::$app->getErrorHandler()->logException($e);
+            return [];
+        }
+
+        $contentFieldGqlTypes = [];
+
+        if ($fieldLayout = $context->getFieldLayout()) {
+            foreach ($fieldLayout->getCustomFields() as $contentField) {
+                if ($contentField->includeInGqlSchema($schema)) {
+                    $contentFieldGqlTypes[$contentField->handle] = $contentField->getContentGqlType();
+                }
+            }
+        }
+
+        return $contentFieldGqlTypes;
     }
 }
