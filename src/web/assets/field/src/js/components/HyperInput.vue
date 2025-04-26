@@ -304,6 +304,7 @@ export default {
         newLinkBlock(handle) {
             const newLink = {
                 id: getId(),
+                isNew: true,
                 handle,
             };
 

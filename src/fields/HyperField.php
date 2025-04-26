@@ -73,7 +73,6 @@ class HyperField extends Field implements MergeableFieldInterface
     private array $_linkTypes = [];
     private array $_serializedLinkTypes = [];
     private ?array $_linkTypeFields = null;
-    private ?ElementInterface $_originElement = null;
 
 
     // Public Methods
@@ -278,30 +277,22 @@ class HyperField extends Field implements MergeableFieldInterface
         $value = null;
 
         // Only process this for other site elements, as we could be picking a link from another site on purpose
-        if ($element->propagating && !$element->duplicateOf) {
+        // And only perform it when creating the entry initially, as we otherwise can't determine when the content is "fresh"
+        // and when someone has already picked an element in another site's field and doesn't want it overridden.
+        if ($element->propagating && $element->propagateAll) {
             // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
             $value = clone $element->getFieldValue($this->handle);
 
             foreach ($value as $linkIndex => $link) {
                 // Only process this for brand-new, unsaved blocks
                 if ($link instanceof ElementLink) {
-                    // Check if this is a new Hyper link, and that we should propagate it to other sites
-                    $isNewLink = $this->_originElement?->getFieldValue($this->handle)[$linkIndex]?->isNew ?? null;
+                    $link->linkSiteId = $element->siteId;
 
-                    // When being saved for a new site element, that should also trigger propagation
-                    if ($element->isNewForSite) {
-                        $isNewLink = true;
-                    }
+                    $changedValue = true;
 
-                    if ($isNewLink) {
-                        $link->linkSiteId = $element->siteId;
-
-                        $changedValue = true;
-                    }
+                    file_put_contents('text.txt', print_r('siteId - ' . $element->siteId, true) . PHP_EOL, FILE_APPEND);
                 }
             }
-        } else {
-            $this->_originElement = $element;
         }
 
         if ($changedValue && $value) {
