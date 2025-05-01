@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.2.5 - 2025-05-01
+
+### Added
+- Add placeholder to list of sites for Site link types.
+
+### Changed
+- Update `ArrayHelper::flatten`.
+
+### Fixed
+- Fix multi-site Hyper fields not propagating element link types correctly.
+- Fix an error when changing field layout fields in Craft 5.7+.
+- Fix lightswitch UI for Craft 5.7+.
+- Fix querying custom fields on a link type with GraphQL.
+- Fix field changes being triggered for element-based links.
+- Fix an error when migrating content for prefixed databases.
+
 ## 2.2.4 - 2025-03-05
 
 ### Fixed
