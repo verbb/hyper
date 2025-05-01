@@ -154,6 +154,11 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.7 - 2025-05-01
+
+### Added
+- Add placeholder to list of sites for Site link types.
+
 ## 1.3.6 - 2025-02-02
 
 ### Fixed
