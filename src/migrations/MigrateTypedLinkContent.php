@@ -157,38 +157,4 @@ class MigrateTypedLinkContent extends PluginContentMigration
 
         return [$link->getSerializedValues()];
     }
-
-    public function migrateBlockField($matrixField, $newField): void
-    {
-        $blockTypes = $matrixField->getBlockTypes();
-
-        foreach ($blockTypes as $blockType) {
-            if ($fieldLayout = $blockType->getFieldLayout()) {
-                $tabs = $fieldLayout->getTabs();
-
-                foreach ($tabs as $tab) {
-                    $tabElements = $tab->getElements();
-
-                    foreach ($tabElements as $tabElement) {
-                        if ($tabElement instanceof CustomField) {
-                            $tabField = $tabElement->getField();
-
-                            // Using string checks fixes an issue when converting multiple fields in a single Matrix field
-                            if ((string)$tabField->id === (string)$newField->id) {
-                                $tabElement->setField($newField);
-                            }
-                        }
-                    }
-
-                    $tab->setElements($tabElements);
-                }
-
-                $fieldLayout->setTabs($tabs);
-
-                $blockType->setFieldLayout($fieldLayout);
-            }
-        }
-
-        $matrixField->setBlockTypes($blockTypes);
-    }
 }

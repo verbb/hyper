@@ -131,127 +131,29 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 if (!$fieldService->saveField($newField)) {
                     throw new Exception(Json::encode($newField->getErrors()));
                 }
+
+                $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
             }
 
             if (str_contains($newField->context, 'matrixBlockType')) {
-                // Get the Matrix field, and the content table
-                $blockTypeUid = explode(':', $newField->context)[1];
-
-                $matrixFieldId = (new Query())
-                    ->select(['fieldId'])
-                    ->from('{{%matrixblocktypes}}')
-                    ->where(['uid' => $blockTypeUid])
-                    ->scalar();
-
-                if ($matrixFieldId) {
-                    $matrixField = Craft::$app->getFields()->getFieldById($matrixFieldId);
-
-                    if ($matrixField && $matrixField instanceof Matrix) {
-                        $this->migrateBlockField($matrixField, $newField);
-
-                        // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if (!$fieldService->saveField($matrixField)) {
-                            $errors = $matrixField->getErrors();
-
-                            // Check for blocktype errors too
-                            foreach ($matrixField->getBlockTypes() as $blockType) {
-                                $errors[$blockType->handle] = $blockType->getErrors();
-
-                                if ($fieldLayout = $blockType->getFieldLayout()) {
-                                    foreach ($fieldLayout->getCustomFields() as $blockTypeField) {
-                                        $errors[$blockType->handle . '_' . $blockTypeField->handle] = $blockTypeField->getErrors();
-                                    }
-                                }
-                            }
-
-                            throw new Exception(Json::encode(array_filter($errors)));
-                        }
-                    } else {
-                        $this->stdout("    > Unable to find owner Matrix field for ID “{$matrixFieldId}”." . PHP_EOL, Console::FG_RED);
-                    }
-                } else {
-                    $this->stdout("    > Unable to find owner Matrix field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
+                // Super Table fields should already have been converted to Matrix. If they haven't, show warning.
+                if ($this->db->tableExists('{{%matrixblocktypes}}')) {
+                    throw new Exception('Ensure you run the Matrix migration first before proceeding.');
                 }
+
+                $this->stdout("    > Matrix field skipped, as no longer in use “{$newField->context}”." . PHP_EOL, Console::FG_YELLOW);
             }
 
             if (str_contains($newField->context, 'superTableBlockType')) {
-                // Get the Super Table field, and the content table
-                $blockTypeUid = explode(':', $newField->context)[1];
-
-                $superTableFieldId = (new Query())
-                    ->select(['fieldId'])
-                    ->from('{{%supertableblocktypes}}')
-                    ->where(['uid' => $blockTypeUid])
-                    ->scalar();
-
-                if ($superTableFieldId) {
-                    $superTableField = Craft::$app->getFields()->getFieldById($superTableFieldId);
-
-                    if ($superTableField && $superTableField instanceof SuperTableField) {
-                        $this->migrateBlockField($superTableField, $newField);
-
-                        // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if (!$fieldService->saveField($superTableField)) {
-                            $errors = $superTableField->getErrors();
-
-                            // Check for blocktype errors too
-                            foreach ($superTableField->getBlockTypes() as $blockType) {
-                                $errors[] = $blockType->getErrors();
-
-                                if ($fieldLayout = $blockType->getFieldLayout()) {
-                                    foreach ($fieldLayout->getCustomFields() as $blockTypeField) {
-                                        $errors[$blockType->handle . '_' . $blockTypeField->handle] = $blockTypeField->getErrors();
-                                    }
-                                }
-                            }
-
-                            throw new Exception(Json::encode(array_filter($errors)));
-                        }
-                    } else {
-                        $this->stdout("    > Unable to find owner Super Table field for ID “{$superTableFieldId}”." . PHP_EOL, Console::FG_RED);
-                    }
-                } else {
-                    $this->stdout("    > Unable to find owner Super Table field for context “{$newField->context}”." . PHP_EOL, Console::FG_RED);
+                // Super Table fields should already have been converted to Matrix. If they haven't, show warning.
+                if ($this->db->tableExists('{{%supertableblocktypes}}')) {
+                    throw new Exception('Ensure you run the Super Table migration first before proceeding.');
                 }
-            }
 
-            $this->stdout("    > Field “{$field['handle']}” migrated." . PHP_EOL, Console::FG_GREEN);
+                $this->stdout("    > Super Table field skipped, as no longer in use “{$newField->context}”." . PHP_EOL, Console::FG_YELLOW);
+            }
 
             $this->count++;
         }
-    }
-
-    public function migrateBlockField($matrixField, $newField): void
-    {
-        $blockTypes = $matrixField->getBlockTypes();
-
-        foreach ($blockTypes as $blockType) {
-            if ($fieldLayout = $blockType->getFieldLayout()) {
-                $tabs = $fieldLayout->getTabs();
-
-                foreach ($tabs as $tab) {
-                    $tabElements = $tab->getElements();
-
-                    foreach ($tabElements as $tabElement) {
-                        if ($tabElement instanceof CustomField) {
-                            $tabField = $tabElement->getField();
-
-                            // Using string checks fixes an issue when converting multiple fields in a single Matrix field
-                            if ((string)$tabField->id === (string)$newField->id) {
-                                $tabElement->setField($newField);
-                            }
-                        }
-                    }
-
-                    $tab->setElements($tabElements);
-                }
-
-                $fieldLayout->setTabs($tabs);
-
-                $blockType->setFieldLayout($fieldLayout);
-            }
-        }
-
-        $matrixField->setBlockTypes($blockTypes);
     }
 }
