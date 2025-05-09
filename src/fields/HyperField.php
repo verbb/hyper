@@ -289,8 +289,6 @@ class HyperField extends Field implements MergeableFieldInterface
                     $link->linkSiteId = $element->siteId;
 
                     $changedValue = true;
-
-                    file_put_contents('text.txt', print_r('siteId - ' . $element->siteId, true) . PHP_EOL, FILE_APPEND);
                 }
             }
         }
