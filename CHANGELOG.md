@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.6 - 2025-05-14
+
+### Changed
+- Update Typed Link migration for Super Table and Matrix fields.
+
+### Fixed
+- Fix debug code generating a `text.txt` file in `@webroot`.
+
 ## 2.2.5 - 2025-05-01
 
 ### Added
