@@ -172,10 +172,15 @@ export default {
 
         'link.handle': function(newValue, oldValue) {
             if (oldValue) {
+                // Get the old linkType, as `this.linkType` will reflect the current one now
+                const oldLinkType = this.settings.linkTypes.find((linkType) => {
+                    return linkType.handle === oldValue;
+                }) || {};
+
                 // If we're switching link types, ensure that we cache the old field data before switching.
                 // Switching back would show us outdated content for fields (the original content on page load).
                 // Be sure to use the old cache key as well.
-                this.cacheHtml(`${this.link.id}-${oldValue}`);
+                this.cacheHtml(oldLinkType, `${this.link.id}-${oldValue}`);
             }
 
             // Because the link handle is changed in `created()` this alao fires immediately.
@@ -261,7 +266,7 @@ export default {
             this.fieldsHtml = this.getParsedLinkTypeHtml(this.hyperField.getCachedFieldHtml(this.cacheKey));
         },
 
-        cacheHtml(cacheKey = this.cacheKey) {
+        cacheHtml(oldLinkType, cacheKey = this.cacheKey) {
             // Before dragging this block, save a copy of the current DOM to the cache. We ue this to restore back
             // when finished moving. This is because Vue's rendering will not retain any edited non-Vue HTML.
             if (this.$refs.fields) {
@@ -288,7 +293,7 @@ export default {
 
                         if (fieldUid) {
                             // Get the original HTML
-                            const $newHtml = $(this.linkType.html).find(`[data-layout-element="${fieldUid}"] .selectize`);
+                            const $newHtml = $(oldLinkType.html).find(`[data-layout-element="${fieldUid}"] .selectize`);
 
                             if ($newHtml.length) {
                                 // IDs and names will include placholders for Vizy, but if in a Matrix/Super Table field, will contain those
