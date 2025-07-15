@@ -861,6 +861,11 @@ class HyperField extends Field implements MergeableFieldInterface
             return ProjectConfig::unpackAssociativeArrays($fieldLayoutConfig);
         }
 
+        // Fix potential Craft 5.8+ issue
+        if (isset($layoutConfig['cardThumbAlignment']) && is_array($layoutConfig['cardThumbAlignment'])) {
+            $layoutConfig['cardThumbAlignment'] = reset($layoutConfig['cardThumbAlignment']);
+        }
+
         return $layoutConfig;
     }
 
