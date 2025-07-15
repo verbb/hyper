@@ -541,9 +541,23 @@ export default {
 
     // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
     @container (min-width: calc(50rem)) {
+        > :not(h2,hr,.line-break).width-25,
+        > :not(h2,hr,.line-break):last-child.width-25 {
+            width: 25%;
+        }
+    }
+
+    @container (min-width: calc(50rem)) {
         > :not(h2,hr,.line-break).width-50,
         > :not(h2,hr,.line-break):last-child.width-50 {
             width: 50%;
+        }
+    }
+
+    @container (min-width: calc(50rem)) {
+        > :not(h2,hr,.line-break).width-75,
+        > :not(h2,hr,.line-break):last-child.width-75 {
+            width: 75%;
         }
     }
 
