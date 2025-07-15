@@ -28,6 +28,8 @@ use craft\helpers\ProjectConfig;
 use craft\models\FieldLayout;
 use craft\validators\ArrayValidator;
 use craft\web\View;
+use craft\base\PreviewableFieldInterface;
+use craft\base\ThumbableFieldInterface;
 
 use yii\db\Schema;
 
@@ -36,7 +38,7 @@ use Throwable;
 
 use GraphQL\Type\Definition\Type;
 
-class HyperField extends Field implements MergeableFieldInterface
+class HyperField extends Field implements ThumbableFieldInterface, MergeableFieldInterface, PreviewableFieldInterface
 {
     // Static Methods
     // =========================================================================
@@ -180,6 +182,27 @@ class HyperField extends Field implements MergeableFieldInterface
             // Required placeholder to work with nested namespace (Matrix)
             'namespacedName' => $view->namespaceInputName('__PREFIX__'),
             'namespacedId' => $view->namespaceInputId('__PREFIX__'),
+        ]);
+    }
+
+    public function getPreviewHtml(mixed $value, ElementInterface $element): string
+    {
+        return $value ? $this->_renderLink($value) : '';
+    }
+
+    public function getThumbHtml(mixed $value, ElementInterface $element, int $size): ?string
+    {
+        return $value ? $this->_renderLink($value) : '';
+    }
+
+    public function previewPlaceholderHtml(mixed $value, ?ElementInterface $element): string
+    {
+        return Html::tag('a', Craft::t('app', 'link/to/something'), [
+            'href' => '#',
+            'rel' => 'noopener',
+            'target' => '_blank',
+            'class' => 'go',
+            'title' => Craft::t('app', 'Visit webpage'),
         ]);
     }
 
@@ -891,5 +914,24 @@ class HyperField extends Field implements MergeableFieldInterface
     private function getCacheKey(string $key): string
     {
         return $this->id . '-' . $this->handle . '-' . $key;
+    }
+
+    private function _renderLink(mixed $value): string
+    {
+        if (!($value instanceof LinkCollection)) {
+            return '';
+        }
+
+        if (!$value->getUrl()) {
+            return null;
+        }
+
+        return Html::tag('a', $value->getText(), [
+            'href' => $value->getUrl(),
+            'rel' => 'noopener',
+            'target' => '_blank',
+            'class' => 'go',
+            'title' => Craft::t('app', 'Visit webpage'),
+        ]);
     }
 }
