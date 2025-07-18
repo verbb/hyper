@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.2.7 - 2025-07-18
+
+### Added
+- Add support for Hyper fields to be shown in element indexes and element cards.
+
+### Changed
+- Update English translations.
+
+### Fixed
+- Fix link type 25% and 75% widths.
+- Fix an issue with Craft 5.8+ and `cardThumbAlignment`.
+- Fix extra-small lightswitch style.
+- Fix an issue when switching link types for some fields (dropdowns).
+- Fix JSON normalization for arrayable data.
+
 ## 2.2.6 - 2025-05-14
 
 ### Changed
