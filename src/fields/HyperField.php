@@ -916,7 +916,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $this->id . '-' . $this->handle . '-' . $key;
     }
 
-    private function _renderLink(mixed $value): string
+    private function _renderLink(mixed $value): ?string
     {
         if (!($value instanceof LinkCollection)) {
             return '';
