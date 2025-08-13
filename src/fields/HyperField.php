@@ -17,6 +17,7 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\base\MergeableFieldInterface;
+use craft\base\NestedElementInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\App;
@@ -302,7 +303,17 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         // Only process this for other site elements, as we could be picking a link from another site on purpose
         // And only perform it when creating the entry initially, as we otherwise can't determine when the content is "fresh"
         // and when someone has already picked an element in another site's field and doesn't want it overridden.
-        if ($element->propagating && $element->propagateAll) {
+        $shouldPropagate = $element->propagating && $element->propagateAll;
+
+        // But for Matrix fields, the Matrix blocks/entries themselves aren't propagated, so it's a different check.
+        if ($element instanceof NestedElementInterface) {
+            // Ensure that the Entry is associated from a Matrix field, as all Entry elements are NestedElement's.
+            if ($element->getField()) {
+                $shouldPropagate = $element->propagateAll;
+            }
+        }
+
+        if ($shouldPropagate) {
             // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
             $value = clone $element->getFieldValue($this->handle);
 
