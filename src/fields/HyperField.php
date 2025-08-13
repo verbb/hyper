@@ -934,7 +934,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         if (!$value->getUrl()) {
-            return null;
+            return '';
         }
 
         return Html::tag('a', $value->getText(), [
