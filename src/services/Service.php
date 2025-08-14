@@ -61,6 +61,11 @@ class Service extends Component
             // Ensure we remove `uid` from the `layoutConfig` - we don't want it
             ArrayHelper::remove($layoutConfig, 'uid');
 
+            // Fix potential Craft 5.8+ issue
+            if (isset($layoutConfig['cardThumbAlignment']) && is_array($layoutConfig['cardThumbAlignment'])) {
+                $layoutConfig['cardThumbAlignment'] = reset($layoutConfig['cardThumbAlignment']);
+            }
+
             $fieldLayout = FieldLayout::createFromConfig($layoutConfig);
             $fieldLayout->type = $linkType['type'];
             $fieldLayout->uid = $layoutUid;
