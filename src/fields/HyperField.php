@@ -18,6 +18,7 @@ use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
+use craft\elements\MatrixBlock;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Gql;
@@ -316,7 +317,16 @@ class HyperField extends Field
         $value = null;
 
         // Only process this for other site elements, as we could be picking a link from another site on purpose
-        if ($element->propagating && !$element->duplicateOf) {
+        // And only perform it when creating the entry initially, as we otherwise can't determine when the content is "fresh"
+        // and when someone has already picked an element in another site's field and doesn't want it overridden.
+        $shouldPropagate = $element->propagating && $element->propagateAll;
+
+        // But for Matrix blocks, they themselves aren't propagated, so it's a different check.
+        if ($element instanceof MatrixBlock) {
+            $shouldPropagate = $element->propagateAll;
+        }
+
+        if ($shouldPropagate) {
             // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
             $value = clone $element->getFieldValue($this->handle);
 
