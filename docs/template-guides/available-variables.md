@@ -10,7 +10,7 @@ Returns an ElementQuery for elements that are related to a provided Hyper field.
       targetElement: entry,
       field: 'myHyperField',
   },
-  ownerSite: 'siteHandle',
+  site: 'siteHandle',
   elementType: 'craft\\elements\\Entry',
   criteria: {
       id: 'not 123',
