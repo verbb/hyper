@@ -177,6 +177,8 @@ class Service extends Component
 
         if (isset($params['site'])) {
             $elementParams['site'] = $params['site'];
+        } else {
+            $elementParams['site'] = Craft::$app->getSites()->getCurrentSite()->handle;
         }
 
         if (isset($params['criteria'])) {
