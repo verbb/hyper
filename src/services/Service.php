@@ -13,6 +13,7 @@ use craft\elements\Entry;
 use craft\elements\db\ElementQueryInterface;
 use craft\events\ConfigEvent;
 use craft\helpers\ArrayHelper;
+use craft\helpers\Db;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class Service extends Component
@@ -143,8 +144,9 @@ class Service extends Component
     public function getRelatedElementsQuery(array $params = []): ?ElementQueryInterface
     {
         $fieldHandle = $params['relatedTo']['field'] ?? null;
+        $targetElement = $params['relatedTo']['targetElement'] ?? null;
 
-        if (!$fieldHandle) {
+        if (!$fieldHandle || !$targetElement) {
             return null;
         }
 
@@ -160,9 +162,14 @@ class Service extends Component
 
         // Find all the element IDs that match the field and type
         $result = (new Query())
-            ->select(['targetId AS id', 'targetSiteId AS siteId'])
+            ->select(['sourceId AS id', 'sourceSiteId AS siteId'])
             ->from(['{{%hyper_element_cache}}'])
-            ->where(['fieldId' => $fieldId, 'targetType' => $elementType])
+            ->where([
+                'fieldId' => $fieldId,
+                'targetType' => $elementType,
+                'targetId' => $targetElement->id,
+                'targetSiteId' => $targetElement->siteId,
+            ])
             ->indexBy(function($row) {
                 return $row['id'] . ':' . $row['siteId'];
             })
@@ -181,8 +188,15 @@ class Service extends Component
             $elementParams['site'] = Craft::$app->getSites()->getCurrentSite()->handle;
         }
 
-        if (isset($params['criteria'])) {
-            $elementParams = array_merge($elementParams, $params['criteria']);
+        if (isset($params['criteria']) && is_array($params['criteria'])) {
+            foreach ($params['criteria'] as $key => $value) {
+                if ($key === 'id') {
+                    // Special handling for IDs, which when provided need to work with our existing IDs
+                    $elementParams['where'] = Db::parseParam('id', $value);
+                } else {
+                    $elementParams[$key] = $value;
+                }
+            }
         }
 
         $elementQuery = $elementType::find();
