@@ -333,23 +333,11 @@ class HyperField extends Field
             foreach ($value as $linkIndex => $link) {
                 // Only process this for brand-new, unsaved blocks
                 if ($link instanceof ElementLink) {
-                    // Check if this is a new Hyper link, and that we should propagate it to other sites
-                    $isNewLink = $this->_originElement?->getFieldValue($this->handle)[$linkIndex]?->isNew ?? null;
+                    $link->linkSiteId = $element->siteId;
 
-                    // When being saved for a new site element, that should also trigger propagation
-                    if ($element->isNewForSite) {
-                        $isNewLink = true;
-                    }
-
-                    if ($isNewLink) {
-                        $link->linkSiteId = $element->siteId;
-
-                        $changedValue = true;
-                    }
+                    $changedValue = true;
                 }
             }
-        } else {
-            $this->_originElement = $element;
         }
 
         if ($changedValue && $value) {
