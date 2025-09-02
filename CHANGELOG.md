@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.9 - 2025-09-02
+
+### Fixed
+- Fix an issue when propagating Hyper field values within Matrix fields on multi-site installs.
+- Fix an issue when propagating Hyper field values within Matrix fields on multi-site installs.
+
 ## 1.3.8 - 2025-07-18
 
 ### Changed
