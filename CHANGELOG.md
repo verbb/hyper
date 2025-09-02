@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.8 - 2025-09-02
+
+### Fixed
+- Fix an issue when propagating Hyper field values within Matrix fields on multi-site installs.
+- Fix `craft.hyper.getRelatedElements` not working correctly.
+- Fix an error when calling `craft.hyper.getRelatedElements` without a `site` param.
+- Fix an issue with Craft 5.8+ and `cardThumbAlignment`.
+
 ## 2.2.7 - 2025-07-18
 
 ### Added
