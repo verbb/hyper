@@ -45,7 +45,7 @@ class Site extends Link
         } else {
             if (is_array($this->sites)) {
                 foreach ($this->sites as $siteUid) {
-                    if ($site = Craft::$app->getSites()->getSiteByUid($siteUid)) {
+                    if ($siteUid && $site = Craft::$app->getSites()->getSiteByUid($siteUid)) {
                         $sites[] = $site;
                     }
                 }
@@ -65,12 +65,6 @@ class Site extends Link
         usort($options, function($a, $b) {
             return strcmp($a['label'], $b['label']);
         });
-
-        // Add a placeholder at the start of the list
-        array_unshift($options, [
-            'label' => Craft::t('hyper', 'Select an option'),
-            'value' => '',
-        ]);
         
         return $options;
     }
