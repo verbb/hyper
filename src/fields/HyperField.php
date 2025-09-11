@@ -36,6 +36,8 @@ use Throwable;
 
 use GraphQL\Type\Definition\Type;
 
+use verbb\supertable\elements\SuperTableBlockElement;
+
 class HyperField extends Field
 {
     // Static Methods
@@ -325,6 +327,14 @@ class HyperField extends Field
         if ($element instanceof MatrixBlock) {
             $shouldPropagate = $element->propagateAll;
         }
+
+        // Same for Super Table (if installed)
+        if (Plugin::isPluginInstalledAndEnabled('super-table')) {
+            if ($element instanceof SuperTableBlockElement) {
+                $shouldPropagate = $element->propagateAll;
+            }
+        }
+
 
         if ($shouldPropagate) {
             // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
