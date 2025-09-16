@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.9 - 2025-09-16
+
+### Changed
+- Update migration-mode check.
+
+### Fixed
+- Fix an error for Site link type fields.
+
 ## 2.2.8 - 2025-09-02
 
 ### Fixed
