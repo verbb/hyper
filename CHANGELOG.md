@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.10 - 2025-09-16
+
+### Changed
+- Update migration-mode check.
+
+### Fixed
+- Fix an issue when propagating Hyper field values within Super Table fields on multi-site installs.
+
 ## 1.3.9 - 2025-09-02
 
 ### Fixed
