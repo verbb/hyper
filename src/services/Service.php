@@ -11,7 +11,8 @@ use craft\db\Query;
 use craft\db\Table;
 use craft\elements\Entry;
 use craft\elements\db\ElementQueryInterface;
-use craft\events\ConfigEvent;
+use CraftCms\Cms\ProjectConfig\Events\ItemAdded;
+use CraftCms\Cms\ProjectConfig\Events\ItemUpdated;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Db;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
@@ -27,7 +28,7 @@ class Service extends Component
     // Public Methods
     // =========================================================================
 
-    public function handleChangedField(ConfigEvent $event): void
+    public function handleChangedField($event): void
     {
         $data = $event->newValue ?? [];
 
@@ -46,7 +47,7 @@ class Service extends Component
         $this->saveField($linkTypes, $event);
     }
 
-    public function saveField(array $linkTypes, ?ConfigEvent $event = null): void
+    public function saveField(array $linkTypes, $event = null): void
     {
         $fieldsService = Craft::$app->getFields();
 
@@ -74,7 +75,7 @@ class Service extends Component
         }
     }
 
-    public function handleDeletedField(ConfigEvent $event): void
+    public function handleDeletedField($event): void
     {
         $data = $event->oldValue ?? [];
 
@@ -104,13 +105,13 @@ class Service extends Component
         }
     }
 
-    public function handleChangedBlockType(ConfigEvent $event): void
+    public function handleChangedBlockType($event): void
     {
         $fields = $event->newValue['fields'] ?? [];
 
         foreach ($fields as $field) {
             if ($field['type'] === HyperField::class) {
-                $configEvent = new ConfigEvent([
+                $configEvent = new ItemAdded([
                     'newValue' => $field,
                 ]);
 
@@ -120,13 +121,13 @@ class Service extends Component
         }
     }
 
-    public function handleDeletedBlockType(ConfigEvent $event): void
+    public function handleDeletedBlockType($event): void
     {
         $fields = $event->oldValue['fields'] ?? [];
 
         foreach ($fields as $field) {
             if ($field['type'] === HyperField::class) {
-                $configEvent = new ConfigEvent([
+                $configEvent = new ItemAdded([
                     'oldValue' => $field,
                 ]);
 

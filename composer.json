@@ -2,7 +2,7 @@
     "name": "verbb/hyper",
     "description": "A user-friendly links field for Craft.",
     "type": "craft-plugin",
-    "version": "2.2.8",
+    "version": "3.0.0-alpha.1",
     "keywords": [
         "craft",
         "cms",
@@ -25,11 +25,11 @@
         }
     ],
     "require": {
-        "php": "^8.2",
-        "craftcms/cms": "^5.0.0",
+        "php": "^8.4",
+        "craftcms/cms": "6.x-dev",
         "embed/embed": "^3.0.0 || ^4.0.0",
         "nystudio107/craft-plugin-vite": "^5.0.0",
-        "verbb/base": "^3.0.0"
+        "verbb/base": "dev-craft-6"
     },
     "autoload": {
         "psr-4": {
@@ -39,7 +39,9 @@
     "extra": {
         "name": "Hyper",
         "handle": "hyper",
-        "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/craft-5/CHANGELOG.md",
+        "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/craft-6/CHANGELOG.md",
         "class": "verbb\\hyper\\Hyper"
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

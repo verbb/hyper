@@ -11,6 +11,7 @@ use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\events\ElementEvent;
 use craft\helpers\Db;
+use CraftCms\Cms\Updates\Updates;
 
 class ElementCache extends Component
 {
@@ -27,7 +28,7 @@ class ElementCache extends Component
     public function onSaveElement(ElementEvent $event): void
     {
         // Skip this when updating Craft is currently in progress
-        if (Craft::$app->getUpdates()->getAreMigrationsPending()) {
+        if (app(Updates::class)->areMigrationsPending()) {
             return;
         }
 
