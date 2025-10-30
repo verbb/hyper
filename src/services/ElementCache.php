@@ -11,6 +11,7 @@ use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\events\ElementEvent;
 use craft\helpers\Db;
+use craft\helpers\ElementHelper;
 
 class ElementCache extends Component
 {
@@ -113,6 +114,11 @@ class ElementCache extends Component
 
     public function upsertCache(HyperField $field, ElementInterface $element): bool
     {
+        // Ignore any provisional draft elements
+        if ($element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
+            return true;
+        }
+
         $value = $element->getFieldValue($field->handle);
 
         foreach ($value->getLinks() as $link) {
@@ -151,6 +157,11 @@ class ElementCache extends Component
 
     public function updateCache(ElementInterface $element): bool
     {
+        // Ignore any provisional draft elements
+        if ($element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
+            return false;
+        }
+
         // Find or create the record
         $record = ElementCacheRecord::findOne([
             'targetId' => $element->id,
