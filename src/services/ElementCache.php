@@ -121,6 +121,16 @@ class ElementCache extends Component
 
         $value = $element->getFieldValue($field->handle);
 
+        // Find any currently cached items in case we need to delete
+        $handledCaches = [];
+
+        $currentCaches = ElementCacheRecord::findAll([
+            'fieldId' => $field->id,
+            'sourceId' => $element->id,
+            'sourceType' => get_class($element),
+            'sourceSiteId' => $element->siteId,
+        ]);
+
         foreach ($value->getLinks() as $link) {
             if ($link instanceof ElementLink) {
                 $linkElement = $link->getElement();
@@ -148,7 +158,17 @@ class ElementCache extends Component
                     $record->uri = $linkElement->uri;
 
                     $record->save(false);
+
+                    // Save so we can action any removals
+                    $handledCaches[] = $record->id;
                 }
+            }
+        }
+
+        // Handle any removals
+        foreach ($currentCaches as $currentCache) {
+            if (!in_array($currentCache->id, $handledCaches)) {
+                $currentCache->delete();
             }
         }
 
