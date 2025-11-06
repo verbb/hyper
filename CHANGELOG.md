@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.10 - 2025-11-06
+
+### Changed
+- Improve element-caching to exclude drafts and revisions.
+- Improve change-detection checks for fields.
+
+### Fixed
+- Fix element cache not clearing cached linked-to elements when removing them from the field.
+
 ## 2.2.9 - 2025-09-16
 
 ### Changed
