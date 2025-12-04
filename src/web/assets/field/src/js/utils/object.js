@@ -40,7 +40,9 @@ export const normalizeJson = function(data, reference = null) {
             } else if ((value === null || value === '') && Array.isArray(refValue)) {
                 normalized[key] = [];
             } else if (value === '') {
-                normalized[key] = null; // Convert empty strings to null
+                // Don't do this, as `null` is considered a no-value-set, rather than empty value
+                // This causes issues with a Lightswitch field with a default value set.
+                // normalized[key] = null; // Convert empty strings to null
             } else if (Array.isArray(value)) {
                 normalized[key] = normalizeJson(value, refValue); // Normalize arrays properly
             } else if (typeof value === 'string' && isConvertibleNumber(value)) {
