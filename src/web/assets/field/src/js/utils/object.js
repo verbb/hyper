@@ -39,7 +39,7 @@ export const normalizeJson = function(data, reference = null) {
                 normalized[key] = [];
             } else if ((value === null || value === '') && Array.isArray(refValue)) {
                 normalized[key] = [];
-            } else if (value === '') {
+            // } else if (value === '') {
                 // Don't do this, as `null` is considered a no-value-set, rather than empty value
                 // This causes issues with a Lightswitch field with a default value set.
                 // normalized[key] = null; // Convert empty strings to null
