@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.11 - 2026-01-13
+
+### Fixed
+- Fix an error where Lightswitch fields with a default value were not being treated correctly.
+
 ## 2.2.10 - 2025-11-06
 
 ### Changed
