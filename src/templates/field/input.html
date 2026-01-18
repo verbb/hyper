@@ -6,16 +6,17 @@
     'New Window',
 ]) %}
 
-<div class="hyper-input-component" v-cloak>
-    <hyper-input
-        value="{{ value | json_encode }}"
-        input-settings="{{ settings | json_encode }}"
-        name="{{ name }}"
-        handle="{{ field.handle }}"
-        :element-id="{{ element.id ?: 'null' }}"
-        element-type="{{ className(element) }}"
-        :element-site-id="{{ element.siteId ?: 'null' }}"
-        :element-draft-id="{{ element.draftId ?: 'null' }}"
-        :element-revision-id="{{ element.revisionId ?: 'null' }}"
-    ></hyper-input>
-</div>
+<div class="hyper-input-component" v-cloak
+    data-props="{{ {
+        idPrefix: idPrefix ?? null,
+        value: value,
+        inputSettings: settings,
+        name: name,
+        handle: field.handle,
+        elementId: element.id ?? null,
+        elementType: className(element),
+        elementSiteId: element.siteId ?? null,
+        elementDraftId: element.draftId ?? null,
+        elementRevisionId: element.revisionId ?? null,
+    } | json_encode | e('html_attr') }}"
+></div>

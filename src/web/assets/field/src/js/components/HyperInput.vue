@@ -97,12 +97,12 @@ export default {
         },
 
         inputSettings: {
-            type: String,
+            type: [String, Array, Object, null],
             default: '',
         },
 
         value: {
-            type: String,
+            type: [String, Array, Object, null],
             default: '',
         },
     },
@@ -129,7 +129,7 @@ export default {
         },
 
         settings() {
-            return JSON.parse(this.inputSettings);
+            return this.inputSettings;
         },
 
         canAdd() {
@@ -142,7 +142,7 @@ export default {
     },
 
     created() {
-        this.proxyValue = JSON.parse(this.clone(this.value));
+        this.proxyValue = this.clone(this.value);
 
         // Prepare all link blocks by caching their HTML/JS
         this.proxyValue.forEach((link) => {
