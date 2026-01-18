@@ -6,6 +6,7 @@ if (import.meta.hot) {
     import.meta.hot.accept();
 }
 
+import { h } from 'vue';
 import { debounce } from 'lodash-es';
 
 //
@@ -23,13 +24,17 @@ import HyperSettings from './components/HyperSettings.vue';
 
 Craft.Hyper.Input = Garnish.Base.extend({
     init(idPrefix) {
+        const wrapper = document.querySelector(`#${idPrefix}-field .hyper-input-component`);
+        const root = wrapper.querySelector('.hyper-vue-root');
+
+        const props = JSON.parse(wrapper.dataset.props || '{}');
+        props.idPrefix = idPrefix;
+
         const app = createVueApp({
-            components: {
-                HyperInput,
-            },
+            render: () => { return h(HyperInput, props); },
         });
 
-        app.mount(`#${idPrefix}-field .hyper-input-component`);
+        app.mount(root);
     },
 });
 
