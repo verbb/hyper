@@ -1,4 +1,4 @@
-<p align="center"><img src="https://verbb.imgix.net/plugins/hyper/hyper-icon.svg" width="100" height="100" alt="Hyper icon"></p>
+<p align="center"><img src="https://assets.verbb.io/plugins/hyper/hyper-icon.svg" width="100" height="100" alt="Hyper icon"></p>
 <h1 align="center">Hyper for Craft CMS</h1>
 
 Hyper is a Craft CMS plugin for creating links, with a focus on user experience and flexibility.
