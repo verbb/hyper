@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.12 - 2026-01-23
+
+### Fixed
+- Fix initialization of Hyper fields with Vue, in certain circumstances.
+
 ## 2.2.11 - 2026-01-13
 
 ### Fixed
