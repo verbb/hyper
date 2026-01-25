@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.0 - 2026-01-25
+
+### Changed
+- Revamp link type field rendering to use DOM portals, rather than within Vue directly.
+
 ## 2.2.12 - 2026-01-23
 
 ### Fixed
