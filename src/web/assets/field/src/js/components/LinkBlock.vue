@@ -54,22 +54,18 @@
             </div>
         </div>
 
-        <link-block-fields v-if="fieldsHtml" ref="fields" class="hyper-body-wrapper" :template="fieldsHtml" @update="onFieldUpdate" />
+        <div ref="portalMount" class="hyper-body-wrapper"></div>
     </div>
 </template>
 
 <script>
-import { set, escapeRegExp, merge } from 'lodash-es';
+import { set, merge } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light-border.css';
 
-import { namespaceString } from '@utils/string';
-import htmlize from '@utils/htmlize';
-
 import LightswitchField from './settings/LightswitchField.vue';
-import LinkBlockFields from './input/LinkBlockFields.vue';
 import DragHandle from './input/DragHandle.vue';
 
 export default {
@@ -77,7 +73,6 @@ export default {
 
     components: {
         LightswitchField,
-        LinkBlockFields,
         DragHandle,
     },
 
@@ -106,8 +101,8 @@ export default {
             mounted: false,
             tippy: null,
             slideout: null,
-            fieldsHtml: '',
             link: {},
+            currentCacheKey: null,
         };
     },
 
@@ -169,23 +164,19 @@ export default {
                 this.$emit('update:modelValue', this.link);
             }
         },
-
-        'link.handle': function(newValue, oldValue) {
-            if (oldValue) {
-                // Get the old linkType, as `this.linkType` will reflect the current one now
-                const oldLinkType = this.settings.linkTypes.find((linkType) => {
-                    return linkType.handle === oldValue;
-                }) || {};
-
-                // If we're switching link types, ensure that we cache the old field data before switching.
-                // Switching back would show us outdated content for fields (the original content on page load).
-                // Be sure to use the old cache key as well.
-                this.cacheHtml(oldLinkType, `${this.link.id}-${oldValue}`);
+        cacheKey(newKey, oldKey) {
+            if (!this.mounted) {
+                return;
             }
 
-            // Because the link handle is changed in `created()` this alao fires immediately.
-            this.updateHtml();
-            this.updateJs();
+            // Switching link type changes cacheKey -> detach old portal + unbind events
+            if (oldKey) {
+                this.unbindPortal(oldKey);
+                this.hyperField.detachPortal(oldKey);
+            }
+
+            // Attach + bind new
+            this.bindPortal(newKey);
         },
     },
 
@@ -225,106 +216,39 @@ export default {
             }
 
             this.mounted = true;
+
+            this.currentCacheKey = this.cacheKey;
+
+            // Subscribe to updates for THIS cacheKey
+            this.bindPortal(this.currentCacheKey);
         });
     },
 
+    beforeUnmount() {
+        if (this.currentCacheKey) {
+            this.unbindPortal(this.currentCacheKey);
+            this.hyperField.detachPortal(this.currentCacheKey);
+        }
+    },
+
     methods: {
-        getParsedLinkTypeHtml(html) {
-            if (typeof html === 'string') {
-                if (this.settings.isStatic) {
-                    // Add a disabled attribute to everything is static
-                    html = html.replace(/<(?:input|textarea|select)\s[^>]*/ig, '$& disabled');
-                }
+        bindPortal(cacheKey) {
+            this.currentCacheKey = cacheKey;
 
-                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), this.link.id);
-            }
+            const eventName = this.hyperField.portalEventName(cacheKey);
 
-            return '';
+            // Make sure we don't double-bind
+            this.$events.off(eventName, this.onPortalUpdate);
+            this.$events.on(eventName, this.onPortalUpdate);
+
+            // Ensure portal is attached (safe if already attached)
+            this.hyperField.attachPortal(cacheKey, this.$refs.portalMount);
         },
 
-        updateJs() {
-            this.$nextTick(() => {
-                // Add any JS required by fields
-                let footHtml = this.hyperField.getCachedFieldJs(this.cacheKey);
-                footHtml = this.getParsedLinkTypeHtml(footHtml);
+        unbindPortal(cacheKey) {
+            const eventName = this.hyperField.portalEventName(cacheKey);
 
-                const $script = document.querySelector(`#hyper-${this.link.id}-script`);
-
-                if (footHtml) {
-                    // But first check if already output. Otherwise, multiple bindings!
-                    if ($script) {
-                        $script.parentElement.removeChild($script);
-                    }
-
-                    Craft.appendBodyHtml(footHtml);
-                    Craft.initUiElements(this.$el);
-                }
-            });
-        },
-
-        updateHtml() {
-            this.fieldsHtml = this.getParsedLinkTypeHtml(this.hyperField.getCachedFieldHtml(this.cacheKey));
-        },
-
-        cacheHtml(oldLinkType, cacheKey = this.cacheKey) {
-            // Before dragging this block, save a copy of the current DOM to the cache. We ue this to restore back
-            // when finished moving. This is because Vue's rendering will not retain any edited non-Vue HTML.
-            if (this.$refs.fields) {
-                // Use `clone()` and `htmlize()` to properly copy existing DOM content
-                const $fieldsHtml = $(this.$refs.fields.$el.childNodes).clone();
-
-                // Special-case for Redactor. We need to reset it to its un-initialized form
-                // because it doesn't have better double-binding checks.
-                if ($fieldsHtml.find('.redactor-box').length) {
-                    // Rip out the `textarea` which is all we need
-                    const $textarea = $fieldsHtml.find('.redactor-box textarea').htmlize();
-                    $fieldsHtml.find('.redactor-box').replaceWith($textarea);
-                }
-
-                // Special-case for Selectize. We need to reset it to its un-initialized form
-                // because it doesn't have better double-binding checks.
-                if ($fieldsHtml.find('.selectize').length) {
-                    $fieldsHtml.find('.selectize').each((index, element) => {
-                        // This is absolutely ridiculous. Selectize strips out `<option>` elements, so we can't
-                        // fetch the original data from the DOM. Instead, find it in the original link type template.
-
-                        // Get the original field HTML from it's `data-layout-element` which contains the UID
-                        const fieldUid = $(element).parents('[data-type]').data('layout-element');
-
-                        if (fieldUid) {
-                            // Get the original HTML
-                            const $newHtml = $(oldLinkType.html).find(`[data-layout-element="${fieldUid}"] .selectize`);
-
-                            if ($newHtml.length) {
-                                // IDs and names will include placholders for Vizy, but if in a Matrix/Super Table field, will contain those
-                                // which can't be easily replaced like Vizy placeholders can. So be sure to swap them back to what they were
-                                $newHtml.find('select').attr('id', $(element).find('select').attr('id'));
-                                $newHtml.find('select').attr('name', $(element).find('select').attr('name'));
-
-                                // Restore any selected elements
-                                $newHtml.find('select').val($(element).find('select').val());
-
-                                // Replace the HTML with the altered original template
-                                element.outerHTML = $newHtml.htmlize();
-                            }
-                        }
-                    });
-                }
-
-                const $assetFields = $fieldsHtml.find('[data-type="craft\\\\fields\\\\Assets"]');
-
-                // Prevent multiple "Upload files" buttons when re-rendering Assets fields
-                if ($assetFields.length) {
-                    $assetFields.each((index, element) => {
-                        // Asset field's JS will create the button if required
-                        $(element).find('[data-icon="upload"').remove();
-                    });
-                }
-
-                const fieldsHtml = $fieldsHtml.htmlize();
-
-                this.hyperField.setCachedFieldHtml(cacheKey, fieldsHtml);
-            }
+            this.$events.off(eventName, this.onPortalUpdate);
         },
 
         initSettingsMenu() {
@@ -395,17 +319,23 @@ export default {
             this.$emit('delete', this.blockIndex);
         },
 
-        onFieldUpdate() {
-            const postData = Garnish.getPostData(this.$refs.fields.$el);
+        onPortalUpdate() {
+            const portalEl = this.hyperField.getPortalElement(this.currentCacheKey);
+
+            if (!portalEl) {
+                return;
+            }
+
+            const postData = Garnish.getPostData(portalEl);
             const content = Craft.expandPostArray(postData);
 
             // This will be in the format `hyperData[267267872][linkValue]...`, and for nested setups, it'll all be one level
             // so ensure that we grab the correct data for this block.
             const blockContent = content.hyperData[this.link.id] || [];
 
-            this.link = merge(this.link, blockContent);
-
-            this.$emit('update:modelValue', this.link);
+            const updatedLink = merge({}, this.link, blockContent);
+            this.link = updatedLink;
+            this.$emit('update:modelValue', updatedLink);
         },
     },
 };
@@ -432,7 +362,7 @@ export default {
     border: none;
     border-radius: 0;
 
-    .hyper-body-wrapper {
+    .hyper-body-wrapper [data-hyper-portal] {
         padding: 0.75rem 0;
     }
 }
@@ -526,12 +456,16 @@ export default {
     cursor: move;
 }
 
-.hyper-body-wrapper > .flex-fields {
+.hyper-body-wrapper [data-hyper-portal] > .flex-fields {
     align-content: flex-start;
     display: flex;
     flex-wrap: wrap;
     margin: 0 calc(var(--row-gap)*-1) calc(var(--row-gap)*-1);
     width: calc(100% + var(--row-gap)*2);
+
+    // Apply when dragging
+    --row-gap: 0.5rem !important;
+    margin-bottom: -1rem !important;
 
     // Duplicate Craft styles so we can append blocks to the body when dragging and not mess up styles
     @container (min-width: calc(50rem)) {
@@ -569,28 +503,29 @@ export default {
 }
 
 // Required to properly override `!important`
-#content :not(.meta) .hyper-body-wrapper > .flex-fields > *,
-.hyper-body-wrapper > .flex-fields > * {
+#content :not(.meta) .hyper-body-wrapper [data-hyper-portal] > .flex-fields > *,
+.hyper-body-wrapper [data-hyper-portal] > .flex-fields > * {
     margin-bottom: 1rem !important;
 }
 
-#content :not(.meta) .hyper-body-wrapper > .flex-fields {
+#content :not(.meta) .hyper-body-wrapper [data-hyper-portal] > .flex-fields {
     --row-gap: 0.5rem !important;
 
     margin-bottom: -1rem !important;
 }
 
-#content :not(.meta).hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before,
-.hyper-body-wrapper > .flex-fields > :not(h2):not(hr):not(.line-break):before {
+#content :not(.meta).hyper-body-wrapper [data-hyper-portal] > .flex-fields > :not(h2):not(hr):not(.line-break):before,
+.hyper-body-wrapper [data-hyper-portal] > .flex-fields > :not(h2):not(hr):not(.line-break):before {
     display: none;
 }
 
-.hyper-body-wrapper {
+.hyper-body-wrapper [data-hyper-portal] {
     display: flex;
     gap: 1rem;
     padding: 0.75rem 0.75rem;
     background: #fff;
     border-radius: 0 0 6px 6px;
+    -row-gap: 0.5rem !important;
 
     .flex-fields > * {
         .copytextbtn.small {

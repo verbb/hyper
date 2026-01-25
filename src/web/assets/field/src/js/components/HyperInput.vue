@@ -41,7 +41,7 @@
 
 <script>
 import { SlickList, SlickItem } from 'vue-slicksort';
-import { get } from 'lodash-es';
+import { get, debounce } from 'lodash-es';
 
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
@@ -118,6 +118,11 @@ export default {
             cachedFieldJs: {},
             rendered: false,
             initValue: null,
+            lastSerializedValue: null,
+            portalLayerEl: null,
+            portalScopeId: `hyper:${this.handle}:${Math.random().toString(36).slice(2, 10)}`,
+            portals: new Map(),
+            portalUpdateFns: new Map(),
         };
     },
 
@@ -152,22 +157,17 @@ export default {
             handler(newValue) {
                 // Don't update the DOM until we want to
                 if (this.rendered && this.$el) {
-                    const $dataStore = this.$el.querySelector('[data-store]');
-                    const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
-
-                    // Compare the initial JS-serialized data with the newly updated data
-                    // to ensure that we're not updating the Vizy content if nothing has changed
-                    const initValue = this.serializeValue(this.initValue);
-                    const updatedValue = this.serializeValue(newValue);
-
-                    // Ensure that we don't update the value if not yet set after mount
-                    // (don't forget it's been cast to a string)
-                    if (initValue === 'null') {
+                    if (this.lastSerializedValue === null) {
                         return;
                     }
 
-                    // Check if there's an actual different between the init and new state (as serialized strings)
-                    if (initValue === updatedValue) {
+                    const $dataStore = this.$el.querySelector('[data-store]');
+                    const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
+
+                    const updatedValue = this.serializeValue(newValue);
+
+                    // Check if there's an actual different between the last and new state (as serialized strings)
+                    if (this.lastSerializedValue === updatedValue) {
                         return;
                     }
 
@@ -178,6 +178,8 @@ export default {
                     if ($dataStoreDebug) {
                         $dataStoreDebug.innerHTML = updatedValue;
                     }
+
+                    this.lastSerializedValue = updatedValue;
                 }
             },
         },
@@ -192,7 +194,7 @@ export default {
             // Server-generated HTML/JS is stored separate to the model values
             const resources = this.proxyValueResources[index] || [];
 
-            this.setCache(link, resources);
+            this.cacheLinkTypeResources(link, resources);
         });
 
         // Check if under the threshold of min links, and create new ones
@@ -206,6 +208,8 @@ export default {
     },
 
     mounted() {
+        this.ensurePortalLayer();
+
         this.$nextTick(() => {
             // Ensure we target just _this_ Hyper field, and not any nested Hyper fields
             const $container = this.$el.querySelector(':scope > .h-add-container');
@@ -239,14 +243,57 @@ export default {
             // has changed, which it often does as jQuery kicks in, or Vue for other fields in Vizy blocks.
             setTimeout(() => {
                 this.initValue = this.clone(this.proxyValue);
+                this.lastSerializedValue = this.serializeValue(this.initValue);
             }, 1000);
         });
     },
 
+    beforeUnmount() {
+        // Destroy all portals
+        for (const [key, entry] of this.portals.entries()) {
+            entry.observer?.disconnect();
+            $(entry.el).off();
+            entry.el?.remove();
+        }
+
+        this.portals.clear();
+        this.portalUpdateFns.clear();
+
+        if (this.portalLayerEl) {
+            this.portalLayerEl.remove();
+            this.portalLayerEl = null;
+        }
+    },
+
     methods: {
-        setCache(link, resources) {
-            // For each link type, create HTML/JS. We use the Link's HTML/JS for the current link type
-            // if it exists, because it may already have data. If we switch to another link type, it's fresh.
+        ensurePortalLayer() {
+            if (this.portalLayerEl) {
+                return;
+            }
+
+            const el = document.createElement('div');
+            el.className = 'hyper-portals-layer';
+            el.style.position = 'absolute';
+            el.style.left = '-99999px';
+            el.style.top = '-99999px';
+            el.style.width = '0';
+            el.style.height = '0';
+            el.style.overflow = 'hidden';
+
+            this.portalLayerEl = el;
+            this.$el.appendChild(this.portalLayerEl);
+        },
+
+        portalKey(cacheKey) {
+            // Scope portals to this Hyper instance to avoid collisions with nested/multiple fields
+            return `${this.portalScopeId}:${cacheKey}`;
+        },
+
+        portalEventName(cacheKey) {
+            return `hyper:${this.portalScopeId}:portal:update:${cacheKey}`;
+        },
+
+        cacheLinkTypeResources(link, resources = {}) {
             this.settings.linkTypes.forEach((linkType) => {
                 let blockHtml = get(resources, `html.${linkType.handle}`);
                 let blockJs = get(resources, `js.${linkType.handle}`);
@@ -271,8 +318,157 @@ export default {
             });
         },
 
+        ensurePortal(cacheKey) {
+            this.ensurePortalLayer();
+            const key = this.portalKey(cacheKey);
+            let entry = this.portals.get(key);
+
+            if (!entry) {
+                const el = document.createElement('div');
+                el.dataset.hyperPortal = cacheKey;
+                el.dataset.hyperPortalScope = this.portalScopeId;
+
+                // Initial HTML for first render
+                const html = this.getCachedFieldHtml(cacheKey);
+                el.innerHTML = html || '';
+
+                // Init Craft UI ONCE
+                Craft.initUiElements(el);
+
+                // Observe changes ONCE
+                const emitUpdate = this.debouncedPortalUpdate(cacheKey);
+
+                const mo = new MutationObserver(() => { return emitUpdate(); });
+                mo.observe(el, {
+                    childList: true,
+                    attributes: true,
+                    subtree: true,
+                    characterData: true,
+                });
+
+                $(el).on('input change', 'input, textarea, select', () => { return emitUpdate(); });
+
+                entry = { el, observer: mo, jsAppended: false };
+                this.portals.set(key, entry);
+
+                // Keep it “parked” by default
+                this.portalLayerEl.appendChild(el);
+            }
+
+            return entry;
+        },
+
+        attachPortal(cacheKey, mountEl) {
+            if (!mountEl) {
+                return;
+            }
+
+            const entry = this.ensurePortal(cacheKey);
+
+            // Move persistent DOM into this block’s visible mount point
+            if (entry.el.parentNode !== mountEl) {
+                mountEl.innerHTML = '';
+                mountEl.appendChild(entry.el);
+            }
+
+            // Append JS once per blockId
+            if (!entry.jsAppended) {
+                const js = this.getCachedFieldJs(cacheKey);
+
+                if (js) {
+                    Craft.appendBodyHtml(js);
+                }
+
+                entry.jsAppended = true;
+            }
+        },
+
+        detachPortal(cacheKey) {
+            if (!this.portalLayerEl) {
+                return;
+            }
+
+            const key = this.portalKey(cacheKey);
+            const entry = this.portals.get(key);
+
+            if (!entry) {
+                return;
+            }
+
+            if (entry.el.parentNode !== this.portalLayerEl) {
+                this.portalLayerEl.appendChild(entry.el);
+            }
+        },
+
+        destroyPortal(cacheKey) {
+            const key = this.portalKey(cacheKey);
+            const entry = this.portals.get(key);
+
+            if (!entry) {
+                return;
+            }
+
+            // Stop observers/listeners
+            entry.observer?.disconnect();
+            $(entry.el).off();
+
+            // Remove DOM
+            entry.el?.remove();
+
+            // Cleanup maps
+            this.portals.delete(key);
+            this.portalUpdateFns.delete(key);
+        },
+
+        debouncedPortalUpdate(cacheKey) {
+            const key = this.portalKey(cacheKey);
+
+            // Return a stable debounced fn per blockId
+            if (!this.portalUpdateFns.has(key)) {
+                const fn = debounce(() => {
+                    this.$events.emit(this.portalEventName(cacheKey));
+                }, 50);
+
+                this.portalUpdateFns.set(key, fn);
+            }
+
+            return this.portalUpdateFns.get(key);
+        },
+
+        getPortalElement(cacheKey) {
+            const key = this.portalKey(cacheKey);
+
+            return this.portals.get(key)?.el || null;
+        },
+
+        getParsedBlockHtml(html, cacheKey) {
+            if (typeof html === 'string') {
+                const linkId = this.getLinkIdFromCacheKey(cacheKey);
+                return html.replace(new RegExp(`__HYPER_BLOCK_${this.settings.placeholderKey}__`, 'g'), linkId);
+            }
+
+            return '';
+        },
+
+        getLinkIdFromCacheKey(cacheKey) {
+            if (!cacheKey) {
+                return '';
+            }
+
+            return String(cacheKey).split('-')[0];
+        },
+
         getCachedFieldHtml(blockId) {
-            return this.cachedFieldHtml[blockId];
+            let html = this.cachedFieldHtml[blockId];
+
+            // When serialized, htmlentities are used, so decode them
+            if (typeof html === 'string') {
+                html = html.replace(/&#(\d+);/g, (match, dec) => {
+                    return String.fromCharCode(dec);
+                });
+            }
+
+            return this.getParsedBlockHtml(html, blockId);
         },
 
         setCachedFieldHtml(blockId, value) {
@@ -280,41 +476,20 @@ export default {
         },
 
         getCachedFieldJs(blockId) {
-            return this.cachedFieldJs[blockId];
+            let html = this.cachedFieldJs[blockId];
+
+            // When serialized, htmlentities are used, so decode them
+            if (typeof html === 'string') {
+                html = html.replace(/&#(\d+);/g, (match, dec) => {
+                    return String.fromCharCode(dec);
+                });
+            }
+
+            return this.getParsedBlockHtml(html, blockId);
         },
 
         setCachedFieldJs(blockId, value) {
             this.cachedFieldJs[blockId] = value;
-        },
-
-        onStartDrag() {
-            // Before we start dragging, cache the DOM contents of fields, which will be reset when Vue re-renders the
-            // component once it's been moved. We need to do this for all link blocks in the field because of how
-            // the re-render process works (other blocks other than the one moved will update).
-            Object.values(this.$refs).forEach((linkComponent) => {
-                if (linkComponent && linkComponent[0]) {
-                    linkComponent[0].cacheHtml();
-                }
-            });
-        },
-
-        onEndDrag() {
-            // When finishing dragging, update all link blocks with their cached HTML to restore what was.
-            // For JS, because we're re-rendering HTML, the originally-bound JS will no longer work, so we
-            // append it again, but there's also smarts to prevent duplication.
-            this.updateFieldContent();
-        },
-
-        updateFieldContent() {
-            Object.values(this.$refs).forEach((linkComponent) => {
-                // Slight delay required to ensure that the DOM has caught up
-                setTimeout(() => {
-                    if (linkComponent && linkComponent[0]) {
-                        linkComponent[0].updateHtml();
-                        linkComponent[0].updateJs();
-                    }
-                }, 50);
-            });
         },
 
         newLinkBlock(handle) {
@@ -329,11 +504,11 @@ export default {
                 newLink.newWindow = this.settings.defaultNewWindow ?? false;
             }
 
+            // Cache HTML/JS for this new link across all link types
+            this.cacheLinkTypeResources(newLink);
+
             // Add it to the link collection
             this.proxyValue.push(newLink);
-
-            // Generate the HTML/JS caches
-            this.setCache(newLink);
 
             if (this.tippy) {
                 this.tippy.hide();
@@ -341,10 +516,36 @@ export default {
         },
 
         deleteBlock(index) {
-            this.proxyValue.splice(index, 1);
+            const link = this.proxyValue[index];
 
-            // Ensure that we update the name attributes of field when deleting things
-            this.updateFieldContent();
+            // Destroy all portals for that link (across all link types)
+            if (link?.id) {
+                this.settings.linkTypes.forEach((linkType) => {
+                    const cacheKey = `${link.id}-${linkType.handle}`;
+                    this.destroyPortal(cacheKey);
+                });
+            }
+
+            this.proxyValue.splice(index, 1);
+        },
+
+        onStartDrag() {
+            this.$el.classList.add('hyper-dragging');
+            this.clearTextSelection();
+        },
+
+        onEndDrag() {
+            this.$el.classList.remove('hyper-dragging');
+            this.clearTextSelection();
+        },
+
+        clearTextSelection() {
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                selection?.removeAllRanges?.();
+            } else if (document.selection) {
+                document.selection.empty();
+            }
         },
 
         serializeValue(value) {
@@ -370,6 +571,17 @@ export default {
 
     // Fix for dragging in the element slide-out
     z-index: 100;
+}
+
+.hyper-drag-helper,
+.hyper-drag-helper * {
+    user-select: none;
+}
+
+.hyper-links.hyper-dragging,
+.hyper-links.hyper-dragging * {
+    user-select: none;
+    cursor: grabbing;
 }
 
 .hyper-iframe-container {
