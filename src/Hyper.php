@@ -20,9 +20,11 @@ use verbb\hyper\variables\HyperVariable;
 
 use Craft;
 use craft\base\Plugin;
+use craft\elements\ContentBlock;
 use craft\elements\db\ElementQuery;
 use craft\events\DefineFieldLayoutElementsEvent;
 use craft\events\DefineFieldLayoutFieldsEvent;
+use craft\events\ModelEvent;
 use craft\events\PopulateElementEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
@@ -173,6 +175,15 @@ class Hyper extends Plugin
                 if (is_subclass_of($ownerElementType, LinkInterface::class)) {
                     Craft::$app->runAction('hyper/fields/create-matrix-entry')->send();
                 }
+            }
+        });
+
+        // Content Blocks within Vizy Blocks will try and save immediately, so we need to prevent that.
+        Event::on(ContentBlock::class, ContentBlock::EVENT_BEFORE_SAVE, function(ModelEvent $event) {
+            $contentBlock = $event->sender;
+
+            if ($contentBlock->getOwner() instanceof LinkInterface) {
+                $event->isValid = false;
             }
         });
 
