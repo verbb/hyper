@@ -8,6 +8,7 @@ use verbb\hyper\fieldlayoutelements\LinkField;
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\elements\db\ElementQueryInterface;
 use craft\elements\Asset;
 
 use craft\commerce\elements\Variant;
@@ -195,12 +196,19 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             ->siteId($this->linkSiteId)
             ->status($status);
 
+        $this->modifyElementQuery($query, $status);
+
         return $this->_element = $query->one();
     }
 
     public function hasElement(mixed $status = Element::STATUS_ENABLED): bool
     {
         return (bool)$this->getElement($status);
+    }
+
+    public function modifyElementQuery(ElementQueryInterface $query, mixed $status = Element::STATUS_ENABLED): void
+    {
+
     }
 
     public function getLinkUrl(): ?string
