@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.2 - 2026-03-03
+
+### Added
+- Add `ElementLink::modifyElementQuery` to allow element link types to modify the query to resolve the element.
+
+### Changed
+- Entry element link types now (by default) no longer return disabled entries, only entries that are considered “live”.
+
 ## 2.3.1 - 2026-02-07
 
 ### Added
