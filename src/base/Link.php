@@ -455,7 +455,23 @@ abstract class Link extends Element implements LinkInterface
 
     public function getLinkUrl(): ?string
     {
-        return App::parseEnv((string)$this->linkValue);
+        $linkValue = $this->linkValue;
+
+        // Some malformed payloads can arrive as arrays (for example from element-select style data).
+        // Normalize to a scalar for non-element links to avoid PHP "Array to string conversion" warnings.
+        if (is_array($linkValue)) {
+            if (array_is_list($linkValue)) {
+                $linkValue = $linkValue[0] ?? null;
+            } else {
+                $linkValue = $linkValue['url'] ?? null;
+            }
+        }
+
+        if (!is_scalar($linkValue) && $linkValue !== null) {
+            return null;
+        }
+
+        return App::parseEnv((string)$linkValue);
     }
 
     public function getUrl(): ?string
