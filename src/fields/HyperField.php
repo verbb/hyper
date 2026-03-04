@@ -633,6 +633,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             }
 
             $view->startJsBuffer();
+            $view->startScriptBuffer();
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $linkType->id = rand();
@@ -650,7 +651,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             ];
 
             $js = $view->clearJsBuffer(false);
-            $linkTypeSettings['js'] = '<script id="hyper-__HYPER_BLOCK_' . $placeholderKey . '__-script">' . $js . '</script>';
+            $scripts = $view->clearScriptBuffer();
+            $linkTypeSettings['js'] = $this->_composeDeferredJs($js, $scripts, $placeholderKey);
 
             $linkTypeInfo['linkTypes'][] = $linkTypeSettings;
         }
@@ -688,6 +690,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         // For each Link element, render the fields and convert to an array
         foreach ($links as $key => $link) {
             $view->startJsBuffer();
+            $view->startScriptBuffer();
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $link->id = rand();
@@ -700,7 +703,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);
-            $preppedValues[$key]['js'][$link->handle] = '<script id="hyper-__HYPER_BLOCK_' . $placeholderKey . '__-script">' . $js . '</script>';
+            $scripts = $view->clearScriptBuffer();
+            $preppedValues[$key]['js'][$link->handle] = $this->_composeDeferredJs($js, $scripts, $placeholderKey);
         }
 
         $view->setNamespace($oldNamespace);
@@ -809,6 +813,49 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         return $linkTypes;
+    }
+
+    private function _composeDeferredJs(string|false $js, array|false $scripts, string $placeholderKey): string
+    {
+        $payload = '';
+
+        if (is_string($js) && $js !== '') {
+            // Keep registerJs() output deferred with a stable script ID.
+            $payload .= '<script id="hyper-__HYPER_BLOCK_' . $placeholderKey . '__-script">' . $js . '</script>';
+        }
+
+        if (is_array($scripts)) {
+            // registerScriptWithVars() output (e.g. CKEditor module scripts) is already full <script> tags.
+            $scriptHtml = $this->_flattenScriptBuffer($scripts);
+
+            if ($scriptHtml !== '') {
+                $payload .= $scriptHtml;
+            }
+        }
+
+        return $payload;
+    }
+
+    private function _flattenScriptBuffer(array $scripts): string
+    {
+        $output = '';
+        $positions = [View::POS_HEAD, View::POS_BEGIN, View::POS_END];
+
+        foreach ($positions as $position) {
+            if (!empty($scripts[$position]) && is_array($scripts[$position])) {
+                $output .= implode("\n", $scripts[$position]) . "\n";
+                unset($scripts[$position]);
+            }
+        }
+
+        // Include any unexpected positions to avoid dropping registered scripts.
+        foreach ($scripts as $positionScripts) {
+            if (is_array($positionScripts) && $positionScripts) {
+                $output .= implode("\n", $positionScripts) . "\n";
+            }
+        }
+
+        return $output;
     }
 
     private function _getLinkTypeSettingsConfig(LinkInterface $linkType): array
