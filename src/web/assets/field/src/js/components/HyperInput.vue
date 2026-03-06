@@ -155,32 +155,7 @@ export default {
         proxyValue: {
             deep: true,
             handler(newValue) {
-                // Don't update the DOM until we want to
-                if (this.rendered && this.$el) {
-                    if (this.lastSerializedValue === null) {
-                        return;
-                    }
-
-                    const $dataStore = this.$el.querySelector('[data-store]');
-                    const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
-
-                    const updatedValue = this.serializeValue(newValue);
-
-                    // Check if there's an actual different between the last and new state (as serialized strings)
-                    if (this.lastSerializedValue === updatedValue) {
-                        return;
-                    }
-
-                    if ($dataStore) {
-                        $dataStore.value = updatedValue;
-                    }
-
-                    if ($dataStoreDebug) {
-                        $dataStoreDebug.innerHTML = updatedValue;
-                    }
-
-                    this.lastSerializedValue = updatedValue;
-                }
+                this.syncValueToStore(newValue);
             },
         },
     },
@@ -266,6 +241,41 @@ export default {
     },
 
     methods: {
+        syncValueToStore(value, force = false) {
+            // Don't update the DOM until the field is fully rendered.
+            if (!this.rendered || !this.$el) {
+                return;
+            }
+
+            // Preserve startup grace period unless this is an explicit forced sync (e.g. link-type change).
+            if (!force && this.lastSerializedValue === null) {
+                return;
+            }
+
+            const $dataStore = this.$el.querySelector('[data-store]');
+            const $dataStoreDebug = this.$el.querySelector('[data-store-debug]');
+            const updatedValue = this.serializeValue(value);
+
+            // Check if there's an actual different between the last and new state (as serialized strings)
+            if (this.lastSerializedValue === updatedValue) {
+                return;
+            }
+
+            if ($dataStore) {
+                $dataStore.value = updatedValue;
+            }
+
+            if ($dataStoreDebug) {
+                $dataStoreDebug.innerHTML = updatedValue;
+            }
+
+            this.lastSerializedValue = updatedValue;
+        },
+
+        forceSyncValueToStore() {
+            this.syncValueToStore(this.proxyValue, true);
+        },
+
         ensurePortalLayer() {
             if (this.portalLayerEl) {
                 return;

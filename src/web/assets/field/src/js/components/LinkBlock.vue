@@ -164,6 +164,15 @@ export default {
                 this.$emit('update:modelValue', this.link);
             }
         },
+        'link.handle': function(newValue, oldValue) {
+            if (!this.mounted || newValue === oldValue) {
+                return;
+            }
+
+            // Persist type changes immediately so save actions don't miss fast toggles.
+            this.$emit('update:modelValue', this.link);
+            this.hyperField.forceSyncValueToStore?.();
+        },
         cacheKey(newKey, oldKey) {
             if (!this.mounted) {
                 return;
@@ -331,7 +340,11 @@ export default {
 
             // This will be in the format `hyperData[267267872][linkValue]...`, and for nested setups, it'll all be one level
             // so ensure that we grab the correct data for this block.
-            const blockContent = content.hyperData[this.link.id] || [];
+            const blockContent = { ...(content?.hyperData?.[this.link.id] || {}) };
+
+            // Prevent stale or non-portal values from forcing link type/id to revert.
+            delete blockContent.handle;
+            delete blockContent.id;
 
             const updatedLink = merge({}, this.link, blockContent);
             this.link = updatedLink;
