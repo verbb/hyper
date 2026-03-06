@@ -128,7 +128,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
             // We have to save the field instead of a settings update, because the plugin doesn't use the content table
             if ($newField->context === 'global') {
-                if (!$fieldService->saveField($newField)) {
+                if (!$this->saveFieldForMigration($fieldService, $newField)) {
                     throw new Exception(Json::encode($newField->getErrors()));
                 }
 
