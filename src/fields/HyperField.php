@@ -155,12 +155,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $inputNamePrefix = $view->getNamespace();
         $inputIdPrefix = Html::id($inputNamePrefix);
 
-        // Create the Hyper Settings Vue component
-        $js = 'new Craft.Hyper.Settings(' .
-            Json::encode($inputNamePrefix, JSON_UNESCAPED_UNICODE) . 
-        ');';
-        
-        $this->_registerJs($view, $js);
+        // Register Hyper assets; roots are mounted automatically by hyper.js.
+        Plugin::registerAsset('field/src/js/hyper.js');
 
         // Get the link type settings (set defaults or normalize existing saved settings)
         $linkTypes = $this->_getLinkTypeSettings();
@@ -580,9 +576,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             ];
         }
 
-        // Create the Hyper Input Vue component
-        $js = 'new Craft.Hyper.Input("' . $view->namespaceInputId($id) . '");';
-        $this->_registerJs($view, $js);
+        // Register Hyper assets; roots are mounted automatically by hyper.js.
+        Plugin::registerAsset('field/src/js/hyper.js');
 
         return $view->renderTemplate('hyper/field/input', [
             'id' => $id,
@@ -895,40 +890,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'htmlTemplate' => $htmlTemplate,
             'jsTemplate' => $jsTemplate,
         ]);
-    }
-
-    private function _registerJs(View $view, string $js): void
-    {
-        Plugin::registerAsset('field/src/js/hyper.js');
-
-        // The same init payload can be triggered by two independent paths:
-        //  1) immediately when Craft.HyperReady is already true, and
-        //  2) later via the `vite-script-loaded` event.
-        // In some timing windows both paths fire, which double-initializes the same Hyper field
-        // instance. That causes Vue components to mount and then immediately unmount/remount,
-        // and CKEditor setup becomes nondeterministic.
-        //
-        // We key each payload by its JS content hash and ensure each key only runs once per page.
-        // This keeps both trigger paths (needed for compatibility) while making initialization idempotent.
-        $initKey = md5($js);
-
-        // Wait for Hyper JS to be loaded, either through an event listener, or by a flag.
-        // This covers if this script is run before, or after the Hyper JS has loaded.
-        $view->registerJs(
-            '(function() {' .
-                'window.__hyperFieldInits = window.__hyperFieldInits || {};' .
-                'const __hyperInitKey = ' . Json::encode($initKey) . ';' .
-                'const __runHyperInit = function() {' .
-                    'if (window.__hyperFieldInits[__hyperInitKey]) { return; }' .
-                    'window.__hyperFieldInits[__hyperInitKey] = true;' .
-                    $js .
-                '};' .
-                'document.addEventListener("vite-script-loaded", function(e) {' .
-                    'if (e.detail.path === "field/src/js/hyper.js") { __runHyperInit(); }' .
-                '});' .
-                'if (Craft.HyperReady) { __runHyperInit(); }' .
-            '})();'
-        );
     }
 
     private function _normalizeLayoutConfig(array $config = []): array

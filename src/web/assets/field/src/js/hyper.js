@@ -21,15 +21,99 @@ import { createVueApp } from './config';
 import HyperInput from './components/HyperInput.vue';
 import HyperSettings from './components/HyperSettings.vue';
 
+const HYPER_INPUT_SELECTOR = '[data-hyper-auto-mount="input"], .hyper-input-component';
+const HYPER_SETTINGS_SELECTOR = '[data-hyper-auto-mount="settings"], .hyper-configurator';
+// Guard each mount root so observer-driven scans cannot double-mount Vue apps.
+const mountedRoots = new WeakSet();
+
+const mountInputRoot = (root) => {
+    if (!root || mountedRoots.has(root)) {
+        return;
+    }
+
+    const app = createVueApp({
+        components: {
+            HyperInput,
+        },
+    });
+
+    app.mount(root);
+    mountedRoots.add(root);
+};
+
+const mountSettingsRoot = (root) => {
+    if (!root || mountedRoots.has(root)) {
+        return;
+    }
+
+    const app = createVueApp({
+        components: {
+            HyperSettings,
+        },
+    });
+
+    app.mount(root);
+    mountedRoots.add(root);
+};
+
+const rootsForSelector = (scope, selector) => {
+    if (!scope) {
+        return [];
+    }
+
+    const roots = [];
+
+    if (scope.matches && scope.matches(selector)) {
+        roots.push(scope);
+    }
+
+    roots.push(...scope.querySelectorAll(selector));
+
+    return roots;
+};
+
+Craft.Hyper.mountAll = (scope = document) => {
+    rootsForSelector(scope, HYPER_INPUT_SELECTOR).forEach((root) => {
+        mountInputRoot(root);
+    });
+
+    rootsForSelector(scope, HYPER_SETTINGS_SELECTOR).forEach((root) => {
+        mountSettingsRoot(root);
+    });
+};
+
+Craft.Hyper.startAutoMountObserver = () => {
+    if (Craft.Hyper.__autoMountObserverStarted) {
+        return;
+    }
+
+    Craft.Hyper.__autoMountObserverStarted = true;
+
+    // New Hyper roots can appear in slideouts or dynamically injected markup.
+    // Observing body lets us auto-mount without per-field inline init JS.
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return;
+                }
+
+                Craft.Hyper.mountAll(node);
+            });
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+};
+
 Craft.Hyper.Input = Garnish.Base.extend({
     init(idPrefix) {
-        const app = createVueApp({
-            components: {
-                HyperInput,
-            },
-        });
+        const root = document.querySelector(`#${idPrefix}-field ${HYPER_INPUT_SELECTOR}`);
 
-        app.mount(`#${idPrefix}-field .hyper-input-component`);
+        mountInputRoot(root);
     },
 });
 
@@ -38,19 +122,9 @@ Craft.Hyper.Settings = Garnish.Base.extend({
         this.inputNamePrefix = inputNamePrefix;
         this.inputIdPrefix = Craft.formatInputId(this.inputNamePrefix);
 
-        const app = createVueApp({
-            components: {
-                HyperSettings,
-            },
+        const root = document.querySelector(`.${this.inputIdPrefix}-hyper-configurator`);
 
-            data() {
-                return {
-                    settings,
-                };
-            },
-        });
-
-        app.mount(`.${this.inputIdPrefix}-hyper-configurator`);
+        mountSettingsRoot(root);
     },
 });
 
@@ -130,15 +204,9 @@ Craft.Hyper.Embed = Garnish.Base.extend({
 });
 
 
-// Re-broadcast the custom `vite-script-loaded` event so that we know that this module has loaded
-// Needed because when <script> tags are appended to the DOM, the `onload` handlers
-// are not executed, which happens in the field Settings page, and in slideouts
-// Do this after the document is ready to ensure proper execution order
 $(document).ready(() => {
-    // Create a global-loaded flag when switching entry types. This won't be fired multiple times.
-    Craft.HyperReady = true;
-
-    document.dispatchEvent(new CustomEvent('vite-script-loaded', { detail: { path: 'field/src/js/hyper.js' } }));
+    Craft.Hyper.mountAll(document);
+    Craft.Hyper.startAutoMountObserver();
 
     // We don't want to send the Hyper block data to the server, as the content is serialized ourselves with the field.
     // We do this by changing the namespace of field content to `hyperData`, which is used in our Hyper field data JSON.
