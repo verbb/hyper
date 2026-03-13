@@ -166,6 +166,41 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         return $this->_links;
     }
 
+    public function first(): ?LinkInterface
+    {
+        return $this->_firstLink;
+    }
+
+    public function getUrl(): ?string
+    {
+        return $this->_firstLink?->getUrl();
+    }
+
+    public function getText(?string $defaultText = null): ?string
+    {
+        return $this->_firstLink?->getText($defaultText);
+    }
+
+    public function getTarget(): ?string
+    {
+        return $this->_firstLink?->getTarget();
+    }
+
+    public function getTitle(): ?string
+    {
+        return $this->_firstLink?->getTitle();
+    }
+
+    public function getLinkText(): ?string
+    {
+        return $this->_firstLink?->getLinkText();
+    }
+
+    public function getLinkUrl(): ?string
+    {
+        return $this->_firstLink?->getLinkUrl();
+    }
+
     public function setLinks(array $value): void
     {
         $this->_links = $value;
