@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.3.3 - 2026-03-15
+
+### Changed
+- Refactor Hyper field bootstrapping to DOM auto-mount.
+
+### Fixed
+- Fix LinkCollection first-link getters for empty values.
+- Fix duplicate Hyper field initialization race.
+- Fix a race condition when changing link type where block data wasn’t updating.
+- Fix an error for some field migrations in some setups when run from the command line.
+- Fix an error for CKEditor 5+ and other plugins using `registerScriptWithVars()`.
+- Fix an edge case of linkValue sometimes being an array and not normalized correctly.
+
 ## 2.3.2 - 2026-03-03
 
 ### Added
