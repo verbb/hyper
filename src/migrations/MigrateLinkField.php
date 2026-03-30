@@ -71,7 +71,7 @@ class MigrateLinkField extends PluginFieldMigration
                 $allowText = $type['allowText'] ?? true;
 
                 if ($linkType instanceof ElementLink) {
-                    $linkType->sources = $type['sources'] ?? '*';
+                    $linkType->sources = self::normalizeElementLinkSources($type['sources'] ?? null);
                 } else {
                     $linkType->placeholder = $type['placeholder'] ?? null;
                 }
@@ -114,6 +114,10 @@ class MigrateLinkField extends PluginFieldMigration
             $newFieldConfig['migrationData'] = $identifierMap;
 
             $newField = new HyperField($newFieldConfig);
+
+            if (!$this->validateMigratedLinkTypeSettings($newField, $field['handle'])) {
+                continue;
+            }
 
             if (!$newField->validate()) {
                 $this->stdout(Json::encode($newField->getErrors()) . PHP_EOL, Console::FG_RED);

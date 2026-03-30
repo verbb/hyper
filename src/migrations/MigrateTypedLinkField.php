@@ -80,7 +80,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 $enableSuffix = $type['allowCustomQuery'] ?? false;
 
                 if ($linkType instanceof ElementLink) {
-                    $linkType->sources = $type['sources'] ?? '*';
+                    $linkType->sources = self::normalizeElementLinkSources($type['sources'] ?? null);
                 } else if ($linkType instanceof linkTypes\Site) {
                     $linkType->sites = $type['sites'] ?? null;
 
@@ -119,6 +119,10 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
             $newField = new HyperField($newFieldConfig);
             $newField->columnSuffix = StringHelper::randomString(8);
+
+            if (!$this->validateMigratedLinkTypeSettings($newField, $field['handle'])) {
+                continue;
+            }
 
             if (!$newField->validate()) {
                 $this->stdout(Json::encode($newField->getErrors()) . PHP_EOL, Console::FG_RED);

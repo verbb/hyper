@@ -1,7 +1,9 @@
 <?php
 namespace verbb\hyper\migrations;
 
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
@@ -186,5 +188,43 @@ class PluginFieldMigration extends PluginMigration
         $classNameParts = explode('\\', $class);
 
         return array_pop($classNameParts);
+    }
+
+    public static function normalizeElementLinkSources(mixed $sources): string|array
+    {
+        if ($sources === null || $sources === '' || $sources === []) {
+            return '*';
+        }
+
+        if (is_array($sources)) {
+            $filtered = array_values(array_filter($sources, static fn($s) => $s !== null && $s !== ''));
+
+            if ($filtered === []) {
+                return '*';
+            }
+
+            return $filtered;
+        }
+
+        return $sources;
+    }
+
+    protected function validateMigratedLinkTypeSettings(HyperField $newField, string $fieldHandle): bool
+    {
+        $ok = true;
+
+        foreach ($newField->getLinkTypes() as $linkType) {
+            $linkType->setScenario(Link::SCENARIO_SETTINGS);
+
+            if (!$linkType->validate()) {
+                $ok = false;
+                $this->stdout(
+                    '    > Field “' . $fieldHandle . '” (' . $linkType->handle . '): ' . Json::encode($linkType->getErrors()) . PHP_EOL,
+                    Console::FG_RED,
+                );
+            }
+        }
+
+        return $ok;
     }
 }

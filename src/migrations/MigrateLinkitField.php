@@ -73,7 +73,7 @@ class MigrateLinkitField extends PluginFieldMigration
                 $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
 
                 if ($linkType instanceof ElementLink) {
-                    $linkType->sources = $type['sources'] ?? '*';
+                    $linkType->sources = self::normalizeElementLinkSources($type['sources'] ?? null);
                     $linkType->selectionLabel = $type['customSelectionLabel'] ?? null;
                 } else {
                     $linkType->placeholder = $type['customPlaceholder'] ?? null;
@@ -108,6 +108,10 @@ class MigrateLinkitField extends PluginFieldMigration
             $newFieldConfig['linkTypes'] = $types;
 
             $newField = new HyperField($newFieldConfig);
+
+            if (!$this->validateMigratedLinkTypeSettings($newField, $field['handle'])) {
+                continue;
+            }
 
             if (!$newField->validate()) {
                 $this->stdout(Json::encode($newField->getErrors()) . PHP_EOL, Console::FG_RED);
