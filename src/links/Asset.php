@@ -20,9 +20,4 @@ class Asset extends ElementLink
     {
         return AssetElement::class;
     }
-
-    public static function checkElementUri(): bool
-    {
-        return false;
-    }
 }

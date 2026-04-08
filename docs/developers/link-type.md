@@ -109,8 +109,6 @@ In the above example, we've added support for Craft Commerce Variant elements to
 
 We're also falling back on Hypers templates for `getSettingsHtml()` and `getInputHtml()` but you could of course write your own.
 
-One thing to note is that for element links, Hyper will only show elements for that element type that have a `uri`. If your element type does not support this, you'll need to disallow this with the `checkElementUri()` function.
-
 For example, if we had a custom link type for Formie forms, which don't have an intrinsic `uri`:
 
 ```php
@@ -128,11 +126,6 @@ class Formie extends ElementLink
     public static function elementType(): string
     {
         return Form::class;
-    }
-
-    public static function checkElementUri(): bool
-    {
-        return false;
     }
 
     public function getSettingsHtml(): ?string

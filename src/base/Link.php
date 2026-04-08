@@ -86,11 +86,6 @@ abstract class Link extends Element implements LinkInterface
         return $context->field->handle . '_' . $linkTypeHandle . '_LinkType';
     }
 
-    public static function checkElementUri(): bool
-    {
-        return false;
-    }
-
     public static function getDefaultFieldLayout(): FieldLayout
     {
         $fieldLayout = new FieldLayout([

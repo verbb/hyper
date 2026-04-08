@@ -20,6 +20,14 @@
     errors: linkType.getErrors('selectionLabel'),
 }) }}
 
+{{ forms.lightswitchField({
+    label: 'Allow Elements without URIs' | t('hyper'),
+    instructions: 'Show all {type} from the selected sources, even when they have no URI.' | t('hyper', { type: pluralElementType }),
+    name: 'allowElementsWithoutUri',
+    on: linkType.allowElementsWithoutUri,
+    errors: linkType.getErrors('allowElementsWithoutUri'),
+}) }}
+
 {% if craft.app.getIsMultiSite() %}
     {{ forms.lightswitchField({
         label: 'Show Site Menu' | t('hyper'),

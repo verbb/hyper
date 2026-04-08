@@ -7,9 +7,7 @@
     status: null,
 } %}
 
-{# Some elements like Assets don't support `uri` like other elements do #}
-{# But by default, don't allow linking to elements that don't have links #}
-{% if link.checkElementUri() %}
+{% if not link.allowElementsWithoutUri %}
     {% set criteria = criteria | merge({
         uri: ':notempty:',
     }) %}

@@ -26,9 +26,4 @@ class FormieForm extends ElementLink
     {
         return FormElement::class;
     }
-
-    public static function checkElementUri(): bool
-    {
-        return false;
-    }
 }

@@ -26,9 +26,4 @@ class CalendarEvent extends ElementLink
     {
         return EventElement::class;
     }
-
-    public static function checkElementUri(): bool
-    {
-        return false;
-    }
 }

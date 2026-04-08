@@ -23,11 +23,6 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         return Craft::t('app', 'Choose');
     }
 
-    public static function checkElementUri(): bool
-    {
-        return true;
-    }
-
 
     // Abstract Methods
     // =========================================================================
@@ -42,6 +37,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     public string|array|null $sources = '*';
     public ?string $selectionLabel = null;
     public bool $showSiteMenu = true;
+    public bool $allowElementsWithoutUri = false;
 
     private ?ElementInterface $_element = null;
     private ?ElementInterface $_elementCache = null;
@@ -94,6 +90,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $values['sources'] = $this->sources;
         $values['selectionLabel'] = $this->selectionLabel;
         $values['showSiteMenu'] = $this->showSiteMenu;
+        $values['allowElementsWithoutUri'] = $this->allowElementsWithoutUri;
 
         return $values;
     }
@@ -262,6 +259,8 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $rules[] = [['sources'], 'required', 'when' => function($model) {
             return $model->enabled;
         }];
+
+        $rules[] = [['allowElementsWithoutUri'], 'boolean'];
 
         return $rules;
     }
