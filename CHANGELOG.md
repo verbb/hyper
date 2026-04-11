@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.4 - 2026-04-11
+
+### Changed
+- Remove `ElementLink::checkElementUri()` in favour of proper link type setting.
+
+### Fixed
+- Fix handling for element field sources with plugin migrations in some instances.
+
 ## 2.3.3 - 2026-03-15
 
 ### Changed
