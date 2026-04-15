@@ -49,11 +49,12 @@ This is the interface implemented by all links.
 | `isElement`| `Boolean` | Whether the chosen link value is an element.
 | `isEmpty`| `Boolean` | Whether a link has been set for the field.
 | `link`| `String` | The HTML output for a `<a>` element.
-| `linkText`| `String` | The text for the link.
+| `linkText`| `String` | The resolved link label before layout defaults (custom Link Text if set; otherwise type-specific fallbacks such as element titles when the Link Text field is empty).
+| `customLinkText`| `String` | Only the Link Text field value, with no fallbacks. Null when blank—use for explicit defaults in your API client.
 | `linkUrl`| `String` | The url for the link.
 | `newWindow`| `Boolean` | Whether the link should open in a new window.
 | `target`| `String` | The `target` attribute for the link.
-| `text`| `String` | The text for the link.
+| `text`| `String` | The fully derived link label (custom text, type fallbacks, then field placeholder or plugin default).
 | `title`| `String` | The `title` attribute for the link.
 | `type`| `String` | The link type.
 | `url`| `String` | The url for the link.

@@ -90,8 +90,16 @@ class LinkInterface extends BaseInterfaceType
             ],
             'linkText' => [
                 'name' => 'linkText',
-                'description' => 'The text for the link.',
+                'description' => 'The text for the link (includes type-specific fallbacks such as element titles when the Link Text field is empty).',
                 'type' => Type::string(),
+            ],
+            'customLinkText' => [
+                'name' => 'customLinkText',
+                'description' => 'Only the text entered in the Link Text field, with no fallbacks. Null when blank.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return $link->getCustomLinkText();
+                },
             ],
             'linkUrl' => [
                 'name' => 'linkUrl',
@@ -118,7 +126,7 @@ class LinkInterface extends BaseInterfaceType
             ],
             'text' => [
                 'name' => 'text',
-                'description' => 'The text for the link.',
+                'description' => 'The fully derived link label (custom text, type fallbacks, then field placeholder or plugin default).',
                 'type' => Type::string(),
             ],
             'title' => [

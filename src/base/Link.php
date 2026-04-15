@@ -448,6 +448,15 @@ abstract class Link extends Element implements LinkInterface
         return $this->linkText;
     }
 
+    public function getCustomLinkText(): ?string
+    {
+        if ($this->linkText === null || $this->linkText === '') {
+            return null;
+        }
+
+        return $this->linkText;
+    }
+
     public function getLinkUrl(): ?string
     {
         $linkValue = $this->linkValue;

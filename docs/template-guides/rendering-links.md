@@ -114,9 +114,20 @@ For the available native fields, you can access them as you'd expect as attribut
 ```twig
 {{ entry.myLinkField.ariaLabel }}
 {{ entry.myLinkField.linkText }}
+{{ entry.myLinkField.customLinkText }}
 {{ entry.myLinkField.title }}
 {{ entry.myLinkField.urlSuffix }}
 ```
+
+### Custom label vs resolved label
+`linkText` can include type-specific fallbacks (for example, the linked entry’s title when the Link Text field is empty). If you want **only** what the author typed—so a blank field stays blank and you can supply your own default in Twig—use `customLinkText`:
+
+```twig
+{% set label = entry.myLinkField.customLinkText ?? 'Our default' %}
+<a href="{{ entry.myLinkField.url }}">{{ label }}</a>
+```
+
+For the fully derived label (custom text, else element title where applicable, else field placeholder / “Read more”), use `text` or `getLink()`.
 
 ## Empty
 You can check if a Hyper field has a value with `isEmpty()`.

@@ -45,13 +45,14 @@ Attribute | Description
 `type` | Returns the link type class name chosen for the link. e.g. `verbb\hyper\links\Entry`.
 `linkType` | Returns the [link type](docs:developers/link-type) object chosen for the link. 
 `url` | The value used for the `href` for the link. Supports .env variables and aliases, and combines any prefix or suffix.
-`text` | The derived text for the label of the link. If an element link type, the title of the element will be used automatically.
+`text` | The derived text for the label of the link. If an element link type, the title of the element will be used automatically when the Link Text field is empty (after considering the field layout placeholder and plugin defaults).
 `target` | Returns `_blank` if the link should open in a new window.
 `newWindow` | Whether the link should open in a new window.
 `linkUrl` | The link URL. Supports `.env` variables and aliases.
 `linkUri` | The link URI, if an element-based link.
 `linkValue` | The value of the link. This will vary depending on the link type.
-`linkText` | The custom text for the link. e.g. `Read more`.
+`linkText` | The resolved link label before `text` applies layout defaults: custom Link Text if set; otherwise, for element-based links, the linked element’s title (or string representation). For **only** what was typed in the Link Text field (so you can use Twig `??` fallbacks), use `customLinkText`.
+`customLinkText` | Only the author-entered value from the Link Text field. `null` when that field is left blank—no element title or other fallback. Use `text` for the full derived label.
 `ariaLabel` | The value for the `aria-label` attribute for the link.
 `urlSuffix` | The suffix value to append to the URL.
 `linkTitle` | The value for the `title` attribute for the link.
@@ -66,6 +67,7 @@ Method | Description
 `hasElement(status)` | Returns whether linked to an element, or an element-based link type. `status` can be supplied to filter based on the status (by default, only live elements will be returned).
 `getLink(attributes)` | Returns an `<a>` anchor element. Pass in an array of HTML attributes to override any.
 `getLinkAttributes(attributes, asString)` | Returns a collection of HTML attributes to be used when creating an `<a>` HTML element. You can also have this returned as a string instead of an array.
+`getCustomLinkText()` | Returns only the Link Text field value (`null` when blank). Does not apply element titles or other type-specific fallbacks—use `getText()` for the resolved label.
 
 ## Element Link
 An Element Link is an extension of a regular Link object, and is inherited by all element-base link types like an Entry, Category, etc.
