@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.5 - 2026-04-16
+
+### Added
+- Add `Link::customLinkText`.
+
+### Fixed
+- Fix element selectors hiding valid targets when “Allow elements without URIs” was off for link types that do not use site `uri` the same way as routable entries (Asset, Calendar Event, Formie Form, User, Commerce Variant).
+
 ## 2.3.4 - 2026-04-11
 
 ### Changed
