@@ -20,4 +20,9 @@ class User extends ElementLink
     {
         return UserElement::class;
     }
+
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
 }

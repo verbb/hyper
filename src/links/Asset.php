@@ -20,4 +20,9 @@ class Asset extends ElementLink
     {
         return AssetElement::class;
     }
+
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
 }

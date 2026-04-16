@@ -26,4 +26,9 @@ class CalendarEvent extends ElementLink
     {
         return EventElement::class;
     }
+
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
 }

@@ -26,4 +26,9 @@ class Variant extends ElementLink
     {
         return VariantElement::class;
     }
+
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
 }

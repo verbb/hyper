@@ -26,4 +26,9 @@ class FormieForm extends ElementLink
     {
         return FormElement::class;
     }
+
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
 }

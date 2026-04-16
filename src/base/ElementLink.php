@@ -23,6 +23,18 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         return Craft::t('app', 'Choose');
     }
 
+    /**
+     * Whether the element selector should apply a non-empty site `uri` criterion when
+     * “Allow elements without URIs” is off.
+     *
+     * Return false when this link type’s elements are not meaningfully filtered by `elements_sites.uri`
+     * (e.g. assets, whose URLs come from the volume instead).
+     */
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return true;
+    }
+
 
     // Abstract Methods
     // =========================================================================
@@ -111,6 +123,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
+        $variables['showAllowElementsWithoutUri'] = static::supportsUriSelectorCriteria();
 
         return $variables;
     }
@@ -123,6 +136,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
+        $variables['applyUriCriteria'] = !$this->allowElementsWithoutUri && static::supportsUriSelectorCriteria();
 
         return $variables;
     }

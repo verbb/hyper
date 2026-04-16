@@ -128,6 +128,11 @@ class Formie extends ElementLink
         return Form::class;
     }
 
+    public static function supportsUriSelectorCriteria(): bool
+    {
+        return false;
+    }
+
     public function getSettingsHtml(): ?string
     {
         $variables = $this->getSettingsHtmlVariables();
@@ -144,7 +149,7 @@ class Formie extends ElementLink
 }
 ```
 
-Without this, no Formie Form element would be selectable when creating the link in Hyper.
+Without `supportsUriSelectorCriteria(): false`, forms could be hidden in the selector when “Allow elements without URIs” is off. The built-in Formie Form link type already includes this override.
 
 ## Settings, Variables and Values
 As mentioned, because a single class takes care of 3 different uses (the field settings, the field input in the control panel when editing an element, the field when rendering on the front-end), the class does need to consider how to save properties.
