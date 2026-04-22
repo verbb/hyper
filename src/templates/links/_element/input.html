@@ -7,7 +7,7 @@
     status: null,
 } %}
 
-{% if applyUriCriteria %}
+{% if not link.allowElementsWithoutUri and link.supportsUriSelectorCriteria() %}
     {% set criteria = criteria | merge({
         uri: ':notempty:',
     }) %}

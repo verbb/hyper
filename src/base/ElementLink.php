@@ -123,7 +123,6 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
-        $variables['showAllowElementsWithoutUri'] = static::supportsUriSelectorCriteria();
 
         return $variables;
     }
@@ -136,7 +135,6 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
-        $variables['applyUriCriteria'] = !$this->allowElementsWithoutUri && static::supportsUriSelectorCriteria();
 
         return $variables;
     }
