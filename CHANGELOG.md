@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.6 - 2026-04-29
+
+### Fixed
+- Fix Assets and other element link types and their no-URL check.
+
 ## 2.3.5 - 2026-04-16
 
 ### Added
