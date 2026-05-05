@@ -58,6 +58,14 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     // Public Methods
     // =========================================================================
 
+    public function __construct($config = [])
+    {
+        // These were previously template-only variables, not saved link type settings.
+        unset($config['applyUriCriteria'], $config['showAllowElementsWithoutUri']);
+
+        parent::__construct($config);
+    }
+
     public function count(): int|bool
     {
         // Override `Link::count` to not rely on a URL, as not all elements have a URL, but still have a value
@@ -123,6 +131,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
+        $variables['showAllowElementsWithoutUri'] = static::supportsUriSelectorCriteria();
 
         return $variables;
     }
@@ -135,6 +144,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $elementType = static::elementType();
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
+        $variables['applyUriCriteria'] = !$this->allowElementsWithoutUri && static::supportsUriSelectorCriteria();
 
         return $variables;
     }
