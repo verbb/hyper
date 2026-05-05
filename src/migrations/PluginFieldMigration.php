@@ -17,6 +17,7 @@ use craft\db\Query;
 use craft\helpers\App;
 use craft\helpers\Console;
 use craft\helpers\Json;
+use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use craft\helpers\StringHelper;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
@@ -69,6 +70,10 @@ class PluginFieldMigration extends PluginMigration
 
                 $this->stdout("    > Field “{$fieldData['handle']}” migration finalised." . PHP_EOL, Console::FG_GREEN);
             }
+
+            // `saveField()` only writes `fields.*` project config for global fields. If a migration
+            // converted a field stored elsewhere in project config, update that field definition in place.
+            $this->syncMigratedFieldsToProjectConfig($fieldService);
         }
 
         if ($this->count) {
@@ -226,5 +231,86 @@ class PluginFieldMigration extends PluginMigration
         }
 
         return $ok;
+    }
+
+    protected function syncMigratedFieldsToProjectConfig(Fields $fieldService): void
+    {
+        $projectConfig = Craft::$app->getProjectConfig();
+        $config = $projectConfig->get();
+        $synced = false;
+
+        if (!is_array($config)) {
+            return;
+        }
+
+        foreach ($this->fields as $fieldData) {
+            $field = $fieldService->getFieldById($fieldData['id']);
+
+            if (!$field instanceof HyperField) {
+                continue;
+            }
+
+            $fieldConfig = $fieldService->createFieldConfig($field);
+
+            foreach ($this->findMigratedFieldConfigPaths($config, $fieldData) as $path) {
+                $currentConfig = $projectConfig->get($path);
+
+                if (!is_array($currentConfig) || ($currentConfig['type'] ?? null) !== $this->oldFieldTypeClass) {
+                    continue;
+                }
+
+                $projectConfig->set($path, $fieldConfig, "Migrate field “{$field->handle}” to Hyper");
+                $this->stdout("    > Project config synced for field “{$field->handle}” at `{$path}`." . PHP_EOL, Console::FG_GREEN);
+
+                $synced = true;
+            }
+        }
+
+        if ($synced) {
+            $fieldService->refreshFields();
+        }
+    }
+
+    protected function findMigratedFieldConfigPaths(array $config, array $fieldData, array $path = []): array
+    {
+        $paths = [];
+
+        foreach ($config as $key => $value) {
+            if (!is_array($value)) {
+                continue;
+            }
+
+            $currentPath = [...$path, (string)$key];
+
+            if ($this->isMigratedFieldConfig($value, (string)$key, $fieldData)) {
+                $paths[] = implode('.', $currentPath);
+
+                continue;
+            }
+
+            array_push($paths, ...$this->findMigratedFieldConfigPaths($value, $fieldData, $currentPath));
+        }
+
+        return $paths;
+    }
+
+    protected function isMigratedFieldConfig(array $config, string $key, array $fieldData): bool
+    {
+        if (($config['type'] ?? null) !== $this->oldFieldTypeClass) {
+            return false;
+        }
+
+        if ($key === $fieldData['uid'] || ($config['uid'] ?? null) === $fieldData['uid']) {
+            return true;
+        }
+
+        if (($config['handle'] ?? null) !== $fieldData['handle'] || !isset($config['settings'])) {
+            return false;
+        }
+
+        $oldSettings = Json::decode($fieldData['settings']);
+        $configSettings = ProjectConfigHelper::unpackAssociativeArrays($config['settings']);
+
+        return $configSettings == $oldSettings;
     }
 }
