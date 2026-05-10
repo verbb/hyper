@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.7 - 2026-05-10
+
+### Fixed
+- Fix an error with `applyUriCriteria`.
+- Fix an issue with plugin migration and project config.
+
 ## 2.3.6 - 2026-04-29
 
 ### Fixed
