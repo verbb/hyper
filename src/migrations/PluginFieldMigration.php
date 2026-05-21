@@ -17,6 +17,7 @@ use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
+use craft\services\Fields;
 
 use Exception;
 
@@ -59,7 +60,7 @@ class PluginFieldMigration extends PluginMigration
                     continue;
                 }
 
-                if (!$fieldService->saveField($field)) {
+                if (!$this->saveFieldForMigration($fieldService, $field)) {
                     throw new Exception(Json::encode($field->getErrors()));
                 }
 
@@ -74,6 +75,28 @@ class PluginFieldMigration extends PluginMigration
         }
 
         return true;
+    }
+
+    protected function saveFieldForMigration(Fields $fieldService, mixed $field): bool
+    {
+        try {
+            // Preserve normal validation so field-level issues are still reported.
+            return $fieldService->saveField($field);
+        } catch (\Throwable $e) {
+            // Some field validation paths rely on web sessions and will always fail in console requests.
+            // Fall back to a non-validating save only for this known, unavoidable console edge case.
+            if (
+                Craft::$app instanceof \craft\console\Application &&
+                str_contains($e->getMessage(), 'Session does not exist in a console request')
+            ) {
+                $fieldHandle = $field->handle ?? 'unknown';
+                $this->stdout("    > Field “{$fieldHandle}” triggered session-bound validation in console. Retrying without validation." . PHP_EOL, Console::FG_YELLOW);
+
+                return $fieldService->saveField($field, false);
+            }
+
+            throw $e;
+        }
     }
 
     public static function getDefaultFieldLayout(bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false, bool $enableSuffix = false): FieldLayout

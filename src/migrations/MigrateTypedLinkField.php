@@ -128,7 +128,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
             // We have to save the field instead of a settings update, because the plugin doesn't use the content table
             if ($newField->context === 'global') {
-                if (!$fieldService->saveField($newField)) {
+                if (!$this->saveFieldForMigration($fieldService, $newField)) {
                     throw new Exception(Json::encode($newField->getErrors()));
                 }
             }
@@ -150,7 +150,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                         $this->migrateBlockField($matrixField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if (!$fieldService->saveField($matrixField)) {
+                        if (!$this->saveFieldForMigration($fieldService, $matrixField)) {
                             $errors = $matrixField->getErrors();
 
                             // Check for blocktype errors too
@@ -191,7 +191,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                         $this->migrateBlockField($superTableField, $newField);
 
                         // For complex fields like Matrix > ST > Matrix, check if this is the top-level
-                        if (!$fieldService->saveField($superTableField)) {
+                        if (!$this->saveFieldForMigration($fieldService, $superTableField)) {
                             $errors = $superTableField->getErrors();
 
                             // Check for blocktype errors too
