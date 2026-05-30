@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.8 - 2026-05-30
+
+### Fixed
+- Fix an error for some field migrations in some setups when run from the command line.
+
 ## 2.3.7 - 2026-05-10
 
 ### Fixed
