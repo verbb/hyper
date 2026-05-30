@@ -286,6 +286,11 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.12 - 2026-05-30
+
+### Fixed
+- Fix an error for some field migrations in some setups when run from the command line.
+
 ## 1.3.11 - 2026-01-23
 
 ### Fixed
