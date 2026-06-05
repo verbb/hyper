@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.9 - 2026-06-05
+
+### Fixed
+- Fix required Hyper fields respecting removed link inputs.
+
 ## 2.3.8 - 2026-05-30
 
 ### Fixed
