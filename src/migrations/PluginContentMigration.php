@@ -4,6 +4,7 @@ namespace verbb\hyper\migrations;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\links as linkTypes;
 
 use Craft;
 use craft\base\ElementInterface;
@@ -133,7 +134,20 @@ class PluginContentMigration extends PluginMigration
             $link->linkSiteId = $this->contentSiteId;
         }
 
+        $this->castScalarLinkValue($link);
+
         return [$link->getSerializedValues()];
+    }
+
+    protected function castScalarLinkValue(LinkInterface $link): void
+    {
+        if (!$link instanceof linkTypes\Phone && !$link instanceof linkTypes\Email) {
+            return;
+        }
+
+        if ($link->linkValue !== null && $link->linkValue !== '' && is_scalar($link->linkValue)) {
+            $link->linkValue = (string)$link->linkValue;
+        }
     }
 
     protected function findFieldUsages(FieldInterface $field): array

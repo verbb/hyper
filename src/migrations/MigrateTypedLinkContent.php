@@ -155,6 +155,8 @@ class MigrateTypedLinkContent extends PluginContentMigration
             }
         }
 
+        $this->castScalarLinkValue($link);
+
         return [$link->getSerializedValues()];
     }
 }

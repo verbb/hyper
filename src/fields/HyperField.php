@@ -224,6 +224,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     {
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
+            $value = self::_preserveScalarLinkValues($value);
 
             return Json::decode(Json::encode($value));
         }
@@ -932,6 +933,33 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         return $layoutConfig;
+    }
+
+    private static function _preserveScalarLinkValues(array $values): array
+    {
+        foreach ($values as $key => $linkValues) {
+            if (!is_array($linkValues)) {
+                continue;
+            }
+
+            $type = $linkValues['type'] ?? null;
+
+            if (!in_array($type, [linkTypes\Phone::class, linkTypes\Email::class], true)) {
+                continue;
+            }
+
+            if (!array_key_exists('linkValue', $linkValues)) {
+                continue;
+            }
+
+            $linkValue = $linkValues['linkValue'];
+
+            if ($linkValue !== null && $linkValue !== '' && is_scalar($linkValue)) {
+                $values[$key]['linkValue'] = (string)$linkValue;
+            }
+        }
+
+        return $values;
     }
 
     private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
