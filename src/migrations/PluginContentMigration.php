@@ -1,6 +1,8 @@
 <?php
 namespace verbb\hyper\migrations;
 
+use verbb\hyper\base\ElementLink;
+use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 
 use Craft;
@@ -22,6 +24,12 @@ use yii\base\InvalidArgumentException;
 
 class PluginContentMigration extends PluginMigration
 {
+    // Properties
+    // =========================================================================
+
+    protected ?int $contentSiteId = null;
+
+
     // Public Methods
     // =========================================================================
 
@@ -63,7 +71,7 @@ class PluginContentMigration extends PluginMigration
                         $sql = Craft::$app->getDb()->getQueryBuilder()->jsonExtract('content', [$fieldLayoutUid]);
 
                         $rows = (new Query())
-                            ->select(['content', 'id', 'elementId'])
+                            ->select(['content', 'id', 'elementId', 'siteId'])
                             ->from('{{%elements_sites}}')
                             ->where([
                                 'and',
@@ -82,7 +90,9 @@ class PluginContentMigration extends PluginMigration
                                 }
 
                                 if ($fieldContent) {
+                                    $this->contentSiteId = (int)$row['siteId'] ?: null;
                                     $settings = $this->convertModel($field, $fieldContent);
+                                    $this->contentSiteId = null;
 
                                     if ($settings) {
                                         $elementContent[$fieldLayoutUid] = Json::encode($settings);
@@ -116,6 +126,15 @@ class PluginContentMigration extends PluginMigration
 
     // Protected Methods
     // =========================================================================
+
+    protected function serializeMigratedLink(LinkInterface $link): array
+    {
+        if ($link instanceof ElementLink && $this->contentSiteId) {
+            $link->linkSiteId = $this->contentSiteId;
+        }
+
+        return [$link->getSerializedValues()];
+    }
 
     protected function findFieldUsages(FieldInterface $field): array
     {

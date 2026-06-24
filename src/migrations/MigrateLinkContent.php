@@ -61,6 +61,6 @@ class MigrateLinkContent extends PluginContentMigration
         $link->linkText = $oldSettings['overrideText'] ?? null;
         $link->newWindow = ($oldSettings['target'] ?? '') === '_blank';
 
-        return [$link->getSerializedValues()];
+        return $this->serializeMigratedLink($link);
     }
 }

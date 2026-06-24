@@ -92,6 +92,6 @@ class MigrateLinkitContent extends PluginContentMigration
         $link->linkText = $oldSettings['customText'] ?? null;
         $link->newWindow = $oldSettings['target'] ?? false;
 
-        return [$link->getSerializedValues()];
+        return $this->serializeMigratedLink($link);
     }
 }
