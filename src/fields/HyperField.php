@@ -246,6 +246,7 @@ class HyperField extends Field
     {
         if ($value instanceof LinkCollection) {
             $value = $value->serializeValues($element);
+            $value = self::_preserveScalarLinkValues($value);
 
             return Json::decode(Json::encode(self::_encodeStringValues($value)));
         }
@@ -837,6 +838,33 @@ class HyperField extends Field
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
+    }
+
+    private static function _preserveScalarLinkValues(array $values): array
+    {
+        foreach ($values as $key => $linkValues) {
+            if (!is_array($linkValues)) {
+                continue;
+            }
+
+            $type = $linkValues['type'] ?? null;
+
+            if (!in_array($type, [linkTypes\Phone::class, linkTypes\Email::class], true)) {
+                continue;
+            }
+
+            if (!array_key_exists('linkValue', $linkValues)) {
+                continue;
+            }
+
+            $linkValue = $linkValues['linkValue'];
+
+            if ($linkValue !== null && $linkValue !== '' && is_scalar($linkValue)) {
+                $values[$key]['linkValue'] = (string)$linkValue;
+            }
+        }
+
+        return $values;
     }
 
     private static function _decodeStringValues(array $values)
