@@ -9,6 +9,7 @@ use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\db\Query;
+use craft\db\Table;
 use craft\events\ElementEvent;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
@@ -116,6 +117,16 @@ class ElementCache extends Component
     {
         // Ignore any provisional draft elements
         if ($element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
+            return true;
+        }
+
+        // Vizy blocks are virtual elements and aren't persisted to the `elements` table.
+        if (class_exists('verbb\vizy\elements\Block') && $element instanceof \verbb\vizy\elements\Block) {
+            return true;
+        }
+
+        // The cache table requires a valid `elements` row for the source.
+        if (!$element->id || !(new Query())->from([Table::ELEMENTS])->where(['id' => $element->id])->exists()) {
             return true;
         }
 
