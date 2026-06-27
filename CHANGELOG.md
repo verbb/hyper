@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.13 - 2026-06-27
+
+### Fixed
+- Fix Typed Link phone migration by preserving digit-only link values as strings.
+
 ## 1.3.12 - 2026-05-30
 
 ### Fixed
