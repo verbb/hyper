@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.10 - 2026-06-27
+
+### Fixed
+- Fix element cache FK errors when Hyper fields are saved inside Vizy blocks.
+- Fix Typed Link phone migration by preserving digit-only link values as strings.
+- Fix Linkit and Link content migration by setting linkSiteId from each elements_sites row for element links.
+
 ## 2.3.9 - 2026-06-05
 
 ### Fixed
