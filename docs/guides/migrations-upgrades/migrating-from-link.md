@@ -1,12 +1,12 @@
-# Migrating from Typed Link
-If your existing site has links from [Typed Link](https://github.com/sebastian-lenz/craft-linkfield), it can be easily migrated over to Hyper.
+# Migrating from Link
+If your existing site has links from [Link](https://github.com/flipboxfactory/craft-link), it can be easily migrated over to Hyper.
 
-To migrate your link fields and content, install Hyper, and navigate to **Hyper** → **Settings** → **Migrations** → **Typed Link**. You'll need to have Typed Link installed and enabled for this setting to appear.
+To migrate your link fields and content, install Hyper, and navigate to **Hyper** → **Settings** → **Migrations** → **Link**. You'll need to have Link installed and enabled for this setting to appear.
 
 Hyper's migrations will automatically take a database backup before the migration begins. If you encounter any errors during the migration, you **must** restore the backup before the migration, before running again.
 
 :::warning
-Because the migration needs to modify the content of your elements, this will be a **permanent** modification of your fields and field content. You will be unable to revert back to Typed Link, without restoring your database from a backup.
+Because the migration needs to modify the content of your elements, this will be a **permanent** modification of your fields and field content. You will be unable to revert back to Link, without restoring your database from a backup.
 :::
 
 ## Migration Process
@@ -24,7 +24,7 @@ You will only need to do this once, as the field changes are store in Project Co
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/typed-link-field
+./craft hyper/migrate/link-field
 ```
 
 ## Content Migration
@@ -37,5 +37,5 @@ We **strongly** recommend you run this migration locally first, to ensure the mi
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/typed-link-content
+./craft hyper/migrate/link-content
 ```
