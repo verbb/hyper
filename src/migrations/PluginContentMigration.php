@@ -139,6 +139,62 @@ class PluginContentMigration extends PluginMigration
         return [$link->getSerializedValues()];
     }
 
+    protected function normalizeFieldContentForMigration(array $fieldContent): array
+    {
+        if (isset($fieldContent[0]) && is_array($fieldContent[0])) {
+            return $fieldContent;
+        }
+
+        return [$fieldContent];
+    }
+
+    protected function isHyperLinkContent(array $fieldContent): bool
+    {
+        foreach ($this->normalizeFieldContentForMigration($fieldContent) as $linkData) {
+            if (!is_array($linkData)) {
+                continue;
+            }
+
+            $type = $linkData['type'] ?? '';
+
+            if (is_string($type) && str_contains($type, 'verbb\\hyper\\links\\')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function repairMigratedLinks(array $links): ?array
+    {
+        if (!$this->contentSiteId) {
+            return null;
+        }
+
+        $changed = false;
+
+        foreach ($links as &$linkData) {
+            if (!is_array($linkData)) {
+                continue;
+            }
+
+            $type = $linkData['type'] ?? null;
+
+            if (!is_string($type) || !class_exists($type) || !is_subclass_of($type, ElementLink::class)) {
+                continue;
+            }
+
+            if (empty($linkData['linkSiteId'])) {
+                $linkData['linkSiteId'] = $this->contentSiteId;
+                $changed = true;
+            }
+        }
+
+        unset($linkData);
+
+        return $changed ? $links : null;
+    }
+
     protected function castScalarLinkValue(LinkInterface $link): void
     {
         if (!$link instanceof linkTypes\Phone && !$link instanceof linkTypes\Email) {

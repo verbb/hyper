@@ -41,9 +41,13 @@ class MigrateLinkContent extends PluginContentMigration
         $linkTypeClass = $linkTypeInfo['class'] ?? null;
         $linkTypeHandle = $linkTypeInfo['handle'] ?? null;
 
-        $hyperType = $oldSettings[0]['type'] ?? null;
+        if ($this->isHyperLinkContent($oldSettings)) {
+            if ($repaired = $this->repairMigratedLinks($this->normalizeFieldContentForMigration($oldSettings))) {
+                $this->stdout('    > Repaired migrated Hyper content.', Console::FG_GREEN);
 
-        if (str_contains($hyperType, 'verbb\\hyper')) {
+                return $repaired;
+            }
+
             $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
 
             return null;

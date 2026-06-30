@@ -63,14 +63,19 @@ class MigrateLinkitContent extends PluginContentMigration
 
     public function convertModel(HyperField $field, array $oldSettings): bool|array|null
     {
-        $oldType = $oldSettings['type'] ?? null;
-        $hyperType = $oldSettings[0]['type'] ?? null;
+        if ($this->isHyperLinkContent($oldSettings)) {
+            if ($repaired = $this->repairMigratedLinks($this->normalizeFieldContentForMigration($oldSettings))) {
+                $this->stdout('    > Repaired migrated Hyper content.', Console::FG_GREEN);
 
-        if (str_contains($hyperType, 'verbb\\hyper')) {
+                return $repaired;
+            }
+
             $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
 
             return null;
         }
+
+        $oldType = $oldSettings['type'] ?? null;
 
         // Return `null` for an empty field, or already migrated to Hyper.
         // `false` for when unable to find matching new type.
