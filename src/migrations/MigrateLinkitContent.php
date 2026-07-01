@@ -75,6 +75,7 @@ class MigrateLinkitContent extends PluginContentMigration
             return null;
         }
 
+        $oldSettings = $this->normalizeLinkitSettings($oldSettings);
         $oldType = $oldSettings['type'] ?? null;
 
         // Return `null` for an empty field, or already migrated to Hyper.
@@ -98,5 +99,65 @@ class MigrateLinkitContent extends PluginContentMigration
         $link->newWindow = $oldSettings['target'] ?? false;
 
         return $this->serializeMigratedLink($link);
+    }
+
+    protected function normalizeLinkitSettings(array $oldSettings): array
+    {
+        if (isset($oldSettings['value'])) {
+            return $oldSettings;
+        }
+
+        $type = $oldSettings['type'] ?? null;
+
+        if (!is_string($type) || $type === '' || str_contains($type, '\\')) {
+            return $oldSettings;
+        }
+
+        $normalized = [
+            'customText' => $oldSettings['customText'] ?? null,
+            'target' => (bool)($oldSettings['target'] ?? false),
+        ];
+
+        switch ($type) {
+            case 'email':
+                $normalized['type'] = Email::class;
+                $normalized['value'] = $oldSettings['email'] ?? '';
+                break;
+
+            case 'custom':
+                $normalized['type'] = Url::class;
+                $normalized['value'] = $oldSettings['custom'] ?? '';
+                break;
+
+            case 'tel':
+                $normalized['type'] = Phone::class;
+                $normalized['value'] = $oldSettings['tel'] ?? '';
+                break;
+
+            case 'entry':
+                $normalized['type'] = Entry::class;
+                $normalized['value'] = $oldSettings['entry'][0] ?? null;
+                break;
+
+            case 'category':
+                $normalized['type'] = Category::class;
+                $normalized['value'] = $oldSettings['category'][0] ?? null;
+                break;
+
+            case 'asset':
+                $normalized['type'] = Asset::class;
+                $normalized['value'] = $oldSettings['asset'][0] ?? null;
+                break;
+
+            case 'product':
+                $normalized['type'] = Product::class;
+                $normalized['value'] = $oldSettings['product'][0] ?? null;
+                break;
+
+            default:
+                return $oldSettings;
+        }
+
+        return $normalized;
     }
 }
