@@ -101,6 +101,13 @@ class MigrateLinkitContent extends PluginContentMigration
         return $this->serializeMigratedLink($link);
     }
 
+    protected function isMigratableVizyValue(array $value): bool
+    {
+        // Linkit values carry a `type` (a Linkit model class or short type handle). Hyper content is a
+        // list of links, so it won't expose a top-level `type` key and is safely excluded.
+        return isset($value['type']) && is_string($value['type']) && !str_contains($value['type'], 'verbb\\hyper');
+    }
+
     protected function normalizeLinkitSettings(array $oldSettings): array
     {
         if (isset($oldSettings['value'])) {

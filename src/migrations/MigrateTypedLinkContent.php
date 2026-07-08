@@ -159,4 +159,10 @@ class MigrateTypedLinkContent extends PluginContentMigration
 
         return [$link->getSerializedValues()];
     }
+
+    protected function isMigratableVizyValue(array $value): bool
+    {
+        // Lenz Typed Link values carry a `type` and a serialized `payload`.
+        return isset($value['type']) && array_key_exists('payload', $value);
+    }
 }

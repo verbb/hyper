@@ -67,4 +67,10 @@ class MigrateLinkContent extends PluginContentMigration
 
         return $this->serializeMigratedLink($link);
     }
+
+    protected function isMigratableVizyValue(array $value): bool
+    {
+        // flipbox Link values are keyed by an `identifier` for the link type.
+        return array_key_exists('identifier', $value);
+    }
 }

@@ -132,27 +132,58 @@ class PluginMigration extends Migration
         Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) {
             // We need to flatten the data to deal with deeply-nested content like when in Matrix/Super Table.
             foreach (ArrayHelper::flatten($data) as $flatKey => $flatContent) {
-                $searchKey = 'fields.' . $handle;
+                // Only consider values stored directly against a block field. Craft 4 Vizy keyed these by
+                // the field handle (`fields.myLinkField`), but Craft 5 keys them by the field-layout element
+                // UID (`fields.<uid>`), so we can't rely on the handle alone to locate the content.
+                $marker = 'content.fields.';
+                $markerPos = strrpos($flatKey, $marker);
 
-                // Find from the end of the block path `fields.myLinkField`
-                if (str_ends_with($flatKey, $searchKey)) {
-                    // Sometimes stored as a JSON string
-                    if (is_string($flatContent)) {
-                        $flatContent = Json::decodeIfJson($flatContent);
-                    }
+                if ($markerPos === false) {
+                    continue;
+                }
 
-                    if (!is_array($flatContent)) {
-                        $flatContent = [];
-                    }
+                // Grab the trailing key segment (handle or UID) and skip nested paths within a field value.
+                $contentKey = substr($flatKey, $markerPos + strlen($marker));
 
-                    if ($newContent = $this->convertModel(new HyperField(), $flatContent)) {
-                        ArrayHelper::setValue($data, $flatKey, $newContent);
-                    }
+                if (str_contains($contentKey, '.')) {
+                    continue;
+                }
+
+                // Sometimes stored as a JSON string
+                if (is_string($flatContent)) {
+                    $flatContent = Json::decodeIfJson($flatContent);
+                }
+
+                if (!is_array($flatContent)) {
+                    continue;
+                }
+
+                // Match either by the field handle (legacy handle-keyed content) or by detecting the old
+                // link value shape (UID-keyed Craft 5 content, where we can't resolve the layout element UID).
+                $matchesHandle = ($contentKey === $handle);
+
+                if (!$matchesHandle && !$this->isMigratableVizyValue($flatContent)) {
+                    continue;
+                }
+
+                if ($newContent = $this->convertModel(new HyperField(), $flatContent)) {
+                    ArrayHelper::setValue($data, $flatKey, $newContent);
                 }
             }
 
             return $data;
         }, $this->db);
+    }
+
+    /**
+     * Detects whether a Vizy block field content value looks like an un-migrated value for the plugin
+     * being migrated. Used to locate content when Craft 5 keys Vizy block fields by the field-layout
+     * element UID (rather than the field handle), so we can't match by handle alone. Subclasses should
+     * override this with a check specific to their old field/value shape.
+     */
+    protected function isMigratableVizyValue(array $value): bool
+    {
+        return false;
     }
 
     public function isPluginInstalledAndEnabled(string $plugin): bool
