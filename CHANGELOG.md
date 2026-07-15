@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.11 - 2026-07-15
+
+### Added
+- Add guides to docs.
+
+### Fixed
+- Fix some field support for Vizy-owned link field migrations.
+- Fix Linkit content migration for legacy Craft 2 link JSON that stores type: "entry" and entry: [id] instead of modern Linkit values.
+- Fix Linkit and Link content re-migration by backfilling missing linkSiteId on already-migrated element links.
+
 ## 2.3.10 - 2026-06-27
 
 ### Fixed
