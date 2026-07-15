@@ -303,6 +303,11 @@
 ### Removed
 - Remove migrations for other plugin (not supported in Craft 5).
 
+## 1.3.14 - 2026-07-15
+
+### Added
+- Add guides to docs.
+
 ## 1.3.13 - 2026-06-27
 
 ### Fixed
