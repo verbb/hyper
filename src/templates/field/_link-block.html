@@ -1,0 +1,206 @@
+{% set showSettingsMenu = not settings.isStatic %}
+{% set tabLabels = link.tabLabels ?? [] %}
+{% set showLayoutTabs = tabLabels|length > 1 and not settings.isStatic %}
+{% set canChangeType = not settings.isStatic and linkTypes|length > 1 %}
+{# Match the CP header/dropdown against the resolved canonical handle (falls back to the stored
+   handle for the empty-field chrome template). Legacy `default-<fqcn>` content still shows the
+   type's display label, not the raw handle. #}
+{% set currentTypeHandle = link.typeHandle ?? link.handle %}
+{% set currentTypeLabel = link.label ?? link.handle %}
+{% for type in linkTypes %}
+    {% if type.handle == currentTypeHandle %}
+        {% set currentTypeLabel = type.label %}
+    {% endif %}
+{% endfor %}
+{# Header icon when field enables new window and this type’s layout does not own it. #}
+{% set showHeaderNewWindow = link.showHeaderNewWindow ?? settings.newWindow %}
+{# Keep header chrome when field enables new window so type switches can show/hide the icon. #}
+{% set showHeader = settings.multipleLinks or settings.isStatic or settings.newWindow or linkTypes|length > 1 or showLayoutTabs or showSettingsMenu %}
+
+<div
+    class="hyper-link"
+    data-hyper-link
+    data-link-id="{{ link.id }}"
+    {# Canonical CP type handle (not legacy stored `default-…` content keys) — type menu, copy/paste, and portal merges key off this. #}
+    data-link-handle="{{ currentTypeHandle }}"
+    data-link-index="{{ blockIndex }}"
+    {% if link.js %}data-link-js="{{ link.js | e('html_attr') }}"{% endif %}
+>
+    <div class="hyper-wrapper{{ showHeader ? '' : ' no-header' }}">
+        {% if showHeader %}
+            <div class="hyper-header">
+                <div class="hyper-header-type">
+                    {% if canChangeType %}
+                        <pk-dropdown-menu
+                            class="hyper-header-type-menu"
+                            data-hyper-type-menu
+                            placement="bottom-start"
+                            size="sm"
+                        >
+                            <button
+                                type="button"
+                                slot="trigger"
+                                class="hyper-header-type-btn"
+                                data-hyper-type-label
+                                aria-label="{{ 'Link type' | t('hyper') }}"
+                            >
+                                <span data-hyper-type-label-text>{{ currentTypeLabel }}</span>
+                                <pk-icon class="hyper-header-type-chevron" icon="chevron-down"></pk-icon>
+                            </button>
+                            {% for type in linkTypes %}
+                                <pk-dropdown-item
+                                    value="{{ type.handle }}"
+                                    data-hyper-change-type="{{ type.handle }}"
+                                    {% if type.handle == currentTypeHandle %}aria-current="true"{% endif %}
+                                >
+                                    {{ type.label }}
+                                </pk-dropdown-item>
+                            {% endfor %}
+                        </pk-dropdown-menu>
+                    {% else %}
+                        <span class="hyper-header-type-btn is-static" data-hyper-type-label>
+                            <span data-hyper-type-label-text>{{ currentTypeLabel }}</span>
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="hyper-header-actions-tabs">
+                    {% if showLayoutTabs %}
+                        <div class="hyper-header-tabs" data-hyper-layout-tabs role="tablist">
+                            {% for tabLabel in tabLabels %}
+                                <button
+                                    type="button"
+                                    class="hyper-header-tab{{ loop.first ? ' is-active' : '' }}"
+                                    role="tab"
+                                    aria-selected="{{ loop.first ? 'true' : 'false' }}"
+                                    data-hyper-tab-index="{{ loop.index0 }}"
+                                    data-hyper-action="select-tab"
+                                >
+                                    <span class="hyper-header-tab-label">{{ tabLabel }}</span>
+                                </button>
+                            {% endfor %}
+                        </div>
+                        <pk-dropdown-menu
+                            class="hyper-header-tabs-menu"
+                            data-hyper-layout-tabs-menu
+                            placement="bottom-end"
+                            size="sm"
+                        >
+                            <button
+                                type="button"
+                                slot="trigger"
+                                class="hyper-header-tab-menu-btn"
+                                aria-label="{{ 'Link fields tab' | t('hyper') }}"
+                            >
+                                <span data-hyper-active-tab-label>{{ tabLabels[0] }}</span>
+                                <pk-icon class="hyper-header-tab-chevron" icon="chevron-down"></pk-icon>
+                            </button>
+                            {% for tabLabel in tabLabels %}
+                                <pk-dropdown-item
+                                    value="{{ loop.index0 }}"
+                                    type="radio"
+                                    data-hyper-tab-option
+                                    {% if loop.first %}checked aria-current="true"{% endif %}
+                                >
+                                    {{ tabLabel }}
+                                </pk-dropdown-item>
+                            {% endfor %}
+                        </pk-dropdown-menu>
+                    {% endif %}
+
+                    <div class="hyper-header-actions">
+                        {# Always render when field enables new window; hide when layout owns New Window. #}
+                        {% if settings.newWindow %}
+                            <button
+                                type="button"
+                                class="hyper-header-new-window{{ link.newWindow ? ' is-active' : '' }}"
+                                data-hyper-new-window-switch
+                                data-hyper-action="toggle-new-window"
+                                aria-pressed="{{ link.newWindow ? 'true' : 'false' }}"
+                                title="{{ 'New Window' | t('hyper') }}"
+                                aria-label="{{ 'New Window' | t('hyper') }}"
+                                {% if not showHeaderNewWindow %}hidden{% endif %}
+                                {% if settings.isStatic %}disabled{% endif %}
+                            >
+                                <pk-icon class="hyper-menu-icon" icon="arrow-up-right-from-square"></pk-icon>
+                            </button>
+                        {% endif %}
+
+                        {% if showSettingsMenu %}
+                            <pk-dropdown-menu
+                                class="hyper-header-settings-menu"
+                                data-hyper-block-menu
+                                placement="bottom-end"
+                                size="sm"
+                            >
+                                {# Native button trigger — same 24×24 box as new-window / drag (pk-button was optically high). #}
+                                <button
+                                    type="button"
+                                    slot="trigger"
+                                    class="hyper-header-settings"
+                                    aria-label="{{ 'Settings' | t('app') }}"
+                                >
+                                    <pk-icon class="hyper-menu-icon" icon="ellipsis"></pk-icon>
+                                </button>
+                                <pk-dropdown-item value="copy" data-hyper-action="copy">
+                                    <pk-icon slot="start" icon="copy"></pk-icon>
+                                    {{ 'Copy' | t('app') }}
+                                </pk-dropdown-item>
+                                <pk-dropdown-item value="cut" data-hyper-action="cut">
+                                    <pk-icon slot="start" icon="scissors"></pk-icon>
+                                    {{ 'Cut' | t('app') }}
+                                </pk-dropdown-item>
+                                <pk-dropdown-item value="paste" data-hyper-action="paste" data-hyper-paste-item hidden>
+                                    <pk-icon slot="start" icon="paste"></pk-icon>
+                                    {{ 'Paste' | t('app') }}
+                                </pk-dropdown-item>
+                                {% if settings.multipleLinks %}
+                                    <pk-dropdown-separator></pk-dropdown-separator>
+                                    <pk-dropdown-item
+                                        value="move-up"
+                                        data-hyper-action="move-up"
+                                        {% if blockIndex <= 0 %}disabled aria-disabled="true"{% endif %}
+                                    >
+                                        <pk-icon slot="start" icon="arrow-up"></pk-icon>
+                                        {{ 'Move up' | t('app') }}
+                                    </pk-dropdown-item>
+                                    <pk-dropdown-item
+                                        value="move-down"
+                                        data-hyper-action="move-down"
+                                        {% if blockIndex >= blockCount - 1 %}disabled aria-disabled="true"{% endif %}
+                                    >
+                                        <pk-icon slot="start" icon="arrow-down"></pk-icon>
+                                        {{ 'Move down' | t('app') }}
+                                    </pk-dropdown-item>
+                                    <pk-dropdown-separator></pk-dropdown-separator>
+                                    <pk-dropdown-item value="delete" destructive data-hyper-action="delete">
+                                        <pk-icon slot="start" icon="xmark"></pk-icon>
+                                        {{ 'Delete' | t('app') }}
+                                    </pk-dropdown-item>
+                                {% else %}
+                                    <pk-dropdown-separator></pk-dropdown-separator>
+                                    <pk-dropdown-item value="delete" destructive data-hyper-action="delete">
+                                        <pk-icon slot="start" icon="xmark"></pk-icon>
+                                        {{ 'Delete' | t('app') }}
+                                    </pk-dropdown-item>
+                                {% endif %}
+                            </pk-dropdown-menu>
+                        {% endif %}
+
+                        {% if settings.multipleLinks %}
+                            <div class="hyper-header-move" data-hyper-drag-handle>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 944.1 945.2" aria-hidden="true"><path d="M630.2,787.7c0-87-70.5-157.5-157.5-157.5s-157.5,70.5-157.5,157.5s70.5,157.5,157.5,157.5S630.2,874.7,630.2,787.7zM315.1,472.6c0-87-70.5-157.5-157.5-157.5S0,385.6,0,472.6s70.5,157.5,157.5,157.5S315.1,559.6,315.1,472.6z M630.2,157.5C630.2,70.5,559.6,0,472.6,0S315.1,70.5,315.1,157.5s70.5,157.5,157.5,157.5S630.2,244.5,630.2,157.5z M944.1,472.6c0-86.4-70-156.4-156.4-156.4s-156.4,70-156.4,156.4S701.3,629,787.7,629S944.1,559,944.1,472.6L944.1,472.6z"/></svg>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="hyper-body-wrapper" data-hyper-body>
+            <div data-hyper-portal="{{ link.id }}-{{ link.handle }}">
+                {{ link.bodyHtml | raw }}
+            </div>
+        </div>
+    </div>
+</div>

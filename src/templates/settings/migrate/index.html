@@ -1,0 +1,87 @@
+{% extends 'hyper/_layouts/settings' %}
+
+{% import '_includes/forms' as forms %}
+
+{% set bodyClass = 'hyper-settings-migrate' %}
+{% set selectedTab = 'migrate-' ~ sourceId %}
+{% set fullPageForm = output is not defined %}
+
+{% block actionButton %}{% endblock %}
+
+{% block blockContent %}
+
+{% if output is not defined %}
+    {{ redirectInput('hyper/settings/migrate/' ~ sourceId) }}
+    {{ hiddenInput('sourceId', sourceId) }}
+
+    <h2 class="first">{{ 'Migrate {source} Fields' | t('hyper', { source: source.label }) }}</h2>
+
+    <p>{{ 'Migrate your {source} fields and content to Hyper fields.' | t('hyper', {
+        source: source.label,
+    }) }}</p>
+
+    {{ 'This will **permanently** modify all your {source} fields and cannot be reverted. Keep **Create backup** enabled if you need a database restore point from before the migration.' | t('hyper', {
+        source: source.label,
+    }) | md }}
+
+    {% if source.steps | length == 3 %}
+        {{ 'This is a 3-step process. First, update legacy fields. Second, migrate your fields. Third, migrate your content.' | t('hyper') | md }}
+    {% else %}
+        {{ 'This is a 2-step process. First, migrate your fields. Second, migrate your content.' | t('hyper') | md }}
+    {% endif %}
+
+    {% if source.fieldCount is defined %}
+        <p class="light">{{ '{count} matching field(s) found.' | t('hyper', { count: source.fieldCount }) }}</p>
+    {% endif %}
+
+    <div class="light">
+        {{ 'Console: `{command}`' | t('hyper', { command: 'php craft ' ~ source.consoleCommand }) | md }}
+    </div>
+
+    <hr>
+
+    {{ forms.checkboxField({
+        name: 'createBackup',
+        id: 'create-backup-' ~ sourceId,
+        label: 'Create backup' | t('hyper'),
+        checked: settings.backupOnMigrate,
+    }) }}
+
+    <hr>
+
+    {% for step in source.steps %}
+        <h3>{{ 'Step {step}. {label}' | t('hyper', {
+            step: loop.index,
+            label: step.label,
+        }) }}</h3>
+
+        {% if step.id == 'legacy' %}
+            {{ 'Typed Link fields may not have been updated in a previous release of their plugin. This step ensures all your Typed Link fields are up to date first, so that Hyper can migrate them.' | t('hyper') | md }}
+        {% elseif step.id == 'field' %}
+            {{ 'You should first migrate your fields in an environment with `allowAdminChanges` set to `true`. Once migrated successfully, you can then migrate the content for those fields.' | t('hyper') | md }}
+        {% else %}
+            {{ 'Once your fields have been migrated, the field content stored on elements must also be converted. Run this in your local development environment first to verify everything migrates correctly. You can then deploy your field changes and run this step as many times as needed in other environments. Because content is stored per environment, you must run this step in each environment.' | t('hyper') | md }}
+        {% endif %}
+
+        <button
+            type="submit"
+            class="btn submit formsubmit"
+            data-action="hyper/migrate/run"
+            data-params="{{ { stepId: step.id } | json_encode }}"
+        >
+            {{ step.label }}
+        </button>
+
+        {% if not loop.last %}<hr>{% endif %}
+    {% endfor %}
+{% else %}
+    <h2 class="first">{{ 'Migration log' | t('hyper') }}</h2>
+
+    {{ output | raw }}
+
+    <hr>
+
+    <a class="btn submit" href="{{ cpUrl('hyper/settings/migrate/' ~ sourceId) }}">{{ 'Done' | t('hyper') }}</a>
+{% endif %}
+
+{% endblock %}

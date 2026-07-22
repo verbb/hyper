@@ -5,6 +5,7 @@ use verbb\hyper\base\ElementLink;
 
 use Craft;
 use craft\elements\User as UserElement;
+use craft\elements\conditions\ElementConditionInterface;
 
 class User extends ElementLink
 {
@@ -24,5 +25,17 @@ class User extends ElementLink
     public static function supportsUriSelectorCriteria(): bool
     {
         return false;
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function createSelectionCondition(): ?ElementConditionInterface
+    {
+        $condition = UserElement::createCondition();
+        $condition->queryParams = ['group', 'groupId'];
+
+        return $condition;
     }
 }

@@ -1,0 +1,52 @@
+{% extends 'hyper/_layouts/settings' %}
+
+{% do view.registerAssetBundle('craft\\web\\assets\\admintable\\AdminTableAsset') -%}
+
+{% set selectedTab = 'linkTypeConfigs' %}
+
+{% block actionButton %}
+    <a href="{{ url('hyper/settings/link-type-configs/new') }}" class="btn submit add icon">
+        {{ 'New Link Type Config' | t('hyper') }}
+    </a>
+{% endblock %}
+
+{% block blockContent %}
+    <div id="link-type-configs-vue-admin-table"></div>
+{% endblock %}
+
+{% set tableData = [] %}
+{% for config in configs %}
+    {% set tableData = tableData | merge([{
+        id: config.uid,
+        nameHtml: {
+            url: url('hyper/settings/link-type-configs/' ~ config.uid),
+            html: config.name | e,
+        },
+        handle: config.handle | e,
+        _showDelete: config.canDelete(),
+    }]) %}
+{% endfor %}
+
+{% js %}
+    var columns = [
+        {
+            name: 'nameHtml',
+            title: Craft.t('app', 'Name'),
+            callback: function(value) {
+                return '<a class="cell-bold" href="' + value.url + '">' + value.html + '</a>';
+            }
+        },
+        { name: '__slot:handle', title: Craft.t('app', 'Handle') }
+    ];
+
+    new Craft.VueAdminTable({
+        columns: columns,
+        container: '#link-type-configs-vue-admin-table',
+        deleteAction: 'hyper/plugin/delete-link-type-config',
+        minItems: 1,
+        reorderAction: 'hyper/plugin/reorder-link-type-configs',
+        reorderSuccessMessage: Craft.t('hyper', 'Link type configs reordered.'),
+        reorderFailMessage: Craft.t('hyper', 'Couldn’t reorder link type configs.'),
+        tableData: {{ tableData | json_encode | raw }},
+    });
+{% endjs %}

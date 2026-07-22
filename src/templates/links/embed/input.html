@@ -3,7 +3,10 @@
 {% set fieldId = 'link-embed-' ~ random() %}
 {% set data = link.getData() ?? [] %}
 
-<div id="{{ fieldId }}" class="hyper-embed-field">
+<div id="{{ fieldId }}" class="hyper-embed-field"
+    data-hyper-field-id="{{ field.id ?? '' }}"
+    data-hyper-link-type-handle="{{ link.handle ?? '' }}"
+>
     {{ forms.text({
         id: fieldId,
         value: data.url ?? null,

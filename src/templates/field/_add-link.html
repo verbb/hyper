@@ -1,0 +1,68 @@
+<div class="h-add-container" data-hyper-add-link{% if addLinkHidden ?? false %} hidden{% endif %}>
+    {% if settings.linkTypes|length > 1 %}
+        <div class="hc-add-link-type-group">
+            <pk-dropdown-menu
+                data-hyper-add-menu
+                placement="bottom-start"
+                size="sm"
+            >
+                <pk-button
+                    slot="trigger"
+                    class="h-add-link-btn"
+                    variant="dashed"
+                    with-caret
+                    data-hyper-add-trigger
+                >
+                    <pk-icon slot="start" icon="plus"></pk-icon>
+                    {{ 'Add a link' | t('hyper') }}
+                </pk-button>
+                {% for linkType in settings.linkTypes %}
+                    <pk-dropdown-item value="{{ linkType.handle }}" data-hyper-add-type="{{ linkType.handle }}">
+                        {{ linkType.label }}
+                    </pk-dropdown-item>
+                {% endfor %}
+                {# Secondary actions (Bulk Add + Paste) share one separator under the type list. #}
+                {% if settings.enableBulkAdd %}
+                    <pk-dropdown-separator></pk-dropdown-separator>
+                    <pk-dropdown-item value="__bulk-add__" data-hyper-bulk-add-open>
+                        <pk-icon slot="start" icon="plus"></pk-icon>
+                        {{ 'Bulk Add…' | t('hyper') }}
+                    </pk-dropdown-item>
+                {% else %}
+                    {# No Bulk Add — Paste still needs its own separator when it becomes visible. #}
+                    <pk-dropdown-separator data-hyper-paste-separator hidden></pk-dropdown-separator>
+                {% endif %}
+                <pk-dropdown-item value="__paste__" data-hyper-action="paste" data-hyper-paste-item hidden>
+                    <pk-icon slot="start" icon="paste"></pk-icon>
+                    {{ 'Paste' | t('app') }}
+                </pk-dropdown-item>
+            </pk-dropdown-menu>
+        </div>
+    {% else %}
+        <button
+            type="button"
+            class="btn dashed icon add h-add-link-btn"
+            data-hyper-add-type="{{ settings.linkTypes[0].handle ?? settings.defaultLinkType }}"
+        >
+            {{ 'Add {type}' | t('hyper', { type: settings.linkTypes[0].label ?? 'link' }) }}
+        </button>
+        {% if settings.enableBulkAdd %}
+            <button
+                type="button"
+                class="btn dashed h-bulk-add-btn"
+                data-hyper-bulk-add-open
+            >
+                {{ 'Bulk Add…' | t('hyper') }}
+            </button>
+        {% endif %}
+        <button
+            type="button"
+            class="btn dashed h-paste-link-btn"
+            data-hyper-action="paste"
+            data-hyper-paste-item
+            hidden
+        >
+            {{ 'Paste' | t('app') }}
+        </button>
+    {% endif %}
+</div>

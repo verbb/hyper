@@ -1,5 +1,5 @@
 # GraphQL
-Hyper supports accessing [Link](docs:developers/link) objects via GraphQL. Be sure to read about [Craft's GraphQL support](https://craftcms.com/docs/4.x/graphql.html).
+Hyper supports accessing [Link](docs:reference/link) objects via GraphQL. Be sure to read about [Craft's GraphQL support](https://craftcms.com/docs/4.x/graphql.html).
 
 ## Links
 In order to query a link, you'll need to first query the element that the Hyper field is attached to.
@@ -52,6 +52,12 @@ This is the interface implemented by all links.
 | `linkText`| `String` | The resolved link label before layout defaults (custom Link Text if set; otherwise type-specific fallbacks such as element titles when the Link Text field is empty).
 | `customLinkText`| `String` | Only the Link Text field value, with no fallbacks. Null when blank—use for explicit defaults in your API client.
 | `linkUrl`| `String` | The url for the link.
+| `linkValue`| `String` | Raw link data as a JSON string (full embed metadata for Embed links).
+| `html`| `String` | Embed HTML (`code`) when this is an Embed link; otherwise null.
+| `iframeSrc`| `String` | The `src` of the first iframe in embed HTML, when present.
+| `embedImage`| `String` | Thumbnail/image URL from embed metadata, when present.
+| `providerName`| `String` | oEmbed provider name for Embed links (e.g. YouTube), when present.
+| `fields`| `String` | Custom layout field values as a JSON object keyed by handle (no type cast required).
 | `newWindow`| `Boolean` | Whether the link should open in a new window.
 | `target`| `String` | The `target` attribute for the link.
 | `text`| `String` | The fully derived link label (custom text, type fallbacks, then field placeholder or plugin default).
@@ -65,12 +71,17 @@ This is the interface implemented by all links.
 
 
 #### Custom Fields
-In order to access custom fields on a Link Type, you'll need to use the correct type. This will be a `PascalCase` string of the Link Type defined in your field settings. This is because each Link Type has a different field layout, with different fields. You'll need to "cast" the correct Link Type depending on what field you need to query.
+Custom fields on a link type are available in two ways:
+
+1. **Typed fragments** — cast to the concrete `*_LinkType` for typed GraphQL fields.
+2. **`fields` JSON bag** — read all layout field values without knowing the link type (useful for headless clients that branch in application code).
 
 ```gql
 myLinkField {
     url
     text
+    type
+    fields
 
     ... on myLinkField_Url_LinkType {
         plainText
@@ -82,4 +93,21 @@ myLinkField {
 }
 ```
 
-For example, for any of the default Link Types (`Asset`, `Entry`, `Custom`, `Url`, etc.) you can use `myLinkField_Url_LinkType` and then any custom field handles within that. For any additional, new Link Types that you create over the default ones, use `PascalCase` for the "Label". For example, for a Link Type with a label "Custom URL", this would be `myLinkField_CustomUrl_LinkType`.
+#### Embed links
+For Embed link types, prefer the dedicated interface fields over parsing `linkValue`:
+
+```gql
+myLinkField {
+    url
+    text
+    html
+    iframeSrc
+    embedImage
+    providerName
+    linkValue
+}
+```
+
+`iframeSrc` extracts the first iframe `src` from the stored embed HTML. `linkValue` remains the full JSON metadata blob for advanced use.
+
+For typed fragments, use `PascalCase` of the link type **handle** (not the CP label). For example, handle `custom-url` becomes `myLinkField_CustomUrl_LinkType`.

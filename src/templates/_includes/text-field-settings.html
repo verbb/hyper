@@ -8,3 +8,20 @@
     name: 'placeholder',
     value: field.placeholder,
 }) }}
+
+{{ forms.textField({
+    label: 'Default Value' | t('app'),
+    instructions: 'Used when the author leaves Link Text empty (overrides element title fallback for element links).' | t('hyper'),
+    id: 'default-value',
+    name: 'defaultValue',
+    value: field.defaultValue ?? '',
+}) }}
+
+{{ forms.textField({
+    label: 'Character Limit' | t('app'),
+    instructions: 'The maximum number of characters the field is allowed to have.' | t('app'),
+    id: 'maxlength',
+    name: 'maxlength',
+    size: 3,
+    value: field.maxlength,
+}) }}

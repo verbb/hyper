@@ -67,10 +67,11 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
                 $linkType = new $linkTypeClass();
                 $linkType->label = $linkType::displayName();
-                $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
+                $linkType->handle = self::getLinkTypeHandle($types, $linkTypeClass::typeKey());
                 $linkType->enabled = $enableAllLinkTypes || ($type['enabled'] ?? false);
                 $linkType->linkText = $defaultText;
-                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
+                // A duplicate of the same kind was handed a random handle → it's a custom instance.
+                $linkType->isCustom = $linkType->handle !== $linkTypeClass::typeKey();
 
                 $enableSuffix = $type['allowCustomQuery'] ?? false;
 
@@ -109,7 +110,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
             unset($newFieldConfig['type'], $newFieldConfig['settings']);
 
             $newFieldConfig['newWindow'] = $allowTarget;
-            $newFieldConfig['defaultLinkType'] = $this->getLinkType($defaultLinkName) ? 'default-' . StringHelper::toKebabCase($this->getLinkType($defaultLinkName)) : null;
+            $newFieldConfig['defaultLinkType'] = $this->getLinkType($defaultLinkName) ? $this->getLinkType($defaultLinkName)::typeKey() : null;
             $newFieldConfig['linkTypes'] = $types;
 
             $newField = new HyperField($newFieldConfig);

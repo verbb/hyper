@@ -11,9 +11,12 @@ use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\ArrayHelper;
+use verbb\hyper\migrations\plugins\Line;
+use verbb\hyper\migrations\plugins\MigrationResult;
 
 use Craft;
 use craft\db\Migration;
+use craft\helpers\Console;
 use craft\helpers\Json;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
@@ -37,8 +40,11 @@ class PluginMigration extends Migration
     public bool $resaveFields = true;
     public array $fields = [];
     public string $oldFieldTypeClass = '';
+    public bool $dryRun = false;
+    public bool $syncRelations = true;
 
     private ?Controller $_consoleRequest = null;
+    private ?MigrationResult $_migrationResult = null;
 
 
     // Public Methods
@@ -49,9 +55,24 @@ class PluginMigration extends Migration
         return false;
     }
 
+    public function getOldFieldTypeClasses(): array
+    {
+        return $this->oldFieldTypeClass !== '' ? [$this->oldFieldTypeClass] : [];
+    }
+
     public function setConsoleRequest($value): void
     {
         $this->_consoleRequest = $value;
+    }
+
+    public function setMigrationResult(?MigrationResult $result): void
+    {
+        $this->_migrationResult = $result;
+    }
+
+    public function getMigrationResult(): ?MigrationResult
+    {
+        return $this->_migrationResult;
     }
 
     public function getLinkType($oldClass): ?string
@@ -127,63 +148,47 @@ class PluginMigration extends Migration
         $field->linkTypes = $linkTypes;
     }
 
-    public function migrateVizyContent($fieldData): void
+    public function migrateVizyContent($fieldData, ?HyperField $field = null): void
     {
-        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) {
-            // We need to flatten the data to deal with deeply-nested content like when in Matrix/Super Table.
+        if (!$this->isPluginInstalledAndEnabled('vizy')) {
+            return;
+        }
+
+        $field ??= Craft::$app->getFields()->getFieldById($fieldData['id'] ?? 0);
+
+        if (!$field instanceof HyperField) {
+            $field = new HyperField();
+        }
+
+        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) use ($field) {
+            // Flatten to find deeply-nested paths (Matrix → Vizy → fields.{handle})
             foreach (ArrayHelper::flatten($data) as $flatKey => $flatContent) {
-                // Only consider values stored directly against a block field. Craft 4 Vizy keyed these by
-                // the field handle (`fields.myLinkField`), but Craft 5 keys them by the field-layout element
-                // UID (`fields.<uid>`), so we can't rely on the handle alone to locate the content.
-                $marker = 'content.fields.';
-                $markerPos = strrpos($flatKey, $marker);
+                $searchKey = 'fields.' . $handle;
 
-                if ($markerPos === false) {
+                if (!str_ends_with((string)$flatKey, $searchKey)) {
                     continue;
                 }
 
-                // Grab the trailing key segment (handle or UID) and skip nested paths within a field value.
-                $contentKey = substr($flatKey, $markerPos + strlen($marker));
-
-                if (str_contains($contentKey, '.')) {
-                    continue;
-                }
-
-                // Sometimes stored as a JSON string
                 if (is_string($flatContent)) {
-                    $flatContent = Json::decodeIfJson($flatContent);
+                    // Decode JSON without HTML entity decoding
+                    $decoded = json_decode($flatContent, true);
+                    $flatContent = is_array($decoded) ? $decoded : (Json::decodeIfJson($flatContent) ?: []);
                 }
 
                 if (!is_array($flatContent)) {
-                    continue;
+                    $flatContent = [];
                 }
 
-                // Match either by the field handle (legacy handle-keyed content) or by detecting the old
-                // link value shape (UID-keyed Craft 5 content, where we can't resolve the layout element UID).
-                $matchesHandle = ($contentKey === $handle);
+                $converted = $this->convertModel($field, $flatContent);
 
-                if (!$matchesHandle && !$this->isMigratableVizyValue($flatContent)) {
-                    continue;
-                }
-
-                if ($newContent = $this->convertModel(new HyperField(), $flatContent)) {
-                    ArrayHelper::setValue($data, $flatKey, $newContent);
+                if (is_array($converted)) {
+                    ArrayHelper::setValue($data, $flatKey, $converted);
+                    $this->getMigrationResult()?->incrementStat('vizyBlocksMigrated');
                 }
             }
 
             return $data;
         }, $this->db);
-    }
-
-    /**
-     * Detects whether a Vizy block field content value looks like an un-migrated value for the plugin
-     * being migrated. Used to locate content when Craft 5 keys Vizy block fields by the field-layout
-     * element UID (rather than the field handle), so we can't match by handle alone. Subclasses should
-     * override this with a check specific to their old field/value shape.
-     */
-    protected function isMigratableVizyValue(array $value): bool
-    {
-        return false;
     }
 
     public function isPluginInstalledAndEnabled(string $plugin): bool
@@ -197,6 +202,40 @@ class PluginMigration extends Migration
 
     public function stdout($string, $color = ''): void
     {
+        $message = trim(strip_tags((string)$string));
+        $depth = str_starts_with(ltrim((string)$string), '>') || preg_match('/^\s{2,}>?\s*/', (string)$string) ? 1 : 0;
+        $level = match ($color) {
+            Console::FG_GREEN, (string)Console::FG_GREEN, '32' => 'success',
+            Console::FG_RED, (string)Console::FG_RED, '31' => 'error',
+            Console::FG_YELLOW, (string)Console::FG_YELLOW, '33' => 'warning',
+            default => 'info',
+        };
+
+        // Prefer structured result when the Navigation-style runner is attached
+        if ($this->_migrationResult) {
+            $line = match ($level) {
+                'success' => Line::success($message, $depth),
+                'error' => Line::error($message, $depth),
+                'warning' => Line::warning($message, $depth),
+                default => Line::info($message, $depth),
+            };
+
+            $this->_migrationResult->addLine($line);
+
+            if ($level === 'error') {
+                $this->_migrationResult->ok = false;
+                $this->_migrationResult->incrementStat('errors');
+            } elseif ($level === 'warning') {
+                $this->_migrationResult->incrementStat('warnings');
+            }
+
+            // CP runners render the collected result after redirecting; emitting here
+            // would send response content early and prevent those redirect headers.
+            if (!$this->_consoleRequest) {
+                return;
+            }
+        }
+
         if ($this->_consoleRequest) {
             $this->_consoleRequest->stdout($string . PHP_EOL, $color);
         } else {

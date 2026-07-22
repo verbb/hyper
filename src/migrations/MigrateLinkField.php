@@ -10,33 +10,41 @@ use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 
-use flipbox\craft\link\fields\Link;
-use flipbox\craft\link\types\Asset;
-use flipbox\craft\link\types\Category;
-use flipbox\craft\link\types\Email;
-use flipbox\craft\link\types\Entry;
-use flipbox\craft\link\types\Url;
-use flipbox\craft\link\types\User;
-
 class MigrateLinkField extends PluginFieldMigration
 {
     // Properties
     // =========================================================================
 
+    // String FQCNs — field step only runs when flipbox Link is installed; avoids hard require at parse time.
     public array $typeMap = [
-        Asset::class => linkTypes\Asset::class,
-        Category::class => linkTypes\Category::class,
-        Email::class => linkTypes\Email::class,
-        Entry::class => linkTypes\Entry::class,
-        Url::class => linkTypes\Url::class,
-        User::class => linkTypes\User::class,
+        'flipbox\\craft\\link\\types\\Asset' => linkTypes\Asset::class,
+        'flipbox\\craft\\link\\types\\Category' => linkTypes\Category::class,
+        'flipbox\\craft\\link\\types\\Email' => linkTypes\Email::class,
+        'flipbox\\craft\\link\\types\\Entry' => linkTypes\Entry::class,
+        'flipbox\\craft\\link\\types\\Url' => linkTypes\Url::class,
+        'flipbox\\craft\\link\\types\\User' => linkTypes\User::class,
+        'flipbox\\link\\types\\Asset' => linkTypes\Asset::class,
+        'flipbox\\link\\types\\Category' => linkTypes\Category::class,
+        'flipbox\\link\\types\\Email' => linkTypes\Email::class,
+        'flipbox\\link\\types\\Entry' => linkTypes\Entry::class,
+        'flipbox\\link\\types\\Url' => linkTypes\Url::class,
+        'flipbox\\link\\types\\User' => linkTypes\User::class,
     ];
 
-    public string $oldFieldTypeClass = Link::class;
+    public string $oldFieldTypeClass = 'flipbox\\craft\\link\\fields\\Link';
 
 
     // Public Methods
     // =========================================================================
+
+    public function getOldFieldTypeClasses(): array
+    {
+        // Nested Matrix/ST fields may still store the pre-1.0 namespace.
+        return [
+            'flipbox\\craft\\link\\fields\\Link',
+            'flipbox\\link\\fields\\Link',
+        ];
+    }
 
     public function processFieldSettings(): void
     {
@@ -59,9 +67,10 @@ class MigrateLinkField extends PluginFieldMigration
 
                 $linkType = new $linkTypeClass();
                 $linkType->label = $type['label'] ?? $linkType::displayName();
-                $linkType->handle = self::getLinkTypeHandle($types, 'default-' . StringHelper::toKebabCase($linkTypeClass));
+                $linkType->handle = self::getLinkTypeHandle($types, $linkTypeClass::typeKey());
                 $linkType->enabled = true;
-                $linkType->isCustom = !str_starts_with($linkType->handle, 'default-');
+                // A duplicate of the same kind was handed a random handle → it's a custom instance.
+                $linkType->isCustom = $linkType->handle !== $linkTypeClass::typeKey();
 
                 if (in_array($linkTypeClass, $processedTypes)) {
                     $linkType->handle = $key;

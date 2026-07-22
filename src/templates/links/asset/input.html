@@ -1,1 +1,49 @@
-{% include 'hyper/links/_element/input' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectId = 'link-url-' ~ random() %}
+{% set siteId = 'link-siteid-' ~ random() %}
+
+{% set criteria = {
+    status: null,
+} %}
+
+{% set jsSettings = {} %}
+{% set jsClass = 'Craft.BaseElementSelectInput' %}
+
+{# Prefer Craft’s AssetSelectInput when a default upload volume is configured. #}
+{% if link.elementType() == 'craft\\elements\\Asset' and link.defaultUploadLocationSource %}
+    {% set jsClass = 'Craft.AssetSelectInput' %}
+    {% set jsSettings = jsSettings | merge({
+        canUpload: true,
+        defaultUploadLocationSource: link.defaultUploadLocationSource,
+        defaultUploadLocationSubpath: link.defaultUploadLocationSubpath,
+    }) %}
+{% endif %}
+
+{{ forms.elementSelect({
+    id: selectId,
+    name: 'linkValue',
+    elementType: link.elementType(),
+    limit: 1,
+    showSiteMenu: link.showSiteMenu,
+    sources: link.getAvailableSources(),
+    storageKey: 'hyper.' ~ field.handle ~ '.' ~ lowerElementType,
+    elements: link.getElements(),
+    selectionLabel: link.selectionLabel,
+    criteria: criteria,
+    condition: link.getSelectionCondition(),
+    jsClass: jsClass,
+    jsSettings: jsSettings,
+}) }}
+
+{{ forms.hidden({
+    id: siteId,
+    name: 'linkSiteId',
+    value: link.linkSiteId,
+}) }}
+
+{% js %}
+
+new Craft.Hyper.ElementSelect('#{{ selectId | namespaceInputId }}', '#{{ siteId | namespaceInputId }}')
+
+{% endjs %}

@@ -8,3 +8,12 @@
     placeholder: linkType.linkValuePlaceholder(),
     errors: linkType.getErrors('placeholder'),
 }) }}
+
+{{ forms.textareaField({
+    label: 'Allowed Domains' | t('hyper'),
+    instructions: 'One domain per line (e.g. youtube.com, vimeo.com). Leave empty to use the plugin `embedAllowedDomains` setting, or allow any domain when that is also empty.' | t('hyper'),
+    name: 'allowedDomains',
+    value: linkType.allowedDomains|join("\n"),
+    rows: 4,
+    errors: linkType.getErrors('allowedDomains'),
+}) }}

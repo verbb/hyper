@@ -1,14 +1,30 @@
 {
-  "field/src/js/hyper.css": {
-    "file": "assets/hyper-39ac2bc7.css",
-    "src": "field/src/js/hyper.css"
+  "_hyperPkComponents-CvYby2ry.js": {
+    "file": "assets/hyperPkComponents-CvYby2ry.js",
+    "name": "hyperPkComponents"
   },
-  "field/src/js/hyper.js": {
-    "file": "assets/hyper-7fff1219.js",
-    "src": "field/src/js/hyper.js",
+  "field/src/js/hyper.ts": {
+    "file": "assets/hyper-IRBdGvbO.js",
+    "name": "hyper",
+    "src": "field/src/js/hyper.ts",
     "isEntry": true,
+    "imports": [
+      "_hyperPkComponents-CvYby2ry.js"
+    ],
     "css": [
-      "assets/hyper-39ac2bc7.css"
+      "assets/hyper-B1mEdbAA.css"
+    ]
+  },
+  "field/src/js/plugin-kit-register.ts": {
+    "file": "assets/pluginKit-CNXybf36.js",
+    "name": "pluginKit",
+    "src": "field/src/js/plugin-kit-register.ts",
+    "isEntry": true,
+    "imports": [
+      "_hyperPkComponents-CvYby2ry.js"
+    ],
+    "css": [
+      "assets/pluginKit-DgFpzd02.css"
     ]
   }
 }

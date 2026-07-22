@@ -123,7 +123,13 @@ JS;
                 'id' => $config['id'],
                 'class' => 'layoutdesigner',
             ]) .
-            Html::hiddenInput('fieldLayout', Json::encode($fieldLayoutConfig), [
+            // Nameless working input: Craft.FieldLayoutDesigner reads/writes via
+            // [data-config-input], and Hyper persists through linkTypes[*][layoutConfig].
+            // A named fieldLayout would join the CP form after async mount and trip
+            // data-confirm-unload even when the author changed nothing.
+            Html::tag('input', '', [
+                'type' => 'hidden',
+                'value' => Json::encode($fieldLayoutConfig),
                 'data' => ['config-input' => true],
             ]) .
             Html::beginTag('div', ['class' => 'fld-container']) .

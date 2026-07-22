@@ -24,7 +24,7 @@ You will only need to do this once, as the field changes are store in Project Co
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/link-field
+./craft hyper/migrate/link --step=field
 ```
 
 ## Content Migration
@@ -37,5 +37,27 @@ We **strongly** recommend you run this migration locally first, to ensure the mi
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/link-content
+./craft hyper/migrate/link --step=content
 ```
+
+To run both steps in one pass, omit `--step` (it defaults to `all`):
+
+```shell
+./craft hyper/migrate/link
+```
+
+:::tip
+The old `hyper/migrate/link-field` and `hyper/migrate/link-content` commands still work but are deprecated in favour of the `--step` form above.
+:::
+
+## Nested Matrix / Super Table fields
+
+Hyper migrates **all** Hyper fields, including those nested under Matrix or Super Table (non-`global` field context). Field migration writes a `migrationData` map (flipbox type identifier → Hyper link type) into each field’s settings; content migration uses that map to resolve each link.
+
+If you see `Unable to convert…` for nested owners:
+
+1. Confirm the nested field’s settings still include `migrationData` (re-run **Migrate Fields** if the map is empty).
+2. Re-run **Migrate Content** — convert failures now log the flipbox `identifier`, content keys, and available `migrationData` keys.
+3. When `migrationData` is missing a key, Hyper falls back to inferring Url / Email / Entry from the stored content shape.
+
+Content migration is safe to re-run; already-converted Hyper collections are skipped.

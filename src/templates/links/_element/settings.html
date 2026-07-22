@@ -32,6 +32,18 @@
     {{ hiddenInput('allowElementsWithoutUri', '0') }}
 {% endif %}
 
+{% if linkType.supportsSourceUriFiltering() %}
+    {{ forms.lightswitchField({
+        label: linkType.limitSourcesLabel(),
+        instructions: 'When selecting “All”, only show sources whose sections or category groups define entry/category URIs. Turn on “Allow Elements without URIs” to pick elements without URLs.' | t('hyper'),
+        name: 'limitSourcesToSectionsWithUri',
+        on: linkType.limitSourcesToSectionsWithUri,
+        errors: linkType.getErrors('limitSourcesToSectionsWithUri'),
+    }) }}
+{% else %}
+    {{ hiddenInput('limitSourcesToSectionsWithUri', '0') }}
+{% endif %}
+
 {% if craft.app.getIsMultiSite() %}
     {{ forms.lightswitchField({
         label: 'Show Site Menu' | t('hyper'),
@@ -40,4 +52,8 @@
         on: linkType.showSiteMenu,
         errors: linkType.getErrors('showSiteMenu'),
     }) }}
+{% endif %}
+
+{% if selectionCondition %}
+    {{ selectionCondition|raw }}
 {% endif %}

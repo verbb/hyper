@@ -6,6 +6,7 @@ use verbb\hyper\base\ElementLink;
 use Craft;
 use craft\base\Element;
 use craft\elements\Entry as EntryElement;
+use craft\elements\conditions\ElementConditionInterface;
 use craft\elements\db\ElementQueryInterface;
 
 class Entry extends ElementLink
@@ -23,6 +24,16 @@ class Entry extends ElementLink
         return EntryElement::class;
     }
 
+    public static function supportsSourceUriFiltering(): bool
+    {
+        return true;
+    }
+
+    public static function limitSourcesLabel(): string
+    {
+        return Craft::t('hyper', 'Limit Sources to Sections with URIs');
+    }
+
     public function modifyElementQuery(ElementQueryInterface $query, mixed $status = Element::STATUS_ENABLED): void
     {
         // Modify the status for entries, which have `STATUS_LIVE` vs `STATUS_ENABLED`.
@@ -32,4 +43,16 @@ class Entry extends ElementLink
         }
     }
 
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function createSelectionCondition(): ?ElementConditionInterface
+    {
+        $condition = EntryElement::createCondition();
+        // Sources already cover section filters; hide duplicate section rules in the builder.
+        $condition->queryParams = ['section', 'sectionId'];
+
+        return $condition;
+    }
 }

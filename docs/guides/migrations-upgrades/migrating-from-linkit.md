@@ -24,7 +24,7 @@ You will only need to do this once, as the field changes are store in Project Co
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/linkit-field
+./craft hyper/migrate/linkit --step=field
 ```
 
 ## Content Migration
@@ -37,5 +37,15 @@ We **strongly** recommend you run this migration locally first, to ensure the mi
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/linkit-content
+./craft hyper/migrate/linkit --step=content
 ```
+
+To run both steps in one pass, omit `--step` (it defaults to `all`):
+
+```shell
+./craft hyper/migrate/linkit
+```
+
+:::tip
+The old `hyper/migrate/linkit-field` and `hyper/migrate/linkit-content` commands still work but are deprecated in favour of the `--step` form above.
+:::

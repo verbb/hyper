@@ -1,24 +1,12 @@
 {% extends 'hyper/_layouts/settings' %}
 
-{% import '_includes/forms' as forms %}
-{% import 'verbb-base/_macros' as macros %}
-
-{% set selectedNavItem = 'general' %}
+{% set selectedTab = 'general' %}
 {% set fullPageForm = false %}
 
-{% block content %}
+{% block blockContent %}
 
 <h2>{{ 'General Settings' | t('hyper') }}</h2>
 
-{{ actionInput('plugins/save-plugin-settings') }}
-{{ hiddenInput('hyper') }}
-{{ redirectInput('hyper/settings') }}
-{{ csrfInput() }}
-
-{% namespace 'settings' %}
-
-<p>{{ 'No settings available.' | t('hyper') }}</p>
-
-{% endnamespace %}
+<p class="zilch">{{ 'No settings available.' | t('app') }}</p>
 
 {% endblock %}

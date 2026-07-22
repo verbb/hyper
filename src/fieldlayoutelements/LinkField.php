@@ -16,7 +16,7 @@ class LinkField extends TextField
     public string $attribute = 'linkValue';
     public ?HyperField $field = null;
     public ?LinkInterface $link = null;
-    public bool $mandatory = true;
+    public bool $mandatory = false;
     public bool $requirable = true;
 
 
@@ -52,6 +52,12 @@ class LinkField extends TextField
     protected function inputHtml(ElementInterface $element = null, bool $static = false): ?string
     {
         if ($this->link) {
+            if ($fieldLayout = $this->link->getFieldLayout()) {
+                if (!$fieldLayout->isFieldIncluded('linkValue')) {
+                    return '';
+                }
+            }
+
             return $this->link->getInputHtml($this, $this->field);
         }
 

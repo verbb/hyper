@@ -1,1 +1,25 @@
+{% import '_includes/forms' as forms %}
+
 {% include 'hyper/links/_element/settings' %}
+
+{% set dynamicPathTip = 'The path can contain variables like `{slug}` or `{author.username}`.' | t('app') %}
+
+{{ forms.selectField({
+    label: 'Default Upload Location' | t('app'),
+    instructions: 'Preferred volume when authors upload assets from this link type.' | t('hyper'),
+    tip: dynamicPathTip,
+    name: 'defaultUploadLocationSource',
+    options: volumeSourceOptions ?? [],
+    value: linkType.defaultUploadLocationSource,
+    errors: linkType.getErrors('defaultUploadLocationSource'),
+}) }}
+
+{{ forms.textField({
+    label: 'Default Upload Subpath' | t('hyper'),
+    instructions: 'Optional folder path under the volume (e.g. `documents/{slug}`).' | t('hyper'),
+    name: 'defaultUploadLocationSubpath',
+    value: linkType.defaultUploadLocationSubpath,
+    class: 'ltr',
+    placeholder: 'path/to/subfolder' | t('app'),
+    errors: linkType.getErrors('defaultUploadLocationSubpath'),
+}) }}

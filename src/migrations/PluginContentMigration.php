@@ -3,25 +3,20 @@ namespace verbb\hyper\migrations;
 
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\content\ElementContentStore;
+use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\Hyper;
 use verbb\hyper\links as linkTypes;
+use verbb\hyper\models\LinkCollection;
 
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\FieldInterface;
 use craft\db\Query;
-use craft\fields\Matrix;
-use craft\fieldlayoutelements\BaseField;
-use craft\fieldlayoutelements\CustomField;
 use craft\helpers\App;
 use craft\helpers\Console;
-use craft\helpers\Db;
-use craft\helpers\ElementHelper;
 use craft\helpers\Json;
-
-use verbb\supertable\fields\SuperTableField;
-
-use yii\base\InvalidArgumentException;
 
 class PluginContentMigration extends PluginMigration
 {
@@ -45,8 +40,6 @@ class PluginContentMigration extends PluginMigration
             ->where(['type' => HyperField::class])
             ->all();
 
-        $fieldService = Craft::$app->getFields();
-
         // Update the field content
         $this->processFieldContent();
 
@@ -63,56 +56,66 @@ class PluginContentMigration extends PluginMigration
             // Fetch the field model because we'll need it later
             $field = Craft::$app->getFields()->getFieldById($fieldData['id']);
 
-            if ($field) {
-                // Handle global field content
-                if ($field->context === 'global') {
-                    // We have to use field instances, not just the field
-                    foreach ($this->findFieldUsages($field) as $fieldLayoutUid) {
-                        // Find content rows for each field instance
-                        $sql = Craft::$app->getDb()->getQueryBuilder()->jsonExtract('content', [$fieldLayoutUid]);
+            // Nested Matrix / Super Table / entry-type Hyper fields are non-global.
+            // Content::modify still walks their layout UIDs (and nested placements when applicable).
+            if ($field instanceof HyperField) {
+                $context = $field->context ?: 'global';
 
-                        $rows = (new Query())
-                            ->select(['content', 'id', 'elementId', 'siteId'])
-                            ->from('{{%elements_sites}}')
-                            ->where([
-                                'and',
-                                ['not', ['content' => null]],
-                                $sql . ' IS NOT NULL',
-                            ])
-                            ->all();
-
-                        foreach ($rows as $row) {
-                            if (Json::isJsonObject($row['content'])) {
-                                $elementContent = Json::decode($row['content']) ?? [];
-                                $fieldContent = $elementContent[$fieldLayoutUid] ?? '';
-
-                                if (is_string($fieldContent) && Json::isJsonObject($fieldContent)) {
-                                    $fieldContent = Json::decode($fieldContent) ?? [];
-                                }
-
-                                if ($fieldContent) {
-                                    $this->contentSiteId = (int)$row['siteId'] ?: null;
-                                    $settings = $this->convertModel($field, $fieldContent);
-                                    $this->contentSiteId = null;
-
-                                    if ($settings) {
-                                        $elementContent[$fieldLayoutUid] = Json::encode($settings);
-
-                                        // Direct database save on the content for performance, and not to mess with saving elements
-                                        Db::update('{{%elements_sites}}', ['content' => $elementContent], ['id' => $row['id']]);
-
-                                        $this->stdout('    > Migrated content for element #' . $row['elementId'], Console::FG_GREEN);
-                                    } else {
-                                        // Null model is okay, that's just an empty field content
-                                        if ($settings !== null) {
-                                            $this->stdout('    > Unable to convert content for element #' . $row['elementId'], Console::FG_RED);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                if ($context !== 'global') {
+                    $this->stdout("    > Nested/context field (`{$context}`) — migrating owner content.", Console::FG_YELLOW);
                 }
+
+                Hyper::$plugin->getContent()->modify($field, function(LinkCollection $collection, $ref) use ($field) {
+                    // Convert from the raw stored payload (Linkit / flipbox / Craft Link / oEmbed shapes).
+                    // Do not use serializeValues() first — that only works after Hyper hydration.
+                    $raw = ElementContentStore::decodeStored($ref->value) ?? [];
+
+                    // Scalar URL fields (oEmbed) arrive as plain strings
+                    if (is_string($raw)) {
+                        $raw = ['url' => $raw];
+                    }
+
+                    if (!is_array($raw)) {
+                        $raw = [];
+                    }
+
+                    if ($raw === []) {
+                        return $collection;
+                    }
+
+                    $this->contentSiteId = $ref->siteId ?: null;
+                    $converted = $this->convertModel($field, $raw);
+                    $this->contentSiteId = null;
+
+                    if ($converted === null) {
+                        return $collection;
+                    }
+
+                    if ($converted === false) {
+                        $path = $ref->jsonPath ?: $ref->layoutUid;
+                        $this->stdout(
+                            "    > Unable to convert content for element #{$ref->elementId}"
+                            . ($path ? " (path `{$path}`)" : '')
+                            . $this->describeConvertFailure($field, $raw),
+                            Console::FG_RED,
+                        );
+
+                        return $collection;
+                    }
+
+                    if (is_array($converted)) {
+                        $this->stdout('    > Migrated content for element #' . $ref->elementId, Console::FG_GREEN);
+                        $this->getMigrationResult()?->incrementStat('elementsMigrated');
+
+                        return new LinkCollection($field, $converted);
+                    }
+
+                    return $collection;
+                }, new ModifyOptions(
+                    dryRun: $this->dryRun,
+                    syncRelations: $this->syncRelations,
+                    db: $this->db,
+                ));
             }
 
             // Check for Vizy fields, a little different
@@ -120,8 +123,16 @@ class PluginContentMigration extends PluginMigration
                 $this->migrateVizyContent($fieldData);
             }
 
-            $this->stdout("    > Field “{$field['handle']}” content migrated." . PHP_EOL, Console::FG_GREEN);
+            if ($field) {
+                $this->stdout("    > Field “{$field->handle}” content migrated." . PHP_EOL, Console::FG_GREEN);
+                $this->getMigrationResult()?->incrementStat('fieldsMigrated');
+            }
         }
+    }
+
+    protected function describeConvertFailure(HyperField $field, array $raw): string
+    {
+        return '';
     }
 
 
@@ -139,62 +150,6 @@ class PluginContentMigration extends PluginMigration
         return [$link->getSerializedValues()];
     }
 
-    protected function normalizeFieldContentForMigration(array $fieldContent): array
-    {
-        if (isset($fieldContent[0]) && is_array($fieldContent[0])) {
-            return $fieldContent;
-        }
-
-        return [$fieldContent];
-    }
-
-    protected function isHyperLinkContent(array $fieldContent): bool
-    {
-        foreach ($this->normalizeFieldContentForMigration($fieldContent) as $linkData) {
-            if (!is_array($linkData)) {
-                continue;
-            }
-
-            $type = $linkData['type'] ?? '';
-
-            if (is_string($type) && str_contains($type, 'verbb\\hyper\\links\\')) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    protected function repairMigratedLinks(array $links): ?array
-    {
-        if (!$this->contentSiteId) {
-            return null;
-        }
-
-        $changed = false;
-
-        foreach ($links as &$linkData) {
-            if (!is_array($linkData)) {
-                continue;
-            }
-
-            $type = $linkData['type'] ?? null;
-
-            if (!is_string($type) || !class_exists($type) || !is_subclass_of($type, ElementLink::class)) {
-                continue;
-            }
-
-            if (empty($linkData['linkSiteId'])) {
-                $linkData['linkSiteId'] = $this->contentSiteId;
-                $changed = true;
-            }
-        }
-
-        unset($linkData);
-
-        return $changed ? $links : null;
-    }
-
     protected function castScalarLinkValue(LinkInterface $link): void
     {
         if (!$link instanceof linkTypes\Phone && !$link instanceof linkTypes\Email) {
@@ -208,23 +163,7 @@ class PluginContentMigration extends PluginMigration
 
     protected function findFieldUsages(FieldInterface $field): array
     {
-        $uids = [];
-
-        foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
-            try {
-                $fieldLayoutField = $layout->getField(fn(BaseField $layoutField) => (
-                    $layoutField instanceof CustomField && $layoutField->getFieldUid() === $field->uid
-                ));
-
-                if ($fieldLayoutField) {
-                    $uids[] = $fieldLayoutField->uid;
-                }
-            } catch (InvalidArgumentException) {
-
-            }
-        }
-
-        return $uids;
+        return (new ElementContentStore($this->db))->findLayoutUids($field);
     }
 
     protected function getElementContentForField(ElementInterface $element, FieldInterface $field, array $fieldValue): array
@@ -255,5 +194,10 @@ class PluginContentMigration extends PluginMigration
         }
 
         return array_merge($oldContent, $fieldContent);
+    }
+
+    protected function convertModel(HyperField $field, array $oldSettings): bool|array|null
+    {
+        return null;
     }
 }

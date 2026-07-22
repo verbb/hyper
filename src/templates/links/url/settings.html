@@ -8,3 +8,19 @@
     placeholder: linkType.linkValuePlaceholder(),
     errors: linkType.getErrors('placeholder'),
 }) }}
+
+{{ forms.textField({
+    label: 'Default Link Value' | t('hyper'),
+    instructions: 'Pre-fill the URL for new links of this type.' | t('hyper'),
+    name: 'defaultLinkValue',
+    value: linkType.defaultLinkValue,
+    errors: linkType.getErrors('defaultLinkValue'),
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Fixed Link Value' | t('hyper'),
+    instructions: 'Prevent authors from editing the URL. Requires a default link value.' | t('hyper'),
+    name: 'fixedLinkValue',
+    on: linkType.fixedLinkValue,
+    errors: linkType.getErrors('fixedLinkValue'),
+}) }}

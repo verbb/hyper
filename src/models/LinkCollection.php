@@ -1,7 +1,7 @@
 <?php
 namespace verbb\hyper\models;
 
-use verbb\hyper\base\ElementLink;
+use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 
@@ -12,7 +12,7 @@ use ArrayIterator;
 use Countable;
 use IteratorAggregate;
 
-class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
+class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Countable, ArrayAccess
 {
     // Properties
     // =========================================================================
@@ -31,26 +31,29 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
         $this->_element = $element;
         $this->_field = $field;
 
-        // Convert serialized data to a collection of links.
+        // Convert serialized data to a collection of links via LinkInstance adapter.
         foreach ($links as $data) {
-            if (!($data instanceof LinkInterface)) {
-                if (is_array($data)) {
-                    if ($handle = $this->_getLinkTypeHandle($data, $field)) {
-                        if ($link = $field->getLinkTypeByHandle($handle)) {
-                            $newLink = clone($link);
-
-                            $newLink->setAttributes($data, false);
-
-                            $this->_links[] = $newLink;
-                        }
-                    }
-                }
-            } else {
+            if ($data instanceof LinkInterface) {
                 $this->_links[] = $data;
+                continue;
+            }
+
+            if (!is_array($data)) {
+                continue;
+            }
+
+            $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($field, $data);
+
+            if ($link) {
+                if ($element) {
+                    $link->ownerSiteId = $element->siteId;
+                }
+
+                $this->_links[] = $link;
             }
         }
 
-        $this->_firstLink = $this->_links[0] ?? null;
+        $this->_syncFirstLink();
     }
 
     public function __toString(): string
@@ -74,7 +77,9 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 
     public function __set($name, $value)
     {
-        $this->$name($value);
+        if ($this->_firstLink) {
+            $this->_firstLink->$name = $value;
+        }
     }
 
     public function __call($name, $params)
@@ -104,14 +109,11 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 
     public function __clone()
     {
-        // Ensure that when we clone this collection, we deep-clone
-        $this->_field = clone $this->_field;
-        $this->_element = $this->_element ? clone $this->_element : null;
-        $this->_firstLink = $this->_firstLink ? clone $this->_firstLink : null;
-
         foreach ($this->_links as $key => $link) {
             $this->_links[$key] = clone $link;
         }
+
+        $this->_syncFirstLink();
     }
 
     public function getIterator(): ArrayIterator
@@ -131,12 +133,20 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->_links[$offset] = $value;
+        if ($offset === null) {
+            $this->_links[] = $value;
+        } else {
+            $this->_links[$offset] = $value;
+        }
+
+        $this->_syncFirstLink();
     }
 
     public function offsetUnset(mixed $offset): void
     {
         unset($this->_links[$offset]);
+
+        $this->_syncFirstLink();
     }
 
     public function count(): int
@@ -153,12 +163,20 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
     public function isEmpty(): bool
     {
         if (!$this->_field->multipleLinks) {
-            if ($this->_firstLink) {
-                return $this->_firstLink->isEmpty();
+            return $this->_firstLink === null || $this->_firstLink->isEmpty();
+        }
+
+        if ($this->_links === []) {
+            return true;
+        }
+
+        foreach ($this->_links as $link) {
+            if ($link instanceof LinkInterface && !$link->isEmpty()) {
+                return false;
             }
         }
-        
-        return !$this->count();
+
+        return true;
     }
 
     public function getLinks(): array
@@ -209,6 +227,15 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
     public function setLinks(array $value): void
     {
         $this->_links = $value;
+        $this->_syncFirstLink();
+    }
+
+    public function withLinks(array $links): self
+    {
+        $collection = clone $this;
+        $collection->setLinks($links);
+
+        return $collection;
     }
 
     public function serializeValues(?ElementInterface $element = null): array
@@ -228,23 +255,8 @@ class LinkCollection implements IteratorAggregate, Countable, ArrayAccess
     // Private Methods
     // =========================================================================
 
-    private function _getLinkTypeHandle(array $data, HyperField $field): string
+    private function _syncFirstLink(): void
     {
-        // Use either the handle of the link type, the first instance of an enabled link type
-        // (of that type) or use the default link type set by the field.
-        $handle = $data['handle'] ?? null;
-
-        if (!$handle && isset($data['type'])) {
-            foreach ($field->getLinkTypes() as $linkType) {
-                if ($linkType::class === $data['type']) {
-                    $handle = $linkType->handle;
-                    break;
-                }
-            }
-        }
-
-        $handle = $handle ?? $field->defaultLinkType;
-
-        return $handle;
+        $this->_firstLink = $this->_links !== [] ? reset($this->_links) : null;
     }
 }

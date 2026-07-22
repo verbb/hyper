@@ -1,11 +1,10 @@
 {% import '_includes/forms' as forms %}
-{% import 'verbb-base/_macros' as macros %}
 
 {% do view.registerTranslations('hyper', [
     'New link type',
     'Select a link type to edit.',
     'Link Fields',
-    'Configure the fields and UI elements available to links. Elements in the first tab will be always be shown, while any other tabs will be shown in a slide-out panel.',
+    'Configure the fields and UI elements available to links.',
     'Are you sure you want to delete “{name}”?',
 ]) %}
 
@@ -25,8 +24,8 @@
 }) }}
 
 {{ forms.lightswitchField({
-    label: 'Enable New Window' | t('hyper'),
-    instructions: 'Whether to show the "Open in New Window" option for links.' | t('hyper'),
+    label: 'Enable New Window in Header' | t('hyper'),
+    instructions: 'Whether to show the “Open in New Window” icon in the link header.' | t('hyper'),
     name: 'newWindow',
     on: field.newWindow,
     errors: field.getErrors('newWindow'),
@@ -70,35 +69,82 @@
         size: 2,
         errors: field.getErrors('maxLinks'),
     }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Enable Bulk Add' | t('hyper'),
+        instructions: 'Show a “Bulk Add” action that lets authors add many links at once — element types open a multi-select modal.' | t('hyper'),
+        name: 'enableBulkAdd',
+        on: field.enableBulkAdd,
+        errors: field.getErrors('enableBulkAdd'),
+    }) }}
 </div>
 
-<div class="field" aria-describedby="configurator">
-    <div class="heading">
-        <label id="label">{{ 'Link Types' | t('hyper') }}</label>
-    </div>
+{% set configOptions = [] %}
+{% for config in linkTypeConfigs ?? [] %}
+    {% set configOptions = configOptions | merge([{ label: config.name, value: config.handle }]) %}
+{% endfor %}
+{% set configOptions = configOptions | merge([{ label: 'Custom' | t('app'), value: 'custom' }]) %}
 
-    <div id="configurator" class="instructions">
-        <p>{{ 'Configure the types of links available for users to pick from.' | t('hyper') }}</p>
-    </div>
+{{ forms.selectField({
+    label: 'Link Type Config' | t('hyper'),
+    instructions: 'Select a shared link type config, or choose Custom to define link types just for this field.' | t('hyper'),
+    name: 'linkTypeConfig',
+    value: field.linkTypeConfig ?? 'default',
+    options: configOptions,
+    errors: field.getErrors('linkTypeConfig'),
+    toggle: true,
+    targetPrefix: 'hyper-link-type-config-',
+}) }}
 
-    <div class="hyper-configurator {{ inputIdPrefix }}-hyper-configurator" data-hyper-auto-mount="settings">
-        <hyper-settings
-            :field-id="{{ field.id ?: 'null' }}"
-            :link-types="{{ linkTypes | json_encode }}"
-            :registered-link-types="{{ registeredLinkTypes | json_encode }}"
-            :namespaced-name="{{ namespacedName | json_encode }}"
-            :namespaced-id="{{ namespacedId | json_encode }}"
+<div id="hyper-link-type-config-custom" class="{{ field.linkTypeConfig != 'custom' ? 'hidden' }}">
+    <div class="field" aria-describedby="configurator">
+        <div class="heading">
+            <label id="label">{{ 'Link Types' | t('hyper') }}</label>
+        </div>
+
+        <div id="configurator" class="instructions">
+            <p>{{ 'Configure the types of links available for users to pick from.' | t('hyper') }}</p>
+        </div>
+
+        <div
+            class="hyper-configurator {{ inputIdPrefix }}-hyper-configurator"
+            data-hyper-settings
+            data-hyper-settings-config="{{ settingsConfig | json_encode | e('html_attr') }}"
         >
-        </hyper-settings>
+            {% include 'hyper/field/_settings-configurator' with {
+                linkTypes: linkTypes,
+                namespacedName: namespacedName,
+                fieldId: field.id,
+            } only %}
+        </div>
+
+        {{ forms.errorList(field.getErrors('linkTypes')) }}
     </div>
-
-    {% set errors = field.getErrors('linkTypes') %}
-
-    {% if errors %}
-        <ul class="errors">
-            {% for error in errors %}
-                <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
 </div>
+
+<hr>
+
+{% embed '_includes/forms/field' with {
+    label: 'View Mode' | t('app'),
+    instructions: 'Choose how links should be presented to authors.' | t('hyper'),
+    errors: field.getErrors('viewMode'),
+} %}
+    {% block input %}
+        <div class="flex items-start gap-l">
+            <label class="nowrap">
+                <img class="mb-xs" src="{{ baseIconsUrl }}/blocks.svg" width="80" height="60" alt="">
+                {{ input('radio', 'viewMode', 'blocks', {
+                    checked: field.viewMode == 'blocks',
+                }) }}
+                {{ 'Blocks' | t('app') }}
+            </label>
+            <label class="nowrap">
+                <img class="mb-xs" src="{{ baseIconsUrl }}/cards-grid.svg" width="80" height="60" alt="">
+                {{ input('radio', 'viewMode', 'cards', {
+                    checked: field.viewMode == 'cards',
+                }) }}
+                {{ 'Card Grid' | t('hyper') }}
+            </label>
+        </div>
+    {% endblock %}
+{% endembed %}

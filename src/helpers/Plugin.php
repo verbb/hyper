@@ -36,6 +36,14 @@ class Plugin extends BasePlugin
         }
     }
 
+    public static function registerFieldAssets(): void
+    {
+        // Register Plugin Kit web components before Hyper mounts fields, so custom
+        // element upgrades are page-level asset work rather than per-field init work.
+        self::registerAsset('field/src/js/plugin-kit-register.ts');
+        self::registerAsset('field/src/js/hyper.ts');
+    }
+
     public static function isDebug(): bool
     {
         return Hyper::$plugin->getVite()->devServerRunning();

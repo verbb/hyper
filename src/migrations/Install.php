@@ -3,7 +3,6 @@ namespace verbb\hyper\migrations;
 
 use craft\db\Migration;
 use craft\db\Table;
-use craft\helpers\MigrationHelper;
 
 class Install extends Migration
 {
@@ -12,82 +11,42 @@ class Install extends Migration
 
     public function safeUp(): bool
     {
-        $this->createTables();
-        $this->createIndexes();
-        $this->addForeignKeys();
+        if ($this->db->tableExists('{{%hyper_links}}')) {
+            return true;
+        }
+
+        $this->createTable('{{%hyper_links}}', [
+            'id' => $this->primaryKey(),
+            'fieldId' => $this->integer()->notNull(),
+            'ownerId' => $this->integer()->notNull(),
+            'ownerSiteId' => $this->integer()->notNull(),
+            'sortOrder' => $this->smallInteger()->unsigned()->notNull()->defaultValue(0),
+            'linkTypeHandle' => $this->string()->notNull(),
+            'targetId' => $this->integer()->null(),
+            'targetSiteId' => $this->integer()->null(),
+            'targetType' => $this->string()->null(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        $this->createIndex(null, '{{%hyper_links}}', ['ownerId', 'ownerSiteId', 'fieldId'], false);
+        $this->createIndex(null, '{{%hyper_links}}', ['targetId', 'targetSiteId'], false);
+        $this->createIndex(null, '{{%hyper_links}}', ['fieldId'], false);
+
+        $this->addForeignKey(null, '{{%hyper_links}}', ['fieldId'], Table::FIELDS, ['id'], 'CASCADE', 'CASCADE');
+        $this->addForeignKey(null, '{{%hyper_links}}', ['ownerId'], Table::ELEMENTS, ['id'], 'CASCADE', 'CASCADE');
+        $this->addForeignKey(null, '{{%hyper_links}}', ['ownerSiteId'], Table::SITES, ['id'], 'CASCADE', 'CASCADE');
+        $this->addForeignKey(null, '{{%hyper_links}}', ['targetId'], Table::ELEMENTS, ['id'], 'SET NULL', 'CASCADE');
+        $this->addForeignKey(null, '{{%hyper_links}}', ['targetSiteId'], Table::SITES, ['id'], 'SET NULL', 'CASCADE');
 
         return true;
     }
 
     public function safeDown(): bool
     {
-        $this->dropForeignKeys();
-        $this->removeTables();
+        $this->dropTableIfExists('{{%hyper_links}}');
 
         return true;
-    }
-
-    public function createTables(): void
-    {
-        $this->archiveTableIfExists('{{%hyper_element_cache}}');
-        $this->createTable('{{%hyper_element_cache}}', [
-            'id' => $this->primaryKey(),
-            'fieldId' => $this->integer(),
-            'sourceId' => $this->integer(),
-            'sourceSiteId' => $this->integer(),
-            'sourceType' => $this->string(255),
-            'targetId' => $this->integer(),
-            'targetSiteId' => $this->integer(),
-            'targetType' => $this->string(255),
-            'title' => $this->string(255),
-            'uri' => $this->string(255),
-            'dateCreated' => $this->dateTime()->notNull(),
-            'dateUpdated' => $this->dateTime()->notNull(),
-            'uid' => $this->uid(),
-        ]);
-
-        $this->archiveTableIfExists('{{%hyper_field_cache}}');
-        $this->createTable('{{%hyper_field_cache}}', [
-            'id' => $this->primaryKey(),
-            'sourceField' => $this->uid(),
-            'targetField' => $this->uid(),
-            'dateCreated' => $this->dateTime()->notNull(),
-            'dateUpdated' => $this->dateTime()->notNull(),
-            'uid' => $this->uid(),
-        ]);
-    }
-
-    public function createIndexes(): void
-    {
-        $this->createIndex(null, '{{%hyper_element_cache}}', 'id', false);
-        $this->createIndex(null, '{{%hyper_element_cache}}', 'sourceId', false);
-        $this->createIndex(null, '{{%hyper_element_cache}}', 'sourceSiteId', false);
-        $this->createIndex(null, '{{%hyper_element_cache}}', 'targetId', false);
-        $this->createIndex(null, '{{%hyper_element_cache}}', 'targetSiteId', false);
-
-        $this->createIndex(null, '{{%hyper_field_cache}}', 'id', false);
-        $this->createIndex(null, '{{%hyper_field_cache}}', 'sourceField', false);
-        $this->createIndex(null, '{{%hyper_field_cache}}', 'targetField', false);
-    }
-
-    public function addForeignKeys(): void
-    {
-        $this->addForeignKey(null, '{{%hyper_element_cache}}', ['sourceId'], Table::ELEMENTS, ['id'], 'CASCADE', 'CASCADE');
-        $this->addForeignKey(null, '{{%hyper_element_cache}}', ['sourceSiteId'], Table::SITES, ['id'], 'CASCADE', 'CASCADE');
-        $this->addForeignKey(null, '{{%hyper_element_cache}}', ['targetId'], Table::ELEMENTS, ['id'], 'CASCADE', 'CASCADE');
-        $this->addForeignKey(null, '{{%hyper_element_cache}}', ['targetSiteId'], Table::SITES, ['id'], 'CASCADE', 'CASCADE');
-    }
-
-    public function removeTables(): void
-    {
-        $this->dropTableIfExists('{{%hyper_element_cache}}');
-        $this->dropTableIfExists('{{%hyper_field_cache}}');
-    }
-
-    public function dropForeignKeys(): void
-    {
-        if ($this->db->tableExists('{{%hyper_element_cache}}')) {
-            MigrationHelper::dropAllForeignKeysOnTable('{{%hyper_element_cache}}', $this);
-        }
     }
 }

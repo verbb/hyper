@@ -1,0 +1,829 @@
+.hc-wrapper {
+    display: flex;
+    background-color: #fff;
+    border: 1px solid #d8dee7;
+    border-radius: 3px;
+    overflow: visible;
+}
+
+/* pk-input-group draws the field border/background; the slotted native Craft input
+   (kept for form POST + HandleGenerator) must render borderless so the shell owns the
+   chrome. pk-input-group-input would do this itself, but it is not form-associated. */
+.hyper-handle-group>.text {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.hyper-handle-group>.text:focus {
+    box-shadow: none;
+}
+
+/* Sit the copy button flush against the field's trailing edge. */
+.hyper-handle-group pk-input-group-addon[align='inline-end'] {
+    padding-inline-end: 0;
+}
+
+.hc-sidebar {
+    width: 250px;
+    background-color: #f3f7fb;
+    border-right: 1px solid #d8dee7;
+}
+
+.hc-sidebar .btn {
+    margin: 14px;
+}
+
+.hc-sidebar .hc-add-link-type-group {
+    position: relative;
+    display: inline-block;
+    margin: 14px;
+}
+
+.hc-sidebar .hc-add-link-type-group .btn {
+    margin: 0;
+}
+
+.hc-sidebar-items {
+    max-height: none;
+}
+
+.hc-sidebar-item-move {
+    display: inline-flex;
+    width: 13px;
+    height: 13px;
+    margin-left: auto;
+    color: #78838e;
+    cursor: move;
+}
+
+.hc-sidebar-item-move svg {
+    width: 100%;
+    height: 100%;
+}
+
+.hc-sidebar-item {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    position: relative;
+    user-select: none;
+    background-color: #f3f7fb;
+    box-shadow: 0 -1px 0 #dfe4ea, inset 0 -1px 0 #dfe4ea;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.hc-sidebar-item.has-errors {
+    background: #ffe8ec;
+    color: var(--error-color);
+}
+
+.hc-sidebar-item.has-errors.sel {
+    background: #ffdfe4;
+}
+
+.hc-sidebar-item.sel {
+    background: #d8dee7;
+}
+
+.hc-sidebar-item .hc-label-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.hc-sidebar-item .lightswitch,
+.hc-sidebar-item .hc-move {
+    flex-shrink: 0;
+}
+
+.hc-pane {
+    flex: 1;
+    padding: 20px;
+    min-width: 0;
+    overflow: visible;
+}
+
+.hyper-block-editor-layout {
+    overflow: visible;
+}
+
+.hyper-fld-stage {
+    position: relative;
+    min-height: 12rem;
+}
+
+.hyper-fld-placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.hyper-fld-placeholder.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.hyper-fld-placeholder.is-leaving {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.hyper-fld-content {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.hyper-fld-content.is-visible {
+    opacity: 1;
+}
+
+.hyper-workspace {
+    padding: 24px;
+    border-radius: 3px;
+    display: flex;
+    flex: 1;
+    height: 100%;
+    min-height: 100%;
+    background-color: #f3f7fc;
+    background-image: linear-gradient(to right, #ecf2f9 1px, transparent 0px), linear-gradient(to bottom, #ecf2f9 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: -1px -1px;
+    box-shadow: inset 0 1px 3px -1px #acbed2;
+}
+
+.hyper-loading-pane,
+.hyper-error-pane {
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 8rem;
+}
+
+.hyper-error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    max-width: 32rem;
+    text-align: start;
+}
+
+.hyper-error-content [data-icon="alert"] {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.hc-pane-empty {
+    color: #265275;
+    padding: 20px;
+    flex: 1;
+    margin-left: 24px;
+    display: flex;
+    justify-content: center;
+    font-size: 2em;
+    font-weight: 400;
+    opacity: 0.4;
+    margin-top: 3rem;
+    position: relative;
+    text-align: center;
+}
+
+.hc-pane-empty svg {
+    position: absolute;
+    top: 4rem;
+    left: 50%;
+    width: 170px;
+    height: auto;
+    margin-left: -85px;
+    transform: rotate(7deg) translateX(-50%);
+}
+
+.hyper-settings-ssr-pane.hidden {
+    display: none;
+}
+
+.lightswitch.extra-small {
+    border-radius: 7px;
+    height: 14px;
+    width: 25px;
+    min-width: 25px;
+}
+
+.lightswitch.extra-small .lightswitch-container {
+    /* Match Craft.LightSwitch._getOffMargin() for .small (-10) */
+    margin-inline-start: -10px;
+    width: 32px;
+}
+
+.lightswitch.extra-small.on .lightswitch-container {
+    /* Craft sets inline margin-left: 0; nudge 1px right for xs track */
+    margin-inline-start: 1px !important;
+}
+
+.lightswitch.extra-small .lightswitch-container .handle {
+    border-radius: 5px;
+    height: 10px;
+    inset-inline-start: calc(50% - 4px);
+    width: 10px;
+}
+
+.lightswitch.extra-small.on .lightswitch-container .handle::before {
+    display: none;
+}
+
+.lightswitch-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.hyper-links.hyper-dragging,
+.hyper-links.hyper-dragging * {
+    user-select: none;
+    cursor: grabbing;
+}
+
+.hyper-link {
+    margin-bottom: 0.75rem;
+    container-type: inline-size;
+    container-name: hyper-link;
+}
+
+.hyper-link--dragging {
+    /* Grid/flex items honor z-index without position — elevate only while dragging. */
+    position: relative;
+    z-index: 1000;
+}
+
+.hyper-wrapper {
+    border: 1px solid #cdd9e4;
+    border-radius: 5px;
+    /* Keep header chrome (tabs, type segment) above the white body seam. */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.hyper-header {
+    /* Left flush for type segment; keep right padding for actions. */
+    position: relative;
+    z-index: 2;
+    padding: 0 0.75rem 0 0;
+    min-height: 31px;
+    border-radius: 5px 5px 0 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background-color: #f3f7fc;
+    border-bottom: 1px solid #cdd9e4;
+    flex: 0 0 auto;
+}
+
+.hyper-wrapper.no-header {
+    border: none;
+    border-radius: 0;
+}
+
+.hyper-wrapper.no-header .hyper-body-wrapper [data-hyper-portal] {
+    padding: 0.75rem 0;
+}
+
+.hyper-header-type {
+    position: relative;
+    user-select: none;
+    display: flex;
+    align-items: stretch;
+    align-self: stretch;
+    padding: 0;
+    flex: 0 1 auto;
+    min-width: 4rem;
+    max-width: 14rem;
+}
+
+.hyper-header-type-btn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 14rem;
+    min-height: 100%;
+    margin: 0;
+    padding: 0 12px;
+    /* Flush to header top/left; only a right edge against the header chrome. */
+    border: none;
+    border-right: 1px solid #cdd9e4;
+    border-radius: 4px 0 0 0;
+    background: #dee6ed;
+    color: #3f4d5a;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    cursor: pointer;
+    text-align: left;
+}
+
+.hyper-header-type-btn.is-static {
+    cursor: default;
+}
+
+.hyper-header-type-btn [data-hyper-type-label-text] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hyper-header-type-chevron {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    color: #596673;
+    opacity: 0.75;
+}
+
+.hyper-header-type-btn:hover:not(.is-static),
+.hyper-header-type-btn:focus-visible:not(.is-static) {
+    background: #d4dee8;
+    color: #1f2933;
+}
+
+/* Tabs sit left of actions — Vizy/Neo/Matrix cutout into white body. */
+.hyper-header-actions-tabs {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: auto;
+    margin-right: -5px;
+}
+
+.hyper-header-tabs {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    margin-right: 8px;
+}
+
+.hyper-header-tab {
+    appearance: none;
+    position: relative;
+    z-index: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom-width: 1px;
+    margin-bottom: -1px;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: #3f4d5a;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hyper-header-tab-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hyper-header-tab:hover {
+    color: #1f2933;
+}
+
+.hyper-header-tab.is-active {
+    z-index: 1;
+    background-color: #fff;
+    border-left-color: #e3e5e8;
+    border-right-color: #e3e5e8;
+    /* Cover the header/body seam — same cutout as Matrix / Vizy / Neo. */
+    border-bottom-color: #fff;
+}
+
+.hyper-header-tabs-menu {
+    display: none !important;
+    align-items: stretch;
+    align-self: stretch !important;
+    min-width: 0;
+    max-width: 10rem;
+    margin-right: 8px;
+}
+
+.hyper-header-tabs-menu::part(panel) {
+    max-width: min(20rem, calc(100vw - 2rem));
+}
+
+.hyper-header-tab-menu-btn {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 10rem;
+    height: 100%;
+    margin: 0 0 -1px;
+    padding: 5px 10px;
+    overflow: hidden;
+    border: 1px solid #e3e5e8;
+    border-top-color: transparent;
+    border-bottom-color: #fff;
+    background: #fff;
+    color: #3f4d5a;
+    font-size: 12px;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.hyper-header-tab-menu-btn [data-hyper-active-tab-label] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hyper-header-tab-chevron {
+    flex: none;
+    width: 10px;
+    height: 10px;
+}
+
+@container hyper-link (max-width: 32rem) {
+    .hyper-header-tabs {
+        display: none;
+    }
+
+    .hyper-header-tabs-menu {
+        display: inline-flex !important;
+    }
+}
+
+.hyper-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+/* Far-right chrome: new-window · ⋯ · drag — identical 24×24 native buttons. */
+.hyper-header-actions .hyper-header-new-window,
+.hyper-header-actions .hyper-header-settings,
+.hyper-header-actions .hyper-header-move {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: #596673;
+    cursor: pointer;
+    line-height: 0;
+    vertical-align: middle;
+}
+
+.hyper-header-actions .hyper-header-new-window .hyper-menu-icon {
+    display: block;
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    color: #596673;
+    fill: currentColor;
+}
+
+.hyper-header-actions .hyper-header-settings .hyper-menu-icon {
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    color: #596673;
+    fill: currentColor;
+}
+
+.hyper-header-actions .hyper-header-move svg {
+    display: block;
+    width: 11px;
+    height: 11px;
+    margin: 0;
+    color: #596673;
+    fill: currentColor;
+}
+
+.hyper-header-actions .hyper-header-new-window:hover:not(:disabled),
+.hyper-header-actions .hyper-header-new-window:focus-visible:not(:disabled),
+.hyper-header-actions .hyper-header-settings:hover,
+.hyper-header-actions .hyper-header-settings:focus-visible {
+    background: color-mix(in srgb, #596673 12%, transparent);
+}
+
+.hyper-header-actions .hyper-header-new-window.is-active {
+    background: transparent;
+    color: #2563eb;
+}
+
+.hyper-header-actions .hyper-header-new-window.is-active .hyper-menu-icon {
+    color: #2563eb;
+}
+
+.hyper-header-actions .hyper-header-new-window:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/*
+ * pk-dropdown-menu hosts: pin size="sm" label metrics so slotted text inherits
+ * kit rhythm (Craft CP body metrics otherwise crush row height).
+ *
+ * TODO(plugin-kit): drop font-size/line-height/color once @verbb/plugin-kit-web
+ * ships pk-dropdown-item :host metrics.
+ */
+.hyper-header-type-menu,
+[data-hyper-type-menu],
+.hyper-header-tabs-menu,
+[data-hyper-layout-tabs-menu],
+.hyper-header-actions .hyper-header-settings-menu,
+.hyper-header-actions [data-hyper-block-menu],
+[data-hyper-add-menu] {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--pk-color-gray-700, #3f4d5a);
+}
+
+/* Actions / Add: center the host in the chrome row (kit defaults to flex-start). */
+.hyper-header-actions .hyper-header-settings-menu,
+.hyper-header-actions [data-hyper-block-menu],
+[data-hyper-add-menu] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    align-self: center !important;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+    height: auto;
+    vertical-align: middle;
+}
+
+/* Type menu: stretch with the header so the trigger fills header height. */
+.hyper-header-type-menu,
+[data-hyper-type-menu] {
+    display: flex !important;
+    align-items: stretch;
+    align-self: stretch !important;
+    max-width: 100%;
+    height: auto;
+}
+
+.hyper-header-actions .hyper-header-settings {
+    align-self: center !important;
+}
+
+.hyper-header-actions .hyper-header-move {
+    cursor: move;
+}
+
+/* Header-only icon sizing — dropdown items use bare pk-icon (Formie / Plugin Kit default). */
+.hyper-menu-icon {
+    display: block;
+    flex-shrink: 0;
+}
+
+.hyper-body-wrapper [data-hyper-portal] {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: #fff;
+    border-radius: 0 0 6px 6px;
+}
+
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields {
+    align-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 calc(var(--row-gap) * -1) calc(var(--row-gap) * -1);
+    width: calc(100% + var(--row-gap) * 2);
+    --row-gap: 0.5rem !important;
+    margin-bottom: -1rem !important;
+}
+
+@container (min-width: calc(50rem)) {
+
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break).width-25,
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break):last-child.width-25 {
+        width: 25%;
+    }
+
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break).width-50,
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break):last-child.width-50 {
+        width: 50%;
+    }
+
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break).width-75,
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2, hr, .line-break):last-child.width-75 {
+        width: 75%;
+    }
+}
+
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2):not(hr):not(.line-break),
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2):not(hr):not(.line-break):last-child {
+    position: relative;
+    width: 100%;
+}
+
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields>* {
+    box-sizing: border-box;
+    margin: 0 0 var(--row-gap) !important;
+    padding: 0 var(--row-gap);
+    position: relative;
+    width: 100%;
+}
+
+#content :not(.meta) .hyper-body-wrapper [data-hyper-portal]>.flex-fields>*,
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields>* {
+    margin-bottom: 1rem !important;
+}
+
+#content :not(.meta) .hyper-body-wrapper [data-hyper-portal]>.flex-fields {
+    --row-gap: 0.5rem !important;
+    margin-bottom: -1rem !important;
+}
+
+.hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2):not(hr):not(.line-break):before {
+    display: none;
+}
+
+.hyper-wrapper:not(.no-header) .hyper-body-wrapper {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Do not zero flex-fields margin-bottom here. Fields use margin-bottom: 1rem and the
+   pane uses -1rem to cancel the last field (Craft pattern). Zeroing that cancel left a
+   dead 1rem band under the last field whenever the block was outside `#content`
+   (promo screenshot stage) — and fought the in-CP cancel under weaker specificity. */
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .heading label {
+    flex-shrink: 0;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* craft-copy-attribute {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .copytextbtn.small {
+    padding: 0 5px;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .copytextbtn.small .copytextbtn__value {
+    font-size: 0.6rem;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .heading {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .heading label {
+    font-weight: 600;
+}
+
+.hyper-body-wrapper [data-hyper-portal] .flex-fields>* .instructions {
+    font-size: 12px;
+    line-height: 1;
+    margin-top: -0.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.h-add-container .hc-add-link-type-group {
+    position: relative;
+    display: inline-block;
+}
+
+.h-add-link-btn {
+    margin: 0;
+}
+
+/* Empty field chrome — Add CTA only until the first link is created. */
+.hyper-input--empty .hyper-links:empty+[data-hyper-add-link],
+.hyper-input--empty>[data-hyper-add-link] {
+    margin-top: 0;
+}
+
+.hyper-input:not(.hyper-input--empty)>[data-hyper-add-link] {
+    margin-top: 10px;
+}
+
+/* View modes. Use the field container rather than viewport width:
+   element-editor slideouts can be narrow on an otherwise wide screen. */
+.hyper-input {
+    container-type: inline-size;
+    container-name: hyper-input;
+}
+
+.hyper-input--mode-cards .hyper-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+@container hyper-input (max-width: 55rem) {
+    .hyper-input--mode-cards .hyper-links {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hyper-input--mode-cards .hyper-link {
+    margin: 0;
+    /* Isolate each card so open menus / tabs do not fight sibling paint order. */
+    position: relative;
+    z-index: auto;
+}
+
+.hyper-input--mode-cards .hyper-wrapper {
+    height: 100%;
+}
+
+/* #ensure portal is a container for multi-column wrap in flyouts / narrow Matrix. */
+.hyper-body-wrapper {
+    container-type: inline-size;
+    container-name: hyper-portal;
+}
+
+.hyper-body-wrapper [data-hyper-portal] {
+    container-type: inline-size;
+}
+
+@container hyper-portal (max-width: 28rem) {
+
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2):not(hr):not(.line-break),
+    .hyper-body-wrapper [data-hyper-portal]>.flex-fields> :not(h2):not(hr):not(.line-break):last-child {
+        width: 100% !important;
+    }
+}
+
+.hyper-portals-layer {
+    pointer-events: none;
+}
+
+.hyper-portals-layer [data-hyper-portal] {
+    pointer-events: auto;
+}
+
+/* Bulk Add dialog — single dynamic pk-dialog body. */
+.hyper-bulk-dialog {
+    min-width: 22rem;
+}
+
+.hyper-bulk-dialog .field:last-child {
+    margin-bottom: 0;
+}
+
+.hyper-bulk-region textarea.text {
+    min-height: 9rem;
+    resize: vertical;
+}
+
+/* Give the mounted native element select room so chips don't feel cramped in the dialog. */
+.hyper-bulk-region .elementselect {
+    min-height: 2.5rem;
+}

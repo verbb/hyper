@@ -24,7 +24,7 @@ You will only need to do this once, as the field changes are store in Project Co
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/typed-link-field
+./craft hyper/migrate/typed-link --step=field
 ```
 
 ## Content Migration
@@ -37,5 +37,15 @@ We **strongly** recommend you run this migration locally first, to ensure the mi
 You can also trigger this via a console command:
 
 ```shell
-./craft hyper/migrate/typed-link-content
+./craft hyper/migrate/typed-link --step=content
 ```
+
+To run both steps in one pass, omit `--step` (it defaults to `all`):
+
+```shell
+./craft hyper/migrate/typed-link
+```
+
+:::tip
+The old `hyper/migrate/typed-link-field` and `hyper/migrate/typed-link-content` commands still work but are deprecated in favour of the `--step` form above.
+:::

@@ -2,18 +2,16 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\Hyper;
 use verbb\hyper\helpers\Plugin;
 use craft\models\FieldLayout;
 
 use Craft;
 use craft\base\Component;
-use craft\db\Query;
 use craft\db\Table;
-use craft\elements\Entry;
 use craft\elements\db\ElementQueryInterface;
 use craft\events\ConfigEvent;
 use craft\helpers\ArrayHelper;
-use craft\helpers\Db;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class Service extends Component
@@ -42,6 +40,14 @@ class Service extends Component
         }
 
         $linkTypes = $data['settings']['linkTypes'] ?? [];
+        $linkTypeConfig = $data['settings']['linkTypeConfig'] ?? null;
+        $isCustom = $linkTypeConfig === LinkTypeConfigs::CUSTOM_HANDLE;
+
+        // Shared-config fields store empty linkTypes; layouts live under plugins.hyper.linkTypeConfigs.
+        if (!$isCustom || !$linkTypes) {
+            return;
+        }
+
         $linkTypes = ProjectConfigHelper::unpackAssociativeArrays($linkTypes);
         $this->saveField($linkTypes, $event);
     }
@@ -143,65 +149,6 @@ class Service extends Component
 
     public function getRelatedElementsQuery(array $params = []): ?ElementQueryInterface
     {
-        $fieldHandle = $params['relatedTo']['field'] ?? null;
-        $targetElement = $params['relatedTo']['targetElement'] ?? null;
-
-        if (!$fieldHandle || !$targetElement) {
-            return null;
-        }
-
-        $hyperField = Craft::$app->getFields()->getFieldByHandle($fieldHandle);
-
-        if (!$hyperField) {
-            return null;
-        }
-
-        $fieldId = $hyperField->id;
-
-        $elementType = $params['elementType'] ?? Entry::class;
-
-        // Find all the element IDs that match the field and type
-        $result = (new Query())
-            ->select(['sourceId AS id', 'sourceSiteId AS siteId'])
-            ->from(['{{%hyper_element_cache}}'])
-            ->where([
-                'fieldId' => $fieldId,
-                'targetType' => $elementType,
-                'targetId' => $targetElement->id,
-                'targetSiteId' => $targetElement->siteId,
-            ])
-            ->indexBy(function($row) {
-                return $row['id'] . ':' . $row['siteId'];
-            })
-            ->all();
-
-        $elementParams = [];
-
-        foreach ($result as $value) {
-            $elementParams['id'][] = $value['id'];
-            $elementParams['siteId'][] = $value['siteId'];
-        }
-
-        if (isset($params['site'])) {
-            $elementParams['site'] = $params['site'];
-        } else {
-            $elementParams['site'] = Craft::$app->getSites()->getCurrentSite()->handle;
-        }
-
-        if (isset($params['criteria']) && is_array($params['criteria'])) {
-            foreach ($params['criteria'] as $key => $value) {
-                if ($key === 'id') {
-                    // Special handling for IDs, which when provided need to work with our existing IDs
-                    $elementParams['where'] = Db::parseParam('id', $value);
-                } else {
-                    $elementParams[$key] = $value;
-                }
-            }
-        }
-
-        $elementQuery = $elementType::find();
-        Craft::configure($elementQuery, $elementParams);
-
-        return $elementQuery;
+        return Hyper::$plugin->getLinkRelations()->getRelatedElementsQuery($params);
     }
 }

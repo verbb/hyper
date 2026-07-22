@@ -108,21 +108,69 @@ class LinkInterface extends BaseInterfaceType
             ],
             'linkValue' => [
                 'name' => 'linkValue',
-                'description' => 'The raw link data.',
+                'description' => 'The raw link data as a JSON string (full embed metadata for Embed links).',
                 'type' => Type::string(),
                 'resolve' => function($link) {
                     return Json::encode($link->linkValue);
+                },
+            ],
+            'html' => [
+                'name' => 'html',
+                'description' => 'Embed HTML (`code`) when this is an Embed link; otherwise null.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    $html = $link->getHtml();
+
+                    return $html !== null ? (string)$html : null;
+                },
+            ],
+            'iframeSrc' => [
+                'name' => 'iframeSrc',
+                'description' => 'The `src` attribute from the first iframe in embed HTML, when present.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return $link->getIframeSrc();
+                },
+            ],
+            'embedImage' => [
+                'name' => 'embedImage',
+                'description' => 'Thumbnail/image URL from embed metadata, when present.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return $link->getEmbedImage();
+                },
+            ],
+            'providerName' => [
+                'name' => 'providerName',
+                'description' => 'oEmbed provider name for Embed links (e.g. YouTube), when present.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return $link->getEmbedProviderName();
+                },
+            ],
+            'fields' => [
+                'name' => 'fields',
+                'description' => 'Custom layout field values keyed by handle (JSON). Use when you need layout fields without casting to a concrete link type.',
+                'type' => Type::string(),
+                'resolve' => function($link) {
+                    return Json::encode($link->getSerializedLayoutFields());
                 },
             ],
             'newWindow' => [
                 'name' => 'newWindow',
                 'description' => 'Whether the link should open in a new window.',
                 'type' => Type::boolean(),
+                'resolve' => function($link) {
+                    return $link->getNewWindow();
+                },
             ],
             'target' => [
                 'name' => 'target',
                 'description' => 'The `target` attribute for the link.',
                 'type' => Type::string(),
+                'resolve' => function($link) {
+                    return $link->getTarget();
+                },
             ],
             'text' => [
                 'name' => 'text',

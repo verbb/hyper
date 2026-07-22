@@ -2,18 +2,22 @@
 namespace verbb\hyper\base;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\elements\conditions\LinkCondition;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
 use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
+use verbb\hyper\fieldlayoutelements\TextField;
 use verbb\hyper\helpers\Html;
 use verbb\hyper\links\MissingLink;
+use verbb\hyper\models\LinkInstance;
 
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\elements\conditions\ElementConditionInterface;
 use craft\fieldlayoutelements\BaseNativeField;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
@@ -62,7 +66,27 @@ abstract class Link extends Element implements LinkInterface
         return StringHelper::toLowerCase(static::classDisplayName());
     }
 
+    public static function typeKey(): string
+    {
+        return lcfirst(static::classDisplayName());
+    }
+
     public static function linkValuePlaceholder(): ?string
+    {
+        return null;
+    }
+
+    public static function createCondition(): ElementConditionInterface
+    {
+        return Craft::createObject(LinkCondition::class, [static::class]);
+    }
+
+    public static function supportsBulkCreation(): bool
+    {
+        return false;
+    }
+
+    public static function bulkCreationMode(): ?string
     {
         return null;
     }
@@ -74,16 +98,12 @@ abstract class Link extends Element implements LinkInterface
 
     public static function gqlTypeNameByContext(mixed $context): string
     {
-        $linkTypeHandle = $context::classDisplayName();
+        // The instance handle is short and author-facing (e.g. `url`), so PascalCasing it
+        // yields clean GraphQL type names like `linkField_Url_LinkType` rather than the old
+        // `linkField_DefaultVerbbHyperLinksUrl_LinkType`.
+        $handle = $context->handle ?: $context::typeKey();
 
-        // For a custom link type, use the label. Definitely not a permanent solution
-        // TODO remove this and replace with link type handles when done.
-        // See https://github.com/verbb/hyper/issues/224 and https://github.com/verbb/hyper/issues/218
-        if (!str_starts_with($context->handle, 'default-')) {
-            $linkTypeHandle = StringHelper::toPascalCase($context->label);
-        }
-
-        return $context->field->handle . '_' . $linkTypeHandle . '_LinkType';
+        return $context->field->handle . '_' . StringHelper::toPascalCase($handle) . '_LinkType';
     }
 
     public static function getDefaultFieldLayout(): FieldLayout
@@ -139,7 +159,6 @@ abstract class Link extends Element implements LinkInterface
     public bool $isNew = false;
     public ?string $layoutUid = null;
     public ?array $layoutConfig = null;
-
     public ?bool $newWindow = null;
     public mixed $linkValue = null;
     public ?string $linkText = null;
@@ -149,11 +168,13 @@ abstract class Link extends Element implements LinkInterface
     public ?string $classes = null;
     public array $customAttributes = [];
     public array $fields = [];
-
+    public ?string $uid = null;
     public ?HyperField $field = null;
+    public ?int $ownerSiteId = null;
     public bool $isFieldRequired = false;
 
     private ?FieldLayout $_fieldLayout = null;
+    private bool $_hydratingFromInstance = false;
 
 
     // Public Methods
@@ -200,12 +221,91 @@ abstract class Link extends Element implements LinkInterface
 
     public function count(): int|bool
     {
-        return mb_strlen((string)$this, Craft::$app->charset);
+        return $this->isEmpty() ? 0 : 1;
     }
 
     public function isEmpty(): bool
     {
-        return !$this->count();
+        return static::isInstanceEmpty($this->toInstance());
+    }
+
+    public static function isInstanceEmpty(LinkInstance $instance): bool
+    {
+        return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
+    }
+
+    public function toInstance(): LinkInstance
+    {
+        $values = $this->getSerializedValues();
+        $values['handle'] = $this->handle;
+        $values['linkTypeHandle'] = $this->handle;
+
+        if ($this->field) {
+            return LinkInstance::fromSerialized($values, $this->field);
+        }
+
+        $instance = new LinkInstance();
+        $instance->linkTypeHandle = (string)$this->handle;
+        $instance->uid = $this->uid;
+        $instance->newWindow = $this->newWindow;
+        $instance->linkValue = $this->linkValue;
+        $instance->linkText = $this->linkText;
+        $instance->ariaLabel = $this->ariaLabel;
+        $instance->urlSuffix = $this->urlSuffix;
+        $instance->linkTitle = $this->linkTitle;
+        $instance->classes = $this->classes;
+        $instance->customAttributes = $this->customAttributes;
+        $instance->fields = $values['fields'] ?? [];
+
+        return $instance;
+    }
+
+    public function populateFromInstance(LinkInstance $instance): void
+    {
+        $this->_hydratingFromInstance = true;
+        $this->setAttributes($instance->toLinkAttributes(), false);
+        $this->_hydratingFromInstance = false;
+    }
+
+    public function clearContentState(): void
+    {
+        $this->newWindow = null;
+        $this->linkValue = null;
+        $this->linkText = null;
+        $this->ariaLabel = null;
+        $this->urlSuffix = null;
+        $this->linkTitle = null;
+        $this->classes = null;
+        $this->customAttributes = [];
+        $this->fields = [];
+        $this->uid = null;
+        $this->isNew = false;
+        $this->ownerSiteId = null;
+        $this->title = null;
+    }
+
+    public function isSettingsPrototype(): bool
+    {
+        return $this->getScenario() === self::SCENARIO_SETTINGS;
+    }
+
+    public static function resolveUrlFromInstance(LinkInstance $instance): ?string
+    {
+        if (!$instance->hasLinkValue()) {
+            return null;
+        }
+
+        $linkValue = $instance->linkValue;
+
+        if (is_array($linkValue)) {
+            $linkValue = $linkValue[0] ?? null;
+        }
+
+        if (!is_scalar($linkValue) && $linkValue !== null) {
+            return null;
+        }
+
+        return App::parseEnv((string)$linkValue) ?: null;
     }
 
     public function isElement(): bool
@@ -246,6 +346,7 @@ abstract class Link extends Element implements LinkInterface
         return [
             'type' => get_class($this),
             'handle' => $this->handle,
+            'uid' => $this->uid,
             'newWindow' => $this->newWindow,
             'linkValue' => $this->linkValue,
             'linkText' => $this->linkText,
@@ -261,6 +362,11 @@ abstract class Link extends Element implements LinkInterface
 
     public function getSerializedValues(): array
     {
+        // Mint a durable uid once so copy/cut/paste and structure sync can key links.
+        if (!$this->uid) {
+            $this->uid = StringHelper::UUID();
+        }
+
         // Convert custom fields from using their handles to the fieldLayoutUid's
         $fieldContent = [];
 
@@ -272,8 +378,8 @@ abstract class Link extends Element implements LinkInterface
 
         // Return the values used in the Vue component, and what will be saved to the content table
         return array_filter([
-            'type' => get_class($this),
-            'handle' => $this->handle,
+            'linkTypeHandle' => $this->handle,
+            'uid' => $this->uid,
             'newWindow' => $this->newWindow,
             'linkValue' => $this->linkValue,
             'linkText' => $this->linkText,
@@ -287,6 +393,11 @@ abstract class Link extends Element implements LinkInterface
             // Filter out any empty values (`false` and `0` are okay)
             return ($value !== null && $value !== '' && $value !== []);
         });
+    }
+
+    public function hasLinkValue(): bool
+    {
+        return $this->toInstance()->hasLinkValue();
     }
 
     public function getSettingsHtmlVariables(): array
@@ -324,12 +435,29 @@ abstract class Link extends Element implements LinkInterface
             $this->_fieldLayout = Craft::$app->getFields()->getLayoutByUid($this->layoutUid);
         }
 
+        if ($this->_fieldLayout === null && !empty($this->layoutConfig)) {
+            $layoutConfig = $this->layoutConfig;
+
+            if (is_string($layoutConfig)) {
+                $layoutConfig = \craft\helpers\Json::decodeIfJson($layoutConfig);
+            }
+
+            if (is_array($layoutConfig)) {
+                ArrayHelper::remove($layoutConfig, 'uid');
+                $this->_fieldLayout = FieldLayout::createFromConfig($layoutConfig);
+            }
+        }
+
         return $this->_fieldLayout;
     }
 
     public function setFieldLayout(FieldLayout $fieldLayout): void
     {
         $this->_fieldLayout = $fieldLayout;
+
+        // Keep serialized layoutConfig in sync so settings/DB round-trips preserve FLD tweaks.
+        $this->layoutConfig = $fieldLayout->getConfig();
+        $this->layoutUid = $fieldLayout->uid ?: $this->layoutUid;
     }
 
     public function getInputHtmlVariables(LinkField $layoutField, HyperField $field): array
@@ -343,6 +471,12 @@ abstract class Link extends Element implements LinkInterface
 
     public function getInputHtml(LinkField $layoutField, HyperField $field): ?string
     {
+        if ($fieldLayout = $this->getFieldLayout()) {
+            if (!$fieldLayout->isFieldIncluded('linkValue')) {
+                return '';
+            }
+        }
+
         $handle = static::classDisplayNameSlug();
 
         $variables = $this->getInputHtmlVariables($layoutField, $field);
@@ -359,6 +493,33 @@ abstract class Link extends Element implements LinkInterface
         return null;
     }
 
+    public function getTabLabels(): array
+    {
+        $fieldLayout = $this->getFieldLayout();
+
+        if (!$fieldLayout) {
+            return [];
+        }
+
+        $labels = [];
+
+        foreach ($fieldLayout->getTabs() as $tab) {
+            $labels[] = (string)$tab->name;
+        }
+
+        return $labels;
+    }
+
+    public function getExtraTabLabels(): array
+    {
+        // Deprecated in 3.0.0
+        Craft::$app->getDeprecator()->log(static::class . '::getExtraTabLabels', 'Link `getExtraTabLabels()` has been deprecated. Use `getTabLabels()` instead.');
+
+        $labels = $this->getTabLabels();
+
+        return count($labels) < 2 ? [] : array_values(array_slice($labels, 1));
+    }
+
     public function setAttributes($values, $safeOnly = true): void
     {
         // Needed to override the element title
@@ -372,10 +533,12 @@ abstract class Link extends Element implements LinkInterface
             $nativeFields = ArrayHelper::getColumn($fieldLayout->getAvailableNativeFields(), 'attribute');
 
             // Remove any native field (attribute) that aren't included in the field layout
-            foreach ($nativeFields as $nativeField) {
-                if (!$fieldLayout->isFieldIncluded($nativeField)) {
-                    if (array_key_exists($nativeField, $values)) {
-                        unset($values[$nativeField]);
+            if (!$this->_hydratingFromInstance) {
+                foreach ($nativeFields as $nativeField) {
+                    if (!$fieldLayout->isFieldIncluded($nativeField)) {
+                        if (array_key_exists($nativeField, $values)) {
+                            unset($values[$nativeField]);
+                        }
                     }
                 }
             }
@@ -415,6 +578,14 @@ abstract class Link extends Element implements LinkInterface
             $values['newWindow'] = false;
         }
 
+        if (array_key_exists('linkValue', $values)) {
+            $linkValue = $values['linkValue'];
+
+            if ($linkValue === '' || $linkValue === []) {
+                $values['linkValue'] = null;
+            }
+        }
+
         parent::setAttributes($values, $safeOnly);
     }
 
@@ -440,12 +611,29 @@ abstract class Link extends Element implements LinkInterface
 
     public function getNewWindow(): ?bool
     {
-        return $this->newWindow;
+        return $this->getResolvedNewWindow();
+    }
+
+    public function getResolvedNewWindow(): bool
+    {
+        if ($this->newWindow !== null) {
+            return $this->newWindow;
+        }
+
+        if ($this->field && $this->field->newWindow) {
+            return $this->field->defaultNewWindow;
+        }
+
+        return false;
     }
 
     public function getLinkText(): ?string
     {
-        return $this->linkText;
+        if ($this->linkText) {
+            return $this->linkText;
+        }
+
+        return $this->getLinkTextLayoutDefault();
     }
 
     public function getCustomLinkText(): ?string
@@ -455,6 +643,25 @@ abstract class Link extends Element implements LinkInterface
         }
 
         return $this->linkText;
+    }
+
+    protected function getLinkTextLayoutDefault(): ?string
+    {
+        $fieldLayout = $this->getFieldLayout();
+
+        if (!$fieldLayout || !$fieldLayout->isFieldIncluded('linkText')) {
+            return null;
+        }
+
+        $layoutElement = $fieldLayout->getField('linkText');
+
+        if (!$layoutElement instanceof LinkTextField) {
+            return null;
+        }
+
+        $default = $layoutElement->defaultValue;
+
+        return ($default !== null && $default !== '') ? $default : null;
     }
 
     public function getLinkUrl(): ?string
@@ -475,7 +682,50 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        return App::parseEnv((string)$linkValue);
+        if ($linkValue === null || $linkValue === '') {
+            return null;
+        }
+
+        $parsed = App::parseEnv((string)$linkValue);
+
+        return $parsed !== '' ? $parsed : null;
+    }
+
+    public function getHtml(): ?Markup
+    {
+        return null;
+    }
+
+    public function getIframeSrc(): ?string
+    {
+        return null;
+    }
+
+    public function getEmbedProviderName(): ?string
+    {
+        return null;
+    }
+
+    public function getEmbedImage(): ?string
+    {
+        return null;
+    }
+
+    public function getSerializedLayoutFields(): array
+    {
+        $fieldLayout = $this->getFieldLayout();
+
+        if (!$fieldLayout) {
+            return [];
+        }
+
+        $serialized = [];
+
+        foreach ($fieldLayout->getCustomFields() as $field) {
+            $serialized[$field->handle] = $field->serializeValue($this->getFieldValue($field->handle), $this);
+        }
+
+        return $serialized;
     }
 
     public function getUrl(): ?string
@@ -512,7 +762,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getTarget(): ?string
     {
-        return ($this->getNewWindow()) ? '_blank' : null;
+        return $this->getResolvedNewWindow() ? '_blank' : null;
     }
 
     public function getAriaLabel(): ?string
@@ -620,7 +870,7 @@ abstract class Link extends Element implements LinkInterface
     {
         $rules = parent::defineRules();
 
-        $rules[] = [['label', 'handle', 'enabled', 'newWindow', 'linkValue', 'linkText', 'ariaLabel', 'urlSuffix', 'linkTitle', 'classes', 'customAttributes'], 'safe'];
+        $rules[] = [['label', 'handle', 'enabled', 'newWindow', 'linkValue', 'linkText', 'ariaLabel', 'urlSuffix', 'linkTitle', 'classes', 'customAttributes', 'uid'], 'safe'];
 
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
@@ -635,7 +885,37 @@ abstract class Link extends Element implements LinkInterface
             foreach ($fieldLayout->getTabs() as $tab) {
                 foreach ($tab->getElements() as $layoutElement) {
                     if ($layoutElement instanceof BaseNativeField && $layoutElement->required) {
-                        $rules[] = [[$layoutElement->attribute], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+                        $when = null;
+
+                        if ($layoutElement->attribute === 'linkText') {
+                            $when = fn(self $model): bool => $model->hasLinkValue();
+                        }
+
+                        $rule = [
+                            [$layoutElement->attribute],
+                            'required',
+                            'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                        ];
+
+                        if ($when) {
+                            $rule['when'] = $when;
+                        }
+
+                        $rules[] = $rule;
+                    }
+
+                    // Character limit from Link Text (and other text natives) FLD settings.
+                    if (
+                        $layoutElement instanceof TextField
+                        && $layoutElement->maxlength
+                        && $layoutElement->attribute
+                    ) {
+                        $rules[] = [
+                            [$layoutElement->attribute],
+                            'string',
+                            'max' => (int)$layoutElement->maxlength,
+                            'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                        ];
                     }
                 }
             }

@@ -1,7 +1,20 @@
 {% import '_includes/forms' as forms %}
 
+{% set linkValue = link.linkValue ?? link.defaultLinkValue %}
+{% set isFixed = link.fixedLinkValue and link.defaultLinkValue %}
+
 {{ forms.text({
     name: 'linkValue',
-    value: link.linkValue,
+    value: linkValue,
     placeholder: link.placeholder ?? link.linkValuePlaceholder(),
+    readonly: isFixed,
+    disabled: isFixed,
 }) }}
+
+{% if isFixed %}
+    {# Disabled inputs are omitted from POST — keep the fixed value in the portal payload. #}
+    {{ forms.hidden({
+        name: 'linkValue',
+        value: link.defaultLinkValue,
+    }) }}
+{% endif %}

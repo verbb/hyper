@@ -20,4 +20,14 @@ class Category extends ElementLink
     {
         return CategoryElement::class;
     }
+
+    public static function supportsSourceUriFiltering(): bool
+    {
+        return true;
+    }
+
+    public static function limitSourcesLabel(): string
+    {
+        return Craft::t('hyper', 'Limit Sources to Category Groups with URIs');
+    }
 }

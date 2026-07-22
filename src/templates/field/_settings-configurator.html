@@ -1,0 +1,103 @@
+{% import '_includes/forms' as forms %}
+
+<div class="hc-wrapper">
+    <div class="hc-sidebar">
+        <div class="hc-sidebar-items" data-hyper-settings-sidebar>
+            {% for linkType in linkTypes %}
+                <div
+                    class="hc-sidebar-item{{ loop.first ? ' sel' : '' }}{{ linkType.hasErrors ? ' has-errors' : '' }}"
+                    data-hyper-settings-item
+                    data-link-type-handle="{{ linkType.handle }}"
+                    role="button"
+                    tabindex="0"
+                >
+                    {% namespace 'linkTypes[' ~ linkType.handle ~ ']' %}
+                        {{ include('_includes/forms/lightswitch', {
+                            name: 'enabled',
+                            on: linkType.enabled,
+                            small: true,
+                            containerAttributes: {
+                                class: ['extra-small'],
+                                'data-hyper-settings-enabled': true,
+                            },
+                        }, with_context = false) }}
+
+                        {{ hiddenInput('sortOrder', loop.index0, { 'data-hyper-settings-sort-order': true }) }}
+                    {% endnamespace %}
+
+                    <span class="hc-label-text" data-hyper-settings-label>
+                        {{ linkType.label }}
+                        {% if linkType.type == 'verbb\\hyper\\links\\MissingLink' %} ⚠️{% endif %}
+                    </span>
+
+                    <div class="hc-sidebar-item-move hc-move" data-hyper-settings-drag-handle>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 944.1 945.2" aria-hidden="true"><path d="M630.2,787.7c0-87-70.5-157.5-157.5-157.5s-157.5,70.5-157.5,157.5s70.5,157.5,157.5,157.5S630.2,874.7,630.2,787.7zM315.1,472.6c0-87-70.5-157.5-157.5-157.5S0,385.6,0,472.6s70.5,157.5,157.5,157.5S315.1,559.6,315.1,472.6z M630.2,157.5C630.2,70.5,559.6,0,472.6,0S315.1,70.5,315.1,157.5s70.5,157.5,157.5,157.5S630.2,244.5,630.2,157.5z M944.1,472.6c0-86.4-70-156.4-156.4-156.4s-156.4,70-156.4,156.4S701.3,629,787.7,629S944.1,559,944.1,472.6L944.1,472.6z"/></svg>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="hc-add-link-type-group" data-hyper-settings-add-menu>
+            <button type="button" class="btn dashed icon add menubtn" data-hyper-settings-add-trigger>
+                {{ 'New link type' | t('hyper') }}
+            </button>
+            <div class="menu" data-hyper-settings-add-list>
+                <ul class="padded" role="listbox" data-hyper-settings-add-options></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="hc-pane" data-hyper-settings-pane>
+        {% if not linkTypes %}
+            <div class="hc-pane-empty">
+                <div class="hc-pane-empty-placeholder">{{ 'Select a link type to edit.' | t('hyper') }}</div>
+            </div>
+        {% endif %}
+
+        {% for linkType in linkTypes %}
+            {% set isMissing = linkType.type == 'verbb\\hyper\\links\\MissingLink' %}
+            {% set canDelete = linkType.isCustom %}
+
+            <div
+                class="hyper-settings-ssr-pane{{ loop.first ? '' : ' hidden' }}"
+                data-hyper-settings-link-pane
+                data-link-type-handle="{{ linkType.handle }}"
+            >
+                {{ linkType.html | raw }}
+
+                {% if not isMissing %}
+                    <div class="field">
+                        <div class="heading">
+                            <label class="required">{{ 'Link Fields' | t('hyper') }}</label>
+                        </div>
+                        <div class="instructions">
+                            <p>{{ 'Configure the fields and UI elements available to links.' | t('hyper') }}</p>
+                        </div>
+                        <div class="input ltr">
+                            {# Keep the last saved layout in every submission, even when the
+                               designer is opened and saved again without further edits. #}
+                            {% namespace 'linkTypes[' ~ linkType.handle ~ ']' %}
+                                {{ hiddenInput('layoutConfig', linkType.layoutConfig) }}
+                            {% endnamespace %}
+
+                            <div
+                                class="hyper-block-editor-layout"
+                                data-hyper-fld
+                                data-field-id="{{ fieldId }}"
+                                data-layout-uid="{{ linkType.layoutUid }}"
+                                data-link-type="{{ linkType.type }}"
+                                data-layout-config="{{ linkType.layoutConfig | e('html_attr') }}"
+                            ></div>
+                        </div>
+                    </div>
+
+                    {% if canDelete %}
+                        <button type="button" class="btn delete icon" data-hyper-settings-delete>
+                            {{ 'Delete' | t('app') }}
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>

@@ -13,7 +13,6 @@
 <div class="{{ isMissing ? 'hidden' }}">
     {% namespace 'linkTypes[__LINK_TYPE__]' %}
         {{ hiddenInput('type', isMissing ? linkType.expectedType : className(linkType)) }}
-        {{ hiddenInput('handle', '__LINK_TYPE__') }}
 
         {% if isCustom %}
             {{ hiddenInput('isCustom', true) }}
@@ -30,6 +29,39 @@
                 'data-label-field': true,
             },
         }) }}
+
+        {# Built-in handles are read-only. Custom instances use Craft's label-to-handle
+           generator when first created, then remain author-editable on later edits.
+           pk-input-group provides the capped input-group chrome; the native input stays
+           because pk-input-group-input is not form-associated (no POST) and Craft's
+           HandleGenerator drives a light-DOM input by id. #}
+        {% set handleInput %}
+            <pk-input-group class="hyper-handle-group">
+                {{ forms.text({
+                    id: 'hyper-handle-__LINK_TYPE__',
+                    name: 'handle',
+                    value: linkType.handle,
+                    readonly: not isCustom,
+                    class: ['code'],
+                    inputAttributes: {
+                        'data-handle-field': true,
+                        'data-generate-handle': linkType.isNew ? '1' : null,
+                    },
+                }) }}
+
+                <pk-input-group-addon align="inline-end">
+                    <pk-copy-button value="{{ linkType.handle }}" variant="none" data-handle-copy>
+                        <pk-icon slot="icon" icon="copy"></pk-icon>
+                    </pk-copy-button>
+                </pk-input-group-addon>
+            </pk-input-group>
+        {% endset %}
+
+        {{ forms.field({
+            label: 'Handle' | t('hyper'),
+            instructions: 'Reference this handle when setting link values programmatically.' | t('hyper'),
+            errors: linkType.getErrors('handle'),
+        }, handleInput) }}
 
         {{ linkType.getSettingsHtml() | raw }}
     {% endnamespace %}

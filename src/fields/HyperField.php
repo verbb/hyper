@@ -5,23 +5,28 @@ use verbb\hyper\Hyper;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\base\LinkTypeSettings;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\helpers\Plugin;
 use verbb\hyper\helpers\StringHelper;
 use verbb\hyper\models\LinkCollection;
+use verbb\hyper\models\LinkInstance;
+use verbb\hyper\models\LinkTypeDefinition;
+use verbb\hyper\services\LinkTypeConfigs;
 use verbb\hyper\services\Links;
 
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\base\EagerLoadingFieldInterface;
 use craft\base\Field;
 use craft\base\MergeableFieldInterface;
-use craft\base\NestedElementInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
+use craft\helpers\Cp;
 use craft\helpers\Gql;
 use craft\helpers\Html;
 use craft\helpers\Json;
@@ -39,8 +44,17 @@ use Throwable;
 
 use GraphQL\Type\Definition\Type;
 
-class HyperField extends Field implements ThumbableFieldInterface, MergeableFieldInterface, PreviewableFieldInterface
+class HyperField extends Field implements ThumbableFieldInterface, MergeableFieldInterface, PreviewableFieldInterface, EagerLoadingFieldInterface
 {
+    // Constants
+    // =========================================================================
+
+    public const VIEW_MODE_BLOCKS = 'blocks';
+    public const VIEW_MODE_CARDS = 'cards';
+    public const EDITOR_MODE_EXPANDED = self::VIEW_MODE_BLOCKS;
+    public const EDITOR_MODE_CARDS = self::VIEW_MODE_CARDS;
+
+
     // Static Methods
     // =========================================================================
 
@@ -59,18 +73,37 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return sprintf('\\%s|null', LinkCollection::class);
     }
 
+    public static function normalizeViewMode(?string $mode): string
+    {
+        return match ($mode) {
+            self::VIEW_MODE_CARDS => self::VIEW_MODE_CARDS,
+            default => self::VIEW_MODE_BLOCKS,
+        };
+    }
+
+    public static function normalizeEditorMode(?string $mode): string
+    {
+        // Deprecated in 3.0.0
+        Craft::$app->getDeprecator()->log(static::class . '::normalizeEditorMode', 'Field `normalizeEditorMode()` has been deprecated. Use `normalizeViewMode()` instead.');
+
+        return self::normalizeViewMode($mode);
+    }
+
 
     // Properties
     // =========================================================================
 
-    public ?string $defaultLinkType = 'default-verbb-hyper-links-url';
+    public ?string $defaultLinkType = 'url';
     public bool $newWindow = true;
     public bool $defaultNewWindow = false;
     public bool $multipleLinks = false;
     public ?int $minLinks = null;
     public ?int $maxLinks = null;
+    public bool $enableBulkAdd = false;
     public ?int $fieldLayoutId = null;
     public array $migrationData = [];
+    public string $viewMode = self::VIEW_MODE_BLOCKS;
+    public string $linkTypeConfig = LinkTypeConfigs::DEFAULT_HANDLE;
 
     private bool $_isStatic = false;
     private array $_linkTypes = [];
@@ -87,15 +120,92 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $config['linkTypes'] = [];
         }
 
-        // Remove unused settings
-        unset($config['columnType']);
+        // Legacy/malformed POST payloads may still send `types` instead of `linkTypes`.
+        if (isset($config['types']) && !isset($config['linkTypes'])) {
+            $config['linkTypes'] = $config['types'];
+        }
+
+        // Canonicalize stock handles from early v3 project config while preserving
+        // author-owned custom handles. Keep defaultLinkType pointed at the renamed type.
+        if (isset($config['linkTypes']) && is_array($config['linkTypes'])) {
+            $originalLinkTypes = $config['linkTypes'];
+            $config['linkTypes'] = LinkTypeConfigs::normalizeLegacyStockHandles($originalLinkTypes);
+
+            foreach ($originalLinkTypes as $key => $original) {
+                $normalized = $config['linkTypes'][$key] ?? null;
+
+                if (
+                    is_array($original) &&
+                    is_array($normalized) &&
+                    ($config['defaultLinkType'] ?? null) === ($original['handle'] ?? null) &&
+                    isset($normalized['handle'])
+                ) {
+                    $config['defaultLinkType'] = $normalized['handle'];
+                    break;
+                }
+            }
+        }
+
+        // Rename editorMode → viewMode (expanded → blocks).
+        if (array_key_exists('editorMode', $config) && !array_key_exists('viewMode', $config)) {
+            $config['viewMode'] = $config['editorMode'];
+        }
+
+        unset($config['columnType'], $config['types'], $config['applyPresetUid'], $config['editorMode']);
+
+        if (array_key_exists('viewMode', $config)) {
+            $config['viewMode'] = self::normalizeViewMode(
+                is_string($config['viewMode']) ? $config['viewMode'] : null,
+            );
+        }
+
+        // Fold the short-lived lightswitch settings into the single config selector.
+        if (!array_key_exists('linkTypeConfig', $config)) {
+            $isCustom = array_key_exists('customLinkTypes', $config)
+                ? (bool)$config['customLinkTypes']
+                : (array_key_exists('usePluginLinkTypes', $config)
+                    ? !((bool)$config['usePluginLinkTypes'])
+                    : !empty($config['linkTypes'] ?? []));
+
+            $config['linkTypeConfig'] = $isCustom
+                ? LinkTypeConfigs::CUSTOM_HANDLE
+                : LinkTypeConfigs::DEFAULT_HANDLE;
+        }
+
+        unset($config['customLinkTypes'], $config['usePluginLinkTypes']);
 
         parent::__construct($config);
+    }
+
+    public function init(): void
+    {
+        parent::init();
+
+        $this->viewMode = self::normalizeViewMode($this->viewMode);
     }
 
     public function getSettings(): array
     {
         $settings = parent::getSettings();
+
+        $settings['viewMode'] = self::normalizeViewMode(
+            isset($settings['viewMode']) && is_string($settings['viewMode'])
+                ? $settings['viewMode']
+                : (isset($settings['editorMode']) && is_string($settings['editorMode'])
+                    ? $settings['editorMode']
+                    : null),
+        );
+        unset($settings['editorMode']);
+
+        $settings['linkTypeConfig'] = $this->linkTypeConfig ?: LinkTypeConfigs::DEFAULT_HANDLE;
+        unset($settings['customLinkTypes'], $settings['usePluginLinkTypes']);
+
+        // Shared config: store no private link types — the named config is the source of truth.
+        if (!$this->hasCustomLinkTypes()) {
+            $settings['linkTypes'] = [];
+
+            return $settings;
+        }
 
         // Serialize the link types as arrays instead of arrays of Link classes
         $settings['linkTypes'] = array_map(function($linkType) {
@@ -131,9 +241,32 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function validateLinkTypes(): void
     {
+        $linkTypes = $this->getLinkTypes();
+
         // Ensure there is at least one enabled link type
-        if (!ArrayHelper::getColumn($this->getLinkTypes(), 'enabled')) {
+        if (!ArrayHelper::getColumn($linkTypes, 'enabled')) {
             $this->addError('linkTypes', Craft::t('hyper', 'You must enable at least one link type.'));
+        }
+
+        // Handles are the link type's public identity (GraphQL type names, programmatic
+        // content payloads, `getLinkTypeByHandle()`), so they must be unique within the
+        // field. The client keeps row keys unique, but this is the authoritative guard.
+        $seen = [];
+
+        foreach ($linkTypes as $linkType) {
+            $handle = (string)$linkType->handle;
+
+            if ($handle === '') {
+                continue;
+            }
+
+            if (isset($seen[$handle])) {
+                $this->addError('linkTypes', Craft::t('hyper', 'Two link types have the same handle “{handle}”. Handles must be unique.', [
+                    'handle' => $handle,
+                ]));
+            }
+
+            $seen[$handle] = true;
         }
     }
 
@@ -155,10 +288,13 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $inputNamePrefix = $view->getNamespace();
         $inputIdPrefix = Html::id($inputNamePrefix);
 
-        // Register Hyper assets; roots are mounted automatically by hyper.js.
-        Plugin::registerAsset('field/src/js/hyper.js');
+        // Register Hyper CP assets; vanilla TS auto-mount via hyper.ts.
+        Plugin::registerFieldAssets();
 
-        // Get the link type settings (set defaults or normalize existing saved settings)
+        // Craft Matrix view-mode icons (blocks.svg / cards.svg).
+        $cpBundle = $view->registerAssetBundle(\craft\web\assets\cp\CpAsset::class);
+
+        // Get the link type settings (plugin defaults when attached; field-owned when detached)
         $linkTypes = $this->_getLinkTypeSettings();
 
         // Return a list of all registered link types for adding new ones
@@ -173,8 +309,27 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'field' => $this,
             'inputNamePrefix' => $inputNamePrefix,
             'inputIdPrefix' => $inputIdPrefix,
+            'namespacedName' => $view->namespaceInputName('__PREFIX__'),
             'linkTypes' => $linkTypes,
             'registeredLinkTypes' => $registeredLinkTypes,
+            'linkTypeConfigs' => Hyper::$plugin->getLinkTypeConfigs()->getAllConfigs(),
+            'baseIconsUrl' => $cpBundle->baseUrl . '/images/view-modes',
+            'settingsConfig' => [
+                'fieldId' => $this->id,
+                'registeredLinkTypes' => $registeredLinkTypes,
+                'namespacedName' => $view->namespaceInputName('__PREFIX__'),
+                'namespacedId' => $view->namespaceInputId('__PREFIX__'),
+                'linkTypeTemplates' => array_map(static function(array $linkType): array {
+                    return [
+                        'type' => $linkType['type'],
+                        'displayName' => $linkType['displayName'] ?? null,
+                        'htmlTemplate' => $linkType['htmlTemplate'] ?? null,
+                        'jsTemplate' => $linkType['jsTemplate'] ?? null,
+                        'layoutConfig' => $linkType['layoutConfig'] ?? null,
+                        'layoutUid' => $linkType['layoutUid'] ?? null,
+                    ];
+                }, $linkTypes),
+            ],
 
             // Required placeholder to work with nested namespace (Matrix)
             'namespacedName' => $view->namespaceInputName('__PREFIX__'),
@@ -184,7 +339,30 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function getPreviewHtml(mixed $value, ElementInterface $element): string
     {
-        return $value ? $this->_renderLink($value) : '';
+        if (!($value instanceof LinkCollection) || $value->isEmpty()) {
+            return '';
+        }
+
+        $links = $value->getLinks();
+        $first = $links[0] ?? null;
+
+        if (!$first) {
+            return '';
+        }
+
+        $label = $first->getText() ?: $first->getUrl() ?: Craft::t('hyper', 'Link');
+        $html = Html::encode((string)$label);
+
+        // Multi-link Matrix/card preview: show first label plus remaining count.
+        $extra = count($links) - 1;
+
+        if ($extra > 0) {
+            $html .= ' ' . Html::tag('span', Craft::t('hyper', 'and {count} other {count, plural, =1{link} other{links}}', [
+                'count' => $extra,
+            ]), ['class' => 'light']);
+        }
+
+        return $html;
     }
 
     public function getThumbHtml(mixed $value, ElementInterface $element, int $size): ?string
@@ -217,7 +395,29 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $value = [];
         }
 
-        return new LinkCollection($this, $value, $element);
+        $collection = new LinkCollection($this, $value, $element);
+
+        if ($element && Hyper::$plugin->getMultisiteLinks()->shouldLocalizePropagatedValue($this, $element)) {
+            $collection = Hyper::$plugin->getMultisiteLinks()->localizeLinkCollection($this, $collection, $element);
+        }
+
+        return $collection;
+    }
+
+    public function propagateValue(ElementInterface $from, ElementInterface $to): void
+    {
+        $value = $from->getFieldValue($this->handle);
+
+        if ($value instanceof LinkCollection) {
+            $value = Hyper::$plugin->getMultisiteLinks()->localizeLinkCollection(
+                $this,
+                $value,
+                $to,
+                $from->siteId,
+            );
+        }
+
+        $to->setFieldValue($this->handle, $value);
     }
 
     public function serializeValue(mixed $value, ElementInterface $element = null): mixed
@@ -251,6 +451,20 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function beforeSave(bool $isNew): bool
     {
+        // Custom rows are posted with the field; programmatic switches get stock defaults as a fallback.
+        if ($this->hasCustomLinkTypes() && empty($this->_serializedLinkTypes)) {
+            $this->setLinkTypes(Hyper::$plugin->getLinkTypeConfigs()->createDetachedCopy());
+        }
+
+        // Use config: drop private link types — named config is authoritative.
+        if (!$this->hasCustomLinkTypes()) {
+            $this->setLinkTypes([]);
+        }
+
+        if (!$this->linkTypeConfig) {
+            $this->linkTypeConfig = LinkTypeConfigs::DEFAULT_HANDLE;
+        }
+
         if (!parent::beforeSave($isNew)) {
             return false;
         }
@@ -273,67 +487,29 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return false;
         }
 
+        // Shared-default fields do not own layouts — plugin defaults PC handlers persist those.
+        if (!$this->hasCustomLinkTypes()) {
+            return true;
+        }
+
         // Any fields not in the global scope won't trigger a PC change event. Go manual.
         if ($this->context !== 'global') {
-            Hyper::$plugin->getService()->saveField($this->getLinkTypes());
+            Hyper::$plugin->getService()->saveField(
+                array_map(static fn(LinkTypeDefinition $definition): array => $definition->toSettingsArray(), $this->getLinkTypeDefinitions())
+            );
         }
 
         return true;
     }
 
-    public function afterSave(bool $isNew): void
-    {
-        Hyper::$plugin->getFieldCache()->setCache($this);
-
-        parent::afterSave($isNew);
-    }
-
-    public function beforeElementSave(ElementInterface $element, bool $isNew): bool
-    {
-        // Check if we should propagate the chosen element (for an element-based link) for new elements.
-        // This is to replicate the Entries field where you'd pick an element, and the site-specific element would be
-        // propagated to other site content, rather than the same site-entry picked across all.
-        // https://github.com/verbb/hyper/issues/45
-        $changedValue = false;
-        $value = null;
-
-        // Only process this for other site elements, as we could be picking a link from another site on purpose
-        // And only perform it when creating the entry initially, as we otherwise can't determine when the content is "fresh"
-        // and when someone has already picked an element in another site's field and doesn't want it overridden.
-        $shouldPropagate = $element->propagating && $element->propagateAll;
-
-        // But for Matrix fields, the Matrix blocks/entries themselves aren't propagated, so it's a different check.
-        if ($element instanceof NestedElementInterface) {
-            // Ensure that the Entry is associated from a Matrix field, as all Entry elements are NestedElement's.
-            if ($element->getField()) {
-                $shouldPropagate = $element->propagateAll;
-            }
-        }
-
-        if ($shouldPropagate) {
-            // Ensure we clone the LinkCollection as we'll be modifying it, but we only want to change it for this propagating element
-            $value = clone $element->getFieldValue($this->handle);
-
-            foreach ($value as $linkIndex => $link) {
-                // Only process this for brand-new, unsaved blocks
-                if ($link instanceof ElementLink) {
-                    $link->linkSiteId = $element->siteId;
-
-                    $changedValue = true;
-                }
-            }
-        }
-
-        if ($changedValue && $value) {
-            $element->setFieldValue($this->handle, $value);
-        }
-
-        return parent::beforeElementSave($element, $isNew);
-    }
-
     public function afterElementSave(ElementInterface $element, bool $isNew): void
     {
-        Hyper::$plugin->getElementCache()->upsertCache($this, $element);
+        $value = $element->getFieldValue($this->handle);
+
+        if ($value instanceof LinkCollection) {
+            Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($this, $element, $value);
+            Hyper::$plugin->getMultisiteLinks()->propagateLinkStructure($this, $element, $value);
+        }
 
         parent::afterElementSave($element, $isNew);
     }
@@ -341,26 +517,145 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     public function getLinkTypeByHandle(?string $handle): ?LinkInterface
     {
         if (!$handle) {
-            $link = $this->getLinkTypes()[0] ?? null;
+            $prototype = $this->getLinkTypes()[0] ?? null;
         } else {
-            $link = ArrayHelper::firstWhere($this->getLinkTypes(), 'handle', $handle);
+            $prototype = ArrayHelper::firstWhere($this->getLinkTypes(), 'handle', $handle);
+
+            // Back-compat: content saved before short type keys used the verbose
+            // `default-<kebab-fqcn>` handle (e.g. `default-verbb-hyper-links-url`). Map any
+            // such stored handle onto the matching built-in type so existing links still resolve.
+            if (!$prototype && str_starts_with($handle, 'default-')) {
+                $prototype = ArrayHelper::firstWhere(
+                    $this->getLinkTypes(),
+                    fn(LinkInterface $linkType): bool => 'default-' . StringHelper::toKebabCase($linkType::class) === $handle,
+                );
+            }
         }
 
-        if ($link) {
-            $link->field = $this;
+        if (!$prototype) {
+            return null;
         }
+
+        $link = clone $prototype;
+        $link->field = $this;
 
         return $link;
     }
 
-    public function modifyElementsQuery(ElementQueryInterface $query, mixed $value): void
+    public function getLinkTypeDefinitions(): array
     {
-        // If we're trying to eager-load this field, remove it as it won't work correctly and return an empty value
-        if ($query->with && is_array($query->with)) {
-            if (($key = array_search($this->handle, $query->with)) !== false) {
-                unset($query->with[$key]);
+        if (!$this->hasCustomLinkTypes()) {
+            return Hyper::$plugin->getLinkTypeConfigs()->getLinkTypeDefinitions($this->linkTypeConfig);
+        }
+
+        $definitions = [];
+
+        foreach ($this->_serializedLinkTypes as $config) {
+            if ($config instanceof LinkInterface) {
+                $definitions[] = LinkTypeDefinition::fromLinkType($config);
+                continue;
+            }
+
+            if (is_array($config)) {
+                $definitions[] = LinkTypeDefinition::fromSettingsArray($config);
             }
         }
+
+        if ($definitions) {
+            return $definitions;
+        }
+
+        foreach ($this->getLinkTypes() as $linkType) {
+            $definitions[] = LinkTypeDefinition::fromLinkType($linkType);
+        }
+
+        return $definitions;
+    }
+
+    public function getLinkTypeSettingsOwners(): array
+    {
+        return array_map(
+            static fn(LinkTypeDefinition $definition): LinkTypeSettings => LinkTypeSettings::fromDefinition($definition),
+            $this->getLinkTypeDefinitions(),
+        );
+    }
+
+    public function getLinkTypeDefinitionByHandle(?string $handle): ?LinkTypeDefinition
+    {
+        if (!$handle) {
+            return null;
+        }
+
+        foreach ($this->getLinkTypeDefinitions() as $definition) {
+            if ($definition->handle === $handle) {
+                return $definition;
+            }
+        }
+
+        return null;
+    }
+
+    public function hasCustomLinkTypes(): bool
+    {
+        return $this->linkTypeConfig === LinkTypeConfigs::CUSTOM_HANDLE;
+    }
+
+    public function enableCustomLinkTypes(): void
+    {
+        $sourceHandle = $this->hasCustomLinkTypes()
+            ? LinkTypeConfigs::DEFAULT_HANDLE
+            : $this->linkTypeConfig;
+
+        $this->setLinkTypes(Hyper::$plugin->getLinkTypeConfigs()->createDetachedCopy($sourceHandle));
+        $this->linkTypeConfig = LinkTypeConfigs::CUSTOM_HANDLE;
+    }
+
+    public function useLinkTypeConfig(?string $handle = null): void
+    {
+        $this->linkTypeConfig = $handle && $handle !== LinkTypeConfigs::CUSTOM_HANDLE
+            ? $handle
+            : LinkTypeConfigs::DEFAULT_HANDLE;
+        $this->setLinkTypes([]);
+    }
+
+    public function usePluginLinkTypeDefaults(): void
+    {
+        // Deprecated in 3.0.0
+        Craft::$app->getDeprecator()->log(static::class . '::usePluginLinkTypeDefaults', 'Field `usePluginLinkTypeDefaults()` has been deprecated. Use `useLinkTypeConfig()` instead.');
+
+        $this->useLinkTypeConfig();
+    }
+
+    public function detachFromPluginLinkTypes(): void
+    {
+        // Deprecated in 3.0.0
+        Craft::$app->getDeprecator()->log(static::class . '::detachFromPluginLinkTypes', 'Field `detachFromPluginLinkTypes()` has been deprecated. Use `enableCustomLinkTypes()` instead.');
+
+        $this->enableCustomLinkTypes();
+    }
+
+    public function attachToPluginLinkTypes(): void
+    {
+        // Deprecated in 3.0.0
+        Craft::$app->getDeprecator()->log(static::class . '::attachToPluginLinkTypes', 'Field `attachToPluginLinkTypes()` has been deprecated. Use `useLinkTypeConfig()` instead.');
+
+        $this->useLinkTypeConfig();
+    }
+
+    public function modifyElementsQuery(ElementQueryInterface $query, mixed $value): void
+    {
+        Hyper::$plugin->getLinkedElementEagerLoader()->parseWithPaths($query);
+    }
+
+    public function getEagerLoadingMap(array $sourceElements): array|null|false
+    {
+        // Linked targets hydrate via LinkRelations batch priming, not Craft-native maps.
+        return null;
+    }
+
+    public function getEagerLoadingGqlConditions(): ?array
+    {
+        return null;
     }
 
     public function getContentGqlType(): Type|array
@@ -430,6 +725,22 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return $this->_linkTypes;
         }
 
+        // Live-share selected config when not custom (clones prevent shared-cache mutation).
+        if (!$this->hasCustomLinkTypes()) {
+            foreach (Hyper::$plugin->getLinkTypeConfigs()->getLinkTypes($this->linkTypeConfig) as $sortOrder => $linkType) {
+                $clone = clone $linkType;
+
+                if ($clone instanceof Link) {
+                    $clone->clearContentState();
+                    $clone->setScenario(Link::SCENARIO_SETTINGS);
+                }
+
+                $this->_linkTypes[$sortOrder] = $clone;
+            }
+
+            return $this->_linkTypes;
+        }
+
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
         foreach ($this->_serializedLinkTypes as $key => $config) {
@@ -443,10 +754,15 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             
             if ($config instanceof LinkInterface) {
                 $linkType = $config;
+
+                if ($linkType instanceof Link) {
+                    $linkType->clearContentState();
+                    $linkType->setScenario(Link::SCENARIO_SETTINGS);
+                }
             } else {
                 // Some extra handling here when setting from the POST.
                 $config['layoutConfig'] = $this->_normalizeLayoutConfig($config);
-                $linkType = Hyper::$plugin->getLinks()->createLink($config);
+                $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($config);
             }
 
             // Set up the field layout config - it'll be saved later
@@ -465,13 +781,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $this->_linkTypes;
     }
 
-    /**
-     * Returns all the link types' fields.
-     *
-     * @param string[]|null $typeHandles The Hyper link type handles to return fields for.
-     * If null, all link type fields will be returned.
-     * @return FieldInterface[]
-     */
     public function getLinkTypeFields(?array $typeHandles = null): array
     {
         if (!isset($this->_linkTypeFields)) {
@@ -509,6 +818,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         // Set the raw, serialized link types, which are created as objects later. Doing that too early
         // leads to a whole ream of issues, so do the work in the getter.
         $this->_serializedLinkTypes = $linkTypes;
+        $this->_linkTypes = [];
+        $this->_linkTypeFields = null;
     }
 
 
@@ -520,7 +831,12 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $rules = parent::defineRules();
 
         $rules[] = [['minLinks', 'maxLinks'], 'integer', 'min' => 0];
+        $rules[] = [['enableBulkAdd'], 'boolean'];
         $rules[] = ['linkTypes', 'validateLinkTypes'];
+        $rules[] = [['viewMode'], 'in', 'range' => [
+            self::VIEW_MODE_BLOCKS,
+            self::VIEW_MODE_CARDS,
+        ]];
 
         return $rules;
     }
@@ -540,19 +856,22 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
         // Cache the placeholder key for the fields' JS. Because we're caching the block type HTML/JS
         // we also need to cache the placeholder key to match that cached data.
-        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->getCacheKey('placeholderKey'), function() {
+        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->_getCacheKey('placeholderKey'), function() {
             return StringHelper::randomString(10);
         });
 
         $settings = [
             'fieldId' => $this->id,
             'handle' => $this->handle,
+            // CP Advanced-tab relation pickers need the owner site.
+            'siteId' => $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id,
             'defaultLinkType' => $this->defaultLinkType,
             'defaultNewWindow' => $this->defaultNewWindow,
             'newWindow' => $this->newWindow,
             'multipleLinks' => $this->multipleLinks,
             'minLinks' => $this->minLinks,
             'maxLinks' => $this->maxLinks,
+            'viewMode' => self::normalizeViewMode($this->viewMode),
             'namespacedName' => $view->namespaceInputName($this->handle),
             'namespacedId' => $view->namespaceInputId($this->handle),
             'isStatic' => $this->_isStatic,
@@ -565,20 +884,122 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $settings['js'] = $linkTypeInfo['js'] ?? [];
 
         // Prepare the link element values for the field, including pre-rendered HTML
-        $value = $this->_getLinksForInput($value, $placeholderKey);
+        $value = $this->_getLinksForInput($value, $placeholderKey, $element);
 
-        $valueResources = [];
+        $linksForTwig = [];
+        $storeValue = [];
+        $initialValue = [];
 
-        // Extract HTML/JS for each link block and provide separately
-        foreach ($value as $k => &$v) {
-            $valueResources[$k] = [
-                'html' => ArrayHelper::remove($v, 'html'),
-                'js' => ArrayHelper::remove($v, 'js'),
+        foreach ($value as $index => $linkData) {
+            $handle = $linkData['handle'];
+            $linkId = (string)$linkData['id'];
+            $html = $linkData['html'][$handle] ?? '';
+            $js = $linkData['js'][$handle] ?? '';
+            $serialized = $linkData['serialized'] ?? [];
+
+            unset($linkData['html'], $linkData['js'], $linkData['serialized']);
+
+            // Hidden store uses persist shape only; initialValue keeps link id for portal matching.
+            $storeValue[] = $serialized;
+            $initialValue[] = array_merge(['id' => $linkId], $serialized);
+
+            $linkType = $this->getLinkTypeByHandle($handle);
+            $tabLabels = $linkType?->getTabLabels() ?? [];
+            $tabCount = count($tabLabels) ?: ($linkType?->getTabCount() ?? 0);
+            // Header icon when field enables new window and this type’s layout does not own it.
+            $newWindowInLayout = (bool)($linkType?->getFieldLayout()?->isFieldIncluded('newWindow'));
+
+            $linksForTwig[] = [
+                'id' => $linkId,
+                // Stored content handle — kept as-is for the store / serialize / portal so legacy
+                // `default-<fqcn>` content is not rewritten on unrelated saves (content retention).
+                'handle' => $handle,
+                // Resolved canonical handle + display label for the CP header/type dropdown only.
+                // Legacy content resolves to the short type key so the UI shows "URL" (not the FQCN
+                // handle) and marks the current type, without touching the persisted value.
+                'typeHandle' => $linkType?->handle ?? $handle,
+                'label' => $linkType ? Craft::t('hyper', (string)$linkType->label) : $handle,
+                'newWindow' => !empty($linkData['newWindow']),
+                'showHeaderNewWindow' => $this->newWindow && !$newWindowInLayout,
+                'bodyHtml' => $this->_parseBlockPlaceholder($html, $linkId, $placeholderKey),
+                'js' => $this->_namespaceDeferredFieldPayload(
+                    $this->_parseBlockPlaceholder($js, $linkId, $placeholderKey),
+                ),
+                'tabCount' => $tabCount,
+                'tabLabels' => $tabLabels,
+                'index' => $index,
             ];
         }
 
-        // Register Hyper assets; roots are mounted automatically by hyper.js.
-        Plugin::registerAsset('field/src/js/hyper.js');
+        $linkTypeTemplates = [];
+
+        foreach ($settings['linkTypes'] as $linkType) {
+            $handle = $linkType['handle'];
+            $resolved = $this->getLinkTypeByHandle($handle);
+            $tabLabels = $resolved?->getTabLabels() ?? [];
+            $newWindowInLayout = (bool)($resolved?->getFieldLayout()?->isFieldIncluded('newWindow'));
+
+            $linkTypeTemplates[] = [
+                'handle' => $handle,
+                'label' => $linkType['label'],
+                'tabCount' => count($tabLabels) ?: ($linkType['tabCount'] ?? 0),
+                'tabLabels' => $tabLabels,
+                'showHeaderNewWindow' => $this->newWindow && !$newWindowInLayout,
+                'html' => $this->_parseBlockPlaceholder($linkType['html'] ?? '', '__LINK_ID__', $placeholderKey),
+                'js' => $this->_namespaceDeferredFieldPayload(
+                    $this->_parseBlockPlaceholder($linkType['js'] ?? '', '__LINK_ID__', $placeholderKey),
+                ),
+            ];
+        }
+
+        // Bulk Add is only offered on multi-link fields once explicitly enabled. The
+        // per-type `bulk` descriptor below still tells JS *how* a type collects values.
+        $bulkAddEnabled = $this->multipleLinks && $this->enableBulkAdd;
+
+        // Enrich the JS link-type config with clipboard paste + bulk-add metadata.
+        $bulkLinkTypes = [];
+
+        // At least one enabled type opted into bulk creation — gates the Bulk Add UI.
+        $hasBulkAddType = false;
+
+        foreach ($this->getLinkTypes() as $linkType) {
+            if (!$linkType->enabled) {
+                continue;
+            }
+
+            $meta = [
+                'handle' => $linkType->handle,
+                'label' => Craft::t('hyper', $linkType->label),
+                'tabCount' => $linkType->getTabCount(),
+                // FQCN for clipboard paste type matching.
+                'type' => get_class($linkType),
+            ];
+
+            // Type-level opt-in decides whether the type appears in the Bulk Add flow.
+            // The JS chooser reads `bulk.mode` to launch the element modal or textarea.
+            if ($bulkAddEnabled && $linkType::supportsBulkCreation()) {
+                // JS only needs `mode` to decide the dialog body: a one-per-line textarea (text)
+                // or a server-rendered native element select (elements). Element types render the
+                // real Craft picker via getBulkElementSelectHtml() so source/criteria/condition
+                // live server-side and match the per-link picker exactl.
+                $meta['bulk'] = [
+                    'mode' => $linkType::bulkCreationMode(),
+                ];
+
+                $hasBulkAddType = true;
+            }
+
+            $bulkLinkTypes[] = $meta;
+        }
+
+        // Expose the resolved gate to both the Twig chrome and the JS config.
+        $settings['enableBulkAdd'] = $bulkAddEnabled && $hasBulkAddType;
+
+        $inputSettings = $settings;
+        $inputSettings['linkTypes'] = $bulkLinkTypes;
+        unset($inputSettings['js']);
+
+        Plugin::registerFieldAssets();
 
         return $view->renderTemplate('hyper/field/input', [
             'id' => $id,
@@ -586,11 +1007,14 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'field' => $this,
             'element' => $element,
             'isDebug' => Plugin::isDebug(),
-
-            // Prevent nested JSON content from being escaped, and don't encode special characters
-            'value' => Json::encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            'valueResources' => Json::encode($valueResources, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            'settings' => Json::encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'settings' => $settings,
+            'links' => $linksForTwig,
+            'linkTypeTemplates' => $linkTypeTemplates,
+            'storeValueJson' => Json::encode($storeValue),
+            'inputConfig' => [
+                'initialValue' => $initialValue,
+                'settings' => $inputSettings,
+            ],
         ]);
     }
 
@@ -623,16 +1047,23 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
         $view->setIsDeltaRegistrationActive(false);
 
+        $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
         foreach ($this->getLinkTypes() as $linkType) {
             if (!$linkType->enabled) {
                 continue;
             }
+
+            $linkType = clone $linkType;
+            $linkType->field = $this;
 
             $view->startJsBuffer();
             $view->startScriptBuffer();
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $linkType->id = rand();
+            // Relation fields on the layout resolve site from the Link element.
+            $linkType->siteId = $ownerSiteId;
 
             // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
             $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
@@ -659,20 +1090,145 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $linkTypeInfo;
     }
 
-    private function _getLinksForInput(LinkCollection $links, string $placeholderKey): array
+    public function getBulkLinkBlocks(string $handle, array $seeds, ?ElementInterface $element = null): array
+    {
+        $prototype = $this->getLinkTypeByHandle($handle);
+
+        // Respect the type-level opt-in — never render a type that didn't ask for bulk creation.
+        if (!$prototype || !$prototype->enabled || !$prototype::supportsBulkCreation()) {
+            return [];
+        }
+
+        $view = Craft::$app->getView();
+        $oldNamespace = $view->getNamespace();
+
+        // Deltas off while rendering our own field HTML (matches the other render paths).
+        $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
+        $view->setIsDeltaRegistrationActive(false);
+
+        // Must reuse the cached placeholder key so the client's id-swap contract lines up.
+        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->_getCacheKey('placeholderKey'), function() {
+            return StringHelper::randomString(10);
+        });
+
+        $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        $tabLabels = $prototype->getTabLabels() ?? [];
+        $newWindowInLayout = (bool)($prototype->getFieldLayout()?->isFieldIncluded('newWindow'));
+        $showHeaderNewWindow = $this->newWindow && !$newWindowInLayout;
+
+        $blocks = [];
+
+        foreach ($seeds as $seed) {
+            $instance = new LinkInstance();
+            $instance->linkTypeHandle = $handle;
+            $instance->newWindow = $this->defaultNewWindow;
+
+            if (isset($seed['linkValue']) && $seed['linkValue'] !== '') {
+                $instance->linkValue = $seed['linkValue'];
+            }
+
+            if (!empty($seed['linkSiteId'])) {
+                $instance->linkSiteId = (int)$seed['linkSiteId'];
+            }
+
+            $link = Hyper::$plugin->getLinks()->createLinkFromInstance($this, $instance);
+
+            if (!$link) {
+                continue;
+            }
+
+            $link->isNew = true;
+            $link->newWindow = $this->defaultNewWindow;
+            // Fake id so layout sub-fields (e.g. Matrix) render; site drives relation pickers.
+            $link->id = rand();
+            $link->siteId = $instance->linkSiteId ?: $ownerSiteId;
+
+            $view->startJsBuffer();
+            $view->startScriptBuffer();
+
+            // Keep our field data out of parent namespaces — same key the templates use.
+            $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
+
+            $html = $this->_getBlockHtml($view, $link);
+
+            $js = $view->clearJsBuffer(false);
+            $scripts = $view->clearScriptBuffer();
+            $deferredJs = $this->_composeDeferredJs($js, $scripts, $placeholderKey);
+
+            $blocks[] = [
+                'handle' => $handle,
+                'typeHandle' => $prototype->handle,
+                'label' => Craft::t('hyper', (string)$prototype->label),
+                'tabCount' => count($tabLabels) ?: $prototype->getTabCount(),
+                'tabLabels' => $tabLabels,
+                'showHeaderNewWindow' => $showHeaderNewWindow,
+                'newWindow' => (bool)$this->defaultNewWindow,
+                'html' => $this->_parseBlockPlaceholder($html, '__LINK_ID__', $placeholderKey),
+                'js' => $this->_namespaceDeferredFieldPayload(
+                    $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
+                ),
+                'serialized' => $link->getSerializedValues(),
+            ];
+        }
+
+        $view->setNamespace($oldNamespace);
+        $view->setIsDeltaRegistrationActive($isDeltaRegistrationActive);
+
+        return $blocks;
+    }
+
+    public function getBulkElementSelectHtml(string $handle, ?int $limit = null): string
+    {
+        $linkType = $this->getLinkTypeByHandle($handle);
+
+        if (!($linkType instanceof ElementLink) || !$linkType->enabled || !$linkType::supportsBulkCreation()) {
+            return '';
+        }
+
+        // Same URI/status constraint the per-link picker applies.
+        $criteria = ['status' => null];
+
+        if (!$linkType->allowElementsWithoutUri && $linkType::supportsUriSelectorCriteria()) {
+            $criteria['uri'] = ':notempty:';
+        }
+
+        return Cp::elementSelectHtml([
+            // Unique id so re-opening / switching types never collides with a prior mount.
+            'id' => 'hyper-bulk-' . StringHelper::randomString(10),
+            'name' => 'bulkElements',
+            'elementType' => $linkType::elementType(),
+            'limit' => $limit,
+            'sources' => $linkType->getAvailableSources(),
+            'showSiteMenu' => $linkType->showSiteMenu,
+            'storageKey' => 'hyper.bulk.' . $this->handle . '.' . $handle,
+            'selectionLabel' => $linkType->selectionLabel ?: $linkType::defaultSelectionLabel(),
+            'criteria' => $criteria,
+            'condition' => $linkType->getSelectionCondition(),
+        ]);
+    }
+
+    private function _getLinksForInput(LinkCollection $links, string $placeholderKey, ?ElementInterface $element = null): array
     {
         $preppedValues = [];
 
-        // If a brand-new element with no links, create the defaults. Done here instead of `normalizeValue`
-        // or in the collection itself to prevent it being saved to the content table immediately.
-        if ($links->isEmpty() && !$this->multipleLinks) {
-            // Check to see if there's already a link in the collection, or really blank
-            $link = $links->getLinks()[0] ?? $this->getLinkTypeByHandle($this->defaultLinkType);
+        // Do not auto-seed a blank single-link row — empty fields show an Add CTA.
+        // Still honour minLinks for multi-link fields.
+        if ($this->multipleLinks && $this->minLinks) {
+            // Seed min links server-side so client init does not mutate the hidden store JSON.
+            $linkList = $links->getLinks();
+            $toCreate = $this->minLinks - count($linkList);
 
-            if ($link) {
-                $link->isNew = true;
-                $link->newWindow = $this->defaultNewWindow;
-                $links->setLinks([$link]);
+            for ($i = 0; $i < $toCreate; $i++) {
+                $link = Hyper::$plugin->getLinks()->createDefaultContentLink($this, $this->defaultLinkType);
+
+                if ($link) {
+                    $linkList[] = $link;
+                }
+            }
+
+            if ($toCreate > 0) {
+                $links->setLinks($linkList);
             }
         }
 
@@ -683,6 +1239,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
         $view->setIsDeltaRegistrationActive(false);
 
+        $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
         // For each Link element, render the fields and convert to an array
         foreach ($links as $key => $link) {
             $view->startJsBuffer();
@@ -690,12 +1248,14 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $link->id = rand();
+            $link->siteId = $ownerSiteId;
 
             // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft
             $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
 
             $preppedValues[$key] = $link->getInputConfig();
             $preppedValues[$key]['id'] = $link->id;
+            $preppedValues[$key]['serialized'] = $link->getSerializedValues();
             $preppedValues[$key]['html'][$link->handle] = $this->_getBlockHtml($view, $link);
 
             $js = $view->clearJsBuffer(false);
@@ -709,6 +1269,51 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $preppedValues;
     }
 
+    private function _parseBlockPlaceholder(string $html, string $linkId, string $placeholderKey): string
+    {
+        if ($html === '') {
+            return '';
+        }
+
+        return str_replace('__HYPER_BLOCK_' . $placeholderKey . '__', $linkId, $html);
+    }
+
+    private function _namespaceDeferredFieldPayload(string $payload): string
+    {
+        if ($payload === '') {
+            return '';
+        }
+
+        $namespace = 'fields';
+        $normalized = Html::id($namespace);
+
+        $payload = Html::namespaceAttributes($payload, $namespace);
+        $payload = Html::namespaceInputs($payload, $namespace);
+
+        // Craft CP input constructors pass element ids in JSON (e.g. EntrySelectInput).
+        $payload = preg_replace(
+            '/"id"\s*:\s*"(hyperData-[^"]+)"/',
+            '"id":"' . $normalized . '-$1"',
+            $payload,
+        ) ?? $payload;
+
+        // jQuery/DOM selectors emitted by {% js %} blocks.
+        $payload = preg_replace(
+            '/#([\'"])(hyperData-[^\'"]+)\1/',
+            '#$1' . $normalized . '-$2$1',
+            $payload,
+        ) ?? $payload;
+
+        // Input names in JSON settings objects.
+        $payload = preg_replace(
+            '/"name"\s*:\s*"hyperData(\[[^\]]+\](?:\[[^\]]+\])*)"/',
+            '"name":"' . $namespace . '[hyperData]$1"',
+            $payload,
+        ) ?? $payload;
+
+        return $payload;
+    }
+
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
         if ($link instanceof linkTypes\MissingLink) {
@@ -720,27 +1325,24 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         try {
-            // Render just the first tab
             $linkFieldLayout = $link->getFieldLayout();
 
             if (!$linkFieldLayout) {
                 return Html::tag('div', Craft::t('hyper', 'Unable to render field. Please resave the field settings.'), ['class' => 'error']);
             }
 
+            // Clone so we can stamp LinkField without mutating the cached layout.
             $fieldLayout = clone($linkFieldLayout);
 
-            if (!$fieldLayout) {
-                return Html::tag('div', Craft::t('hyper', 'Unable to render field layout. Please resave the field settings.'), ['class' => 'error']);
+            // Add the link type to the LinkField field layout element, so we generate the correct HTML for the type
+            if ($fieldLayout->isFieldIncluded('linkValue')) {
+                $linkValueField = $fieldLayout->getField('linkValue');
+                $linkValueField->field = $this;
+                $linkValueField->link = $link;
             }
 
-            $layoutTab = $fieldLayout->getTabs()[0] ?? [];
-            $fieldLayout->setTabs([$layoutTab]);
-
-            // Add the link type to the LinkField field layout element, so we generate the correct HTML for the type
-            $linkValueField = $fieldLayout->getField('linkValue');
-            $linkValueField->field = $this;
-            $linkValueField->link = $link;
-
+            // Full Craft form — all layout tabs as sibling panes (Vizy/Neo/Matrix style).
+            // Inactive panes start with `.hidden`; header tabs toggle visibility in the CP.
             $form = $fieldLayout->createForm($link);
 
             // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
@@ -759,11 +1361,26 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
     }
 
+    public function getLinkTypeSettingsForHtml(): array
+    {
+        return $this->_getLinkTypeSettings();
+    }
+
     private function _getLinkTypeSettings(): array
     {
         $linkTypes = [];
 
         $linksService = Hyper::$plugin->getLinks();
+
+        // Shared fields render a hidden custom editor seeded from their selected config.
+        if (!$this->hasCustomLinkTypes()) {
+            $shell = new self([
+                'linkTypeConfig' => LinkTypeConfigs::CUSTOM_HANDLE,
+                'linkTypes' => Hyper::$plugin->getLinkTypeConfigs()->createDetachedCopy($this->linkTypeConfig),
+            ]);
+
+            return $shell->_getLinkTypeSettings();
+        }
 
         // For any already-saved link type settings, prep them
         foreach ($this->getLinkTypes() as $linkType) {
@@ -783,28 +1400,14 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 continue;
             }
 
-            $linkType = Hyper::$plugin->getLinks()->createLink($linkTypeClass);
+            $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($linkTypeClass);
             $linkTypes[] = $this->_getLinkTypeSettingsConfig($linkType);
         }
-
-        $disabledTypes = [
-            linkTypes\Asset::class,
-            linkTypes\Custom::class,
-            linkTypes\Embed::class,
-            linkTypes\Phone::class,
-            linkTypes\Site::class,
-            linkTypes\User::class,
-        ];
 
         foreach ($linkTypes as $key => $linkType) {
             // Encode the `layoutConfig` as we require it to be a JSON-string in Vue templates
             if (is_array($linkType['layoutConfig'])) {
                 $linkTypes[$key]['layoutConfig'] = Json::encode($linkType['layoutConfig']);
-            }
-
-            // Setup defaults for brand-new fields
-            if (!$this->id && in_array($linkType['type'], $disabledTypes)) {
-                $linkTypes[$key]['enabled'] = false;
             }
         }
 
@@ -859,27 +1462,34 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $view = Craft::$app->getView();
         $linkTypeClass = get_class($linkType);
 
-        // Setup defaults
+        // Setup defaults. Built-in single instances default to the short, author-owned
+        // type key (e.g. `url`) so handles and GraphQL names stay clean and guessable.
         $linkType->label = $linkType->label ?? $linkType::displayName();
-        $linkType->handle = $linkType->handle ?? 'default-' . StringHelper::toKebabCase($linkTypeClass);
+        $linkType->handle = $linkType->handle ?? $linkTypeClass::typeKey();
 
+        // Twig already namespaces inputs via the field settings wrapper and `linkTypes[…]` block.
+        // Running namespaceInputs() here would double-prefix names (types[…][types][…]) and break saves.
         $view->startJsBuffer();
-        $html = $view->namespaceInputs($view->renderTemplate('hyper/field/_link-type-settings', [
+        $html = $view->renderTemplate('hyper/field/_link-type-settings', [
             'field' => $this,
             'linkType' => $linkType,
-        ]));
+            // `isCustom` is now a real stored flag — no longer inferred from the handle string.
+            'isCustom' => $linkType->isCustom,
+        ]);
+        $html = str_replace('__LINK_TYPE__', $linkType->handle, $html);
         $js = $view->clearJsBuffer();
 
         // Render the template again, but with no field context for the template for new links
         $newLink = new $linkTypeClass;
         $newLink->label = 'New ' . $linkType::displayName();
+        $newLink->isNew = true;
 
         $view->startJsBuffer();
-        $htmlTemplate = $view->namespaceInputs($view->renderTemplate('hyper/field/_link-type-settings', [
+        $htmlTemplate = $view->renderTemplate('hyper/field/_link-type-settings', [
             'field' => new HyperField(),
             'linkType' => $newLink,
             'isCustom' => true,
-        ]));
+        ]);
         $jsTemplate = $view->clearJsBuffer();
 
         return array_merge($linkType->getSettingsConfig(), [
@@ -981,7 +1591,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return (string)$glued_string;
     }
 
-    private function getCacheKey(string $key): string
+    private function _getCacheKey(string $key): string
     {
         return $this->id . '-' . $this->handle . '-' . $key;
     }

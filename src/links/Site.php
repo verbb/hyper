@@ -36,7 +36,13 @@ class Site extends Link
 
     public function getSiteOptions(): array
     {
-        $options = [];
+        // Leading empty option so the first site is not falsely selected in the browser.
+        $options = [
+            [
+                'label' => Craft::t('hyper', 'Select a site'),
+                'value' => '',
+            ],
+        ];
 
         $sites = [];
 
@@ -52,9 +58,11 @@ class Site extends Link
             }
         }
 
+        $siteOptions = [];
+
         foreach ($sites as $site) {
             if ($site->hasUrls) {
-                $options[] = [
+                $siteOptions[] = [
                     'label' => $site->name,
                     'value' => $site->uid,
                 ];
@@ -62,11 +70,11 @@ class Site extends Link
         }
 
         // Sort alphabetically by label
-        usort($options, function($a, $b) {
+        usort($siteOptions, function($a, $b) {
             return strcmp($a['label'], $b['label']);
         });
-        
-        return $options;
+
+        return array_merge($options, $siteOptions);
     }
 
     public function getLinkUrl(): ?string

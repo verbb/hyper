@@ -29,6 +29,16 @@ class Email extends Link
         return null;
     }
 
+    public static function supportsBulkCreation(): bool
+    {
+        return true;
+    }
+
+    public static function bulkCreationMode(): ?string
+    {
+        return 'text';
+    }
+
     
     // Properties
     // =========================================================================

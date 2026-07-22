@@ -15,6 +15,16 @@ class Phone extends Link
         return Craft::t('hyper', 'Phone');
     }
 
+    public static function supportsBulkCreation(): bool
+    {
+        return true;
+    }
+
+    public static function bulkCreationMode(): ?string
+    {
+        return 'text';
+    }
+
     
     // Properties
     // =========================================================================

@@ -42,7 +42,7 @@ class PluginFieldMigration extends PluginMigration
 
         $this->fields = (new Query())
             ->from('{{%fields}}')
-            ->where(['type' => $this->oldFieldTypeClass])
+            ->where(['type' => $this->getOldFieldTypeClasses()])
             ->all();
 
         $fieldService = Craft::$app->getFields();
@@ -177,7 +177,7 @@ class PluginFieldMigration extends PluginMigration
         foreach ($disabledTypes as $linkTypeClass) {
             $linkType = new $linkTypeClass();
             $linkType->label = $linkType::displayName();
-            $linkType->handle = self::getLinkTypeHandle($linkTypes, 'default-' . StringHelper::toKebabCase($linkTypeClass));
+            $linkType->handle = self::getLinkTypeHandle($linkTypes, $linkTypeClass::typeKey());
             $linkType->enabled = false;
 
             $fieldLayout = self::getDefaultFieldLayout($linkType, true);
@@ -255,7 +255,7 @@ class PluginFieldMigration extends PluginMigration
             foreach ($this->findMigratedFieldConfigPaths($config, $fieldData) as $path) {
                 $currentConfig = $projectConfig->get($path);
 
-                if (!is_array($currentConfig) || ($currentConfig['type'] ?? null) !== $this->oldFieldTypeClass) {
+                if (!is_array($currentConfig) || !in_array($currentConfig['type'] ?? null, $this->getOldFieldTypeClasses(), true)) {
                     continue;
                 }
 
@@ -296,7 +296,7 @@ class PluginFieldMigration extends PluginMigration
 
     protected function isMigratedFieldConfig(array $config, string $key, array $fieldData): bool
     {
-        if (($config['type'] ?? null) !== $this->oldFieldTypeClass) {
+        if (!in_array($config['type'] ?? null, $this->getOldFieldTypeClasses(), true)) {
             return false;
         }
 

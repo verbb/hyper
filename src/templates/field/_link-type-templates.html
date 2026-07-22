@@ -1,0 +1,12 @@
+<div class="hidden" data-hyper-link-templates>
+    {% for template in linkTypeTemplates %}
+        <template
+            data-link-type="{{ template.handle }}"
+            data-link-tab-count="{{ template.tabCount }}"
+            data-link-tab-labels="{{ template.tabLabels|default([])|json_encode|e('html_attr') }}"
+            data-link-show-header-new-window="{{ template.showHeaderNewWindow ? '1' : '0' }}"
+            data-link-label="{{ template.label | e('html_attr') }}"
+            {% if template.js %}data-link-js="{{ template.js | e('html_attr') }}"{% endif %}
+        >{{ template.html | raw }}</template>
+    {% endfor %}
+</div>

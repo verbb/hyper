@@ -63,20 +63,14 @@ class MigrateLinkitContent extends PluginContentMigration
 
     public function convertModel(HyperField $field, array $oldSettings): bool|array|null
     {
-        if ($this->isHyperLinkContent($oldSettings)) {
-            if ($repaired = $this->repairMigratedLinks($this->normalizeFieldContentForMigration($oldSettings))) {
-                $this->stdout('    > Repaired migrated Hyper content.', Console::FG_GREEN);
+        $oldType = $oldSettings['type'] ?? null;
+        $hyperType = $oldSettings[0]['type'] ?? null;
 
-                return $repaired;
-            }
-
+        if (str_contains($hyperType, 'verbb\\hyper')) {
             $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
 
             return null;
         }
-
-        $oldSettings = $this->normalizeLinkitSettings($oldSettings);
-        $oldType = $oldSettings['type'] ?? null;
 
         // Return `null` for an empty field, or already migrated to Hyper.
         // `false` for when unable to find matching new type.
@@ -93,78 +87,11 @@ class MigrateLinkitContent extends PluginContentMigration
         }
 
         $link = new $linkTypeClass();
-        $link->handle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
+        $link->handle = $linkTypeClass::typeKey();
         $link->linkValue = $oldSettings['value'] ?? null;
         $link->linkText = $oldSettings['customText'] ?? null;
         $link->newWindow = $oldSettings['target'] ?? false;
 
         return $this->serializeMigratedLink($link);
-    }
-
-    protected function isMigratableVizyValue(array $value): bool
-    {
-        // Linkit values carry a `type` (a Linkit model class or short type handle). Hyper content is a
-        // list of links, so it won't expose a top-level `type` key and is safely excluded.
-        return isset($value['type']) && is_string($value['type']) && !str_contains($value['type'], 'verbb\\hyper');
-    }
-
-    protected function normalizeLinkitSettings(array $oldSettings): array
-    {
-        if (isset($oldSettings['value'])) {
-            return $oldSettings;
-        }
-
-        $type = $oldSettings['type'] ?? null;
-
-        if (!is_string($type) || $type === '' || str_contains($type, '\\')) {
-            return $oldSettings;
-        }
-
-        $normalized = [
-            'customText' => $oldSettings['customText'] ?? null,
-            'target' => (bool)($oldSettings['target'] ?? false),
-        ];
-
-        switch ($type) {
-            case 'email':
-                $normalized['type'] = Email::class;
-                $normalized['value'] = $oldSettings['email'] ?? '';
-                break;
-
-            case 'custom':
-                $normalized['type'] = Url::class;
-                $normalized['value'] = $oldSettings['custom'] ?? '';
-                break;
-
-            case 'tel':
-                $normalized['type'] = Phone::class;
-                $normalized['value'] = $oldSettings['tel'] ?? '';
-                break;
-
-            case 'entry':
-                $normalized['type'] = Entry::class;
-                $normalized['value'] = $oldSettings['entry'][0] ?? null;
-                break;
-
-            case 'category':
-                $normalized['type'] = Category::class;
-                $normalized['value'] = $oldSettings['category'][0] ?? null;
-                break;
-
-            case 'asset':
-                $normalized['type'] = Asset::class;
-                $normalized['value'] = $oldSettings['asset'][0] ?? null;
-                break;
-
-            case 'product':
-                $normalized['type'] = Product::class;
-                $normalized['value'] = $oldSettings['product'][0] ?? null;
-                break;
-
-            default:
-                return $oldSettings;
-        }
-
-        return $normalized;
     }
 }

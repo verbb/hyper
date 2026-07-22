@@ -194,7 +194,7 @@ class Hyper extends Field implements FieldInterface
                     $linkTypeClass = $typeMap[$type] ?? null;
     
                     if ($linkTypeClass) {
-                        $linkTypeHandle = 'default-' . StringHelper::toKebabCase($linkTypeClass);
+                        $linkTypeHandle = $linkTypeClass::typeKey();
                     } else {
                         $linkTypeHandle = $type;
                     }
@@ -212,11 +212,6 @@ class Hyper extends Field implements FieldInterface
     // Private Methods
     // =========================================================================
 
-    /**
-     * @param $nodePath
-     * @param $fields
-     * @return array|null
-     */
     private function _getFieldMappingInfoForNodePath($nodePath, $fields): ?array
     {
         $feedPath = preg_replace('/(\/\d+\/)/', '/', $nodePath);
@@ -254,12 +249,6 @@ class Hyper extends Field implements FieldInterface
         return null;
     }
 
-    /**
-     * @param $feedData
-     * @param $subFieldHandle
-     * @param $subFieldInfo
-     * @return mixed
-     */
     private function _parseSubField($feedData, $subFieldHandle, $subFieldInfo): mixed
     {
         $subFieldClassHandle = Hash::get($subFieldInfo, 'field');

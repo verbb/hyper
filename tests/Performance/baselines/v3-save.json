@@ -1,0 +1,40 @@
+{
+    "version": "v3-save",
+    "capturedAt": "2026-07-03T08:29:19+00:00",
+    "environment": {
+        "php": "8.3.30",
+        "craft": "5.10.8.1",
+        "hyper": "3.0.0-beta.1"
+    },
+    "scenarios": {
+        "relation-sync-30-entry-links": {
+            "linkCount": 30,
+            "legacyUpsertCache": {
+                "resultType": "int",
+                "resultSize": 30,
+                "durationMs": 163,
+                "queries": 93,
+                "duplicatePatterns": 87,
+                "topPatterns": {
+                    "SELECT `elements`.`id`, `elements`.`canonicalId`, `elements`.`fieldLayoutId`, `elements`.`uid`, `elements`.`enabled`, `elements`.`archived`, `elements`.`dateLastMerged`, `elements`.`dateCreated`, `elements`.`dateUpdated`, `elements_sites`.`id` AS `siteSettingsId`, `elements_sites`.`siteId`, `elements_sites`.`title`, `elements_sites`.`slug`, `elements_sites`.`uri`, `elements_sites`.`content`, `elements_sites`.`enabled` AS `enabledForSite`, `entries`.`sectionId`, `entries`.`fieldId`, `entries`.`primaryOwnerId`, `entries`.`typeId`, `entries`.`postDate`, `entries`.`expiryDate`, `structureelements`.`root`, `structureelements`.`lft`, `structureelements`.`rgt`, `structureelements`.`level`, `structureelements`.`structureId` FROM (SELECT `elements`.`id` AS `elementsId`, `elements_sites`.`id` AS `siteSettingsId`, `structureelements`.`structureId` FROM `elements` `elements` INNER JOIN `entries` `entries` ON `entries`.`id` = `elements`.`id` INNER JOIN `elements_sites` `elements_sites` ON `elements_sites`.`elementId` = `elements`.`id` LEFT JOIN `structureelements` `structureelements` ON (`structureelements`.`elementId` = `elements`.`id`) AND (EXISTS (SELECT * FROM `structures` use index(primary) WHERE (`id` = `structureelements`.`structureId`) AND (`dateDeleted` IS NULL))) WHERE (`elements_sites`.`siteId`=?) AND (`elements`.`id`=?) AND (((`elements`.`enabled`=TRUE) AND (`elements_sites`.`enabled`=TRUE)) AND (`entries`.`postDate` <= ?) AND ((`entries`.`expiryDate` IS NULL) OR (`entries`.`expiryDate` > ?))) AND (`elements`.`archived`=FALSE) AND (`elements`.`dateDeleted` IS NULL) AND (`elements`.`draftId` IS NULL) AND (`elements`.`revisionId` IS NULL) ORDER BY `structureelements`.`lft`, `entries`.`postDate` DESC, `elements`.`id` DESC LIMIT ?) `subquery` INNER JOIN `elements` `elements` ON `elements`.`id` = `subquery`.`elementsId` INNER JOIN `elements_sites` `elements_sites` ON `elements_sites`.`id` = `subquery`.`siteSettingsId` INNER JOIN `entries` `entries` ON `entries`.`id` = `subquery`.`elementsId` LEFT JOIN `structureelements` `structureelements` ON (`structureelements`.`elementId` = `subquery`.`elementsId`) AND (`structureelements`.`structureId` = `subquery`.`structureId`) ORDER BY `structureelements`.`lft`, `entries`.`postDate` DESC, `elements`.`id` DESC": 30,
+                    "SELECT * FROM `hyper_element_cache` WHERE (`fieldId`=?) AND (`sourceId`=?) AND (`sourceType`=?) AND (`sourceSiteId`=?) AND (`targetId`=?) AND (`targetType`=?) AND (`targetSiteId`=?)": 30,
+                    "INSERT INTO `hyper_element_cache` (`fieldId`, `sourceId`, `sourceType`, `sourceSiteId`, `targetId`, `targetType`, `targetSiteId`, `title`, `uri`, `dateCreated`, `dateUpdated`, `uid`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)": 30,
+                    "SELECT EXISTS(SELECT * FROM `elements` WHERE `id`=?) AS `result`": 1,
+                    "SELECT * FROM `hyper_element_cache` WHERE (`fieldId`=?) AND (`sourceId`=?) AND (`sourceType`=?) AND (`sourceSiteId`=?)": 1
+                }
+            },
+            "wired": {
+                "resultType": "int",
+                "resultSize": 30,
+                "durationMs": 29.11,
+                "queries": 32,
+                "duplicatePatterns": 29,
+                "topPatterns": {
+                    "INSERT INTO `hyper_links` (`fieldId`, `ownerId`, `ownerSiteId`, `sortOrder`, `linkTypeHandle`, `targetId`, `targetSiteId`, `targetType`, `dateCreated`, `dateUpdated`, `uid`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)": 30,
+                    "DELETE FROM `hyper_links` WHERE (`fieldId`=?) AND (`ownerId`=?) AND (`ownerSiteId`=?)": 1,
+                    "SELECT COUNT(*) FROM `hyper_links` WHERE (`ownerId`=?) AND (`ownerSiteId`=?) AND (`fieldId`=?)": 1
+                }
+            }
+        }
+    }
+}

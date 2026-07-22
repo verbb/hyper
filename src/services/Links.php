@@ -2,9 +2,12 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\base\ElementLink;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\links as linkTypes;
+use verbb\hyper\models\LinkInstance;
 
 use Craft;
 use craft\base\Component;
@@ -34,6 +37,7 @@ class Links extends Component
             linkTypes\Embed::class,
             linkTypes\Entry::class,
             linkTypes\FormieForm::class,
+            linkTypes\Passive::class,
             linkTypes\Phone::class,
             linkTypes\Product::class,
             linkTypes\Site::class,
@@ -102,6 +106,112 @@ class Links extends Component
         }
 
         return $link;
+    }
+
+    public function createSettingsPrototype(mixed $config): LinkInterface
+    {
+        $link = $this->createLink($config);
+
+        if ($link instanceof Link) {
+            $link->clearContentState();
+            $link->setScenario(Link::SCENARIO_SETTINGS);
+        }
+
+        return $link;
+    }
+
+    public function createLinkFromSerialized(HyperField $field, array $data): ?LinkInterface
+    {
+        $instance = LinkInstance::fromSerialized($data, $field);
+
+        return $this->createLinkFromInstance($field, $instance);
+    }
+
+    public function createLinkFromInstance(HyperField $field, LinkInstance $instance): ?LinkInterface
+    {
+        $prototype = $field->getLinkTypeByHandle($instance->linkTypeHandle);
+
+        if (!$prototype) {
+            return null;
+        }
+
+        $link = clone $prototype;
+        $link->field = $field;
+        $link->populateFromInstance($instance);
+
+        return $link;
+    }
+
+    public function createDefaultContentLink(HyperField $field, ?string $handle = null): ?LinkInterface
+    {
+        $handle ??= $field->defaultLinkType;
+
+        if (!$handle) {
+            return null;
+        }
+
+        $instance = new LinkInstance();
+        $instance->linkTypeHandle = $handle;
+        $instance->newWindow = $field->defaultNewWindow;
+
+        // Seed Link Text from the layout default when present.
+        $prototype = $field->getLinkTypeByHandle($handle);
+
+        if ($prototype && ($layout = $prototype->getFieldLayout()) && $layout->isFieldIncluded('linkText')) {
+            $linkTextElement = $layout->getField('linkText');
+
+            if (
+                $linkTextElement instanceof \verbb\hyper\fieldlayoutelements\LinkTextField
+                && $linkTextElement->defaultValue !== null
+                && $linkTextElement->defaultValue !== ''
+            ) {
+                $instance->linkText = $linkTextElement->defaultValue;
+            }
+        }
+
+        // Seed URL default / fixed values.
+        if (
+            $prototype instanceof \verbb\hyper\links\Url
+            && $prototype->defaultLinkValue !== null
+            && $prototype->defaultLinkValue !== ''
+        ) {
+            $instance->linkValue = $prototype->defaultLinkValue;
+        }
+
+        $link = $this->createLinkFromInstance($field, $instance);
+
+        if ($link) {
+            $link->isNew = true;
+            $link->newWindow = $field->defaultNewWindow;
+        }
+
+        return $link;
+    }
+
+    public function resolveUrl(HyperField $field, LinkInstance $instance, ?int $siteId = null): ?string
+    {
+        $link = $this->createLinkFromInstance($field, $instance);
+
+        if (!$link) {
+            return null;
+        }
+
+        if ($link instanceof ElementLink && $siteId && !$link->linkSiteId) {
+            $link->linkSiteId = $siteId;
+        }
+
+        return $link->getUrl();
+    }
+
+    public function isInstanceEmpty(LinkInterface|string $linkType, LinkInstance $instance): bool
+    {
+        $class = is_string($linkType) ? $linkType : $linkType::class;
+
+        if (is_subclass_of($class, Link::class)) {
+            return $class::isInstanceEmpty($instance);
+        }
+
+        return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
     }
 
 }

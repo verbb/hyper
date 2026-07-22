@@ -20,11 +20,11 @@ return [
 
 ## Configuration options
 - `backupOnMigrate` - Whether to create a database backup before running the link migration utilities.
-- `resolveHiResEmbedImage` - Whether the Embed field should determine the most hi-resolution image available. Do note that there's performance implications for this, as it requires fetching every available image for the embed data and comparing them.
+- `resolveHiResEmbedImage` - Whether the Embed field should determine the most hi-resolution image available. Do note that there's performance implications for this, as it requires fetching every available image for the embed data and comparing them. Independently, YouTube `hqdefault` thumbs are upgraded to `maxresdefault` when that asset exists.
 - `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
 - `embedDetectorsSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the detectors for Embed links.
-- `embedAllowedDomains` - Define any allowed domain names for Embed links. Any embed links that are added _not_ in this list will fail to be saved. Leave empty to allow any domain. Include just the TLD with no `http://`, `https://` or `www`.
+- `embedAllowedDomains` - Define any allowed domain names for Embed links globally. Any embed links that are added _not_ in this list will fail to be saved. Leave empty to allow any domain. Include just the TLD with no `http://`, `https://` or `www`. Per Embed link type you can also set **Allowed Domains** in field settings to override or narrow this (e.g. video-only fields).
 
 ## Control Panel
 You can also manage configuration settings through the Control Panel by visiting Settings → Hyper.

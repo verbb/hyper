@@ -1,27 +1,92 @@
 {% do view.registerTranslations('hyper', [
     'Add a link',
     'Add {type}',
+    'Link fields tab',
     'New Window',
+    'Link copied.',
+    'Link cut.',
+    'Link pasted.',
+    'Couldn’t copy this link.',
+    'Nothing to paste.',
+    'This field cannot accept the copied link type.',
+    'This field cannot accept another link.',
+    'Bulk Add',
+    'Bulk Add…',
+    'Link Type',
+    'Enter one value per line.',
+    '{num} links added.',
+    'Couldn’t add links.',
 ]) %}
 
-<div class="hyper-input-component" data-hyper-auto-mount="input" v-cloak>
-    <hyper-input
-        value="{{ value }}"
-        value-resources="{{ valueResources }}"
-        input-settings="{{ settings }}"
-        handle="{{ field.handle }}"
-        :element-id="{{ element.id ?: 'null' }}"
-        element-type="{{ className(element) }}"
-        :element-site-id="{{ element.siteId ?: 'null' }}"
-        :element-draft-id="{{ element.draftId ?: 'null' }}"
-        :element-revision-id="{{ element.revisionId ?: 'null' }}"
+<div class="hyper-input-component">
+    {% if isDebug %}
+        <div data-store-debug class="input text" style="margin-bottom: 20px;">{{ storeValueJson }}</div>
+    {% endif %}
+
+    {# Bare handle — Craft's namespaceInputs('fields') wrapper adds the fields[...] prefix once. #}
+    <input
+        data-hyper-store
+        type="hidden"
+        name="{{ name | e('html_attr') }}"
+        value="{{ storeValueJson | e('html_attr') }}"
     >
-        {# Render here so that ElementEditor.js doesn't detect a change from server-render to when Vue kicks in #}
-        {% if isDebug %}
-            <div class="input text" style="margin-bottom: 20px;">{{ value }}</div>
-            <div data-store-debug class="input text" style="margin-bottom: 20px;">{{ value }}</div>
+
+        <div
+        class="hyper-input hyper-input--mode-{{ settings.viewMode ?? 'blocks' }}{{ links|length == 0 ? ' hyper-input--empty' : '' }}"
+        data-hyper-input
+        data-hyper-input-config="{{ inputConfig | json_encode | e('html_attr') }}"
+        data-view-mode="{{ settings.viewMode ?? 'blocks' }}"
+    >
+        <div class="hyper-links" data-hyper-links>
+            {% for link in links %}
+                {% include 'hyper/field/_link-block' with {
+                    link: link,
+                    settings: settings,
+                    linkTypes: settings.linkTypes,
+                    blockIndex: link.index,
+                    blockCount: links | length,
+                } only %}
+            {% endfor %}
+        </div>
+
+        {# Always render Add chrome for non-static fields — single-link hides it while a row exists. #}
+        {% set showAddLink = not settings.isStatic %}
+        {% if showAddLink %}
+            {% include 'hyper/field/_add-link' with {
+                settings: settings,
+                addLinkHidden: not settings.multipleLinks and links|length > 0,
+            } only %}
         {% endif %}
 
-        <input data-store type="hidden" name="{{ name }}" value="{{ value }}">
-    </hyper-input>
+        {% include 'hyper/field/_link-type-templates' with {
+            linkTypeTemplates: linkTypeTemplates,
+        } only %}
+
+        {# Chrome prototype for add/paste when the field is empty (no live block to clone). #}
+        {% set defaultShowHeaderNewWindow = settings.newWindow %}
+        {% for template in linkTypeTemplates %}
+            {% if template.handle == settings.defaultLinkType %}
+                {% set defaultShowHeaderNewWindow = template.showHeaderNewWindow ?? settings.newWindow %}
+            {% endif %}
+        {% endfor %}
+        <template data-hyper-link-chrome>
+            {% include 'hyper/field/_link-block' with {
+                link: {
+                    id: '__LINK_ID__',
+                    handle: settings.defaultLinkType,
+                    newWindow: settings.defaultNewWindow ?? false,
+                    showHeaderNewWindow: defaultShowHeaderNewWindow,
+                    bodyHtml: '',
+                    js: '',
+                    tabCount: 0,
+                    tabLabels: [],
+                    index: 0,
+                },
+                settings: settings,
+                linkTypes: settings.linkTypes,
+                blockIndex: 0,
+                blockCount: 1,
+            } only %}
+        </template>
+    </div>
 </div>

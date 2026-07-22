@@ -56,7 +56,7 @@ class Embed extends Link
                 $embed->getExtractorFactory()->addDetector('image', EmbedImagesExtractor::class);
 
                 $info = $embed->get($url);
-                $image = array_values($info->image ?? []);
+                $imageMeta = self::_normalizeEmbedImageMeta($info->image ?? null);
 
                 $data = Json::decode(Json::encode([
                     'title' => $info->title,
@@ -73,8 +73,8 @@ class Embed extends Link
                     'license' => $info->license,
                     'feeds' => $info->feeds,
 
-                    // Images will always be an array to handle if we are fetching image metadata
-                    ...$image,
+                    // Named image keys (image, imageWidth, imageHeight) from EmbedImagesExtractor
+                    ...$imageMeta,
                 ]));
 
                 // If no embed code, create it
@@ -148,6 +148,7 @@ class Embed extends Link
     // =========================================================================
 
     public ?string $placeholder = null;
+    public array $allowedDomains = [];
 
 
     // Public Methods
@@ -163,9 +164,21 @@ class Embed extends Link
                 // We might be sending JSON from the CP
                 $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
             } else {
-                // Or, we provided just the URL
-                $values['linkValue'] = self::fetchEmbedData($values['linkValue']);
+                // Or, we provided just the URL — persist the URL even if embed fetch fails or is slow
+                $url = trim($linkValue);
+                $data = self::fetchEmbedData($url);
+
+                if (isset($data['error']) || ($url && empty($data))) {
+                    $values['linkValue'] = $url ? ['url' => $url] : null;
+                } else {
+                    $values['linkValue'] = $data ?: null;
+                }
             }
+        }
+
+        // Settings UI posts domains as a newline-separated string
+        if (isset($values['allowedDomains']) && is_string($values['allowedDomains'])) {
+            $values['allowedDomains'] = self::parseListSetting($values['allowedDomains']);
         }
 
         parent::setAttributes($values, $safeOnly);
@@ -175,23 +188,23 @@ class Embed extends Link
     {
         $rules = parent::defineRules();
 
-        $settings = Hyper::$plugin->getSettings();
+        $rules[] = [['linkValue'], function($attribute) {
+            $url = trim($this->$attribute['url'] ?? '');
 
-        $rules[] = [['linkValue'], function($attribute) use ($settings) {
-            $linkValue = trim($this->$attribute['url'] ?? '');
-
-            if ($linkValue && !$settings->doesUrlMatchDomain($linkValue)) {
+            if ($url && !$this->isEmbedUrlAllowed($url)) {
                 $this->addError($attribute, Craft::t('hyper', 'URL domain not allowed.'));
             }
-        }, 'when' => function($model) use ($settings) {
-            return $settings->embedAllowedDomains;
+        }, 'when' => function() {
+            return $this->getEffectiveAllowedDomains() !== [];
         }];
 
-        // Check if we have an invalid payload
+        // Check if we have an invalid payload (allow url-only payloads saved before embed preview completes)
         $rules[] = [['linkValue'], function($attribute) {
-            $fetchError = $this->$attribute['error'] ?? null;
+            $linkValue = $this->$attribute;
+            $fetchError = is_array($linkValue) ? ($linkValue['error'] ?? null) : null;
+            $url = is_array($linkValue) ? trim($linkValue['url'] ?? '') : '';
 
-            if ($fetchError) {
+            if ($fetchError && !$url) {
                 $this->addError($attribute, $fetchError);
             }
         }];
@@ -203,8 +216,90 @@ class Embed extends Link
     {
         $values = parent::getSettingsConfig();
         $values['placeholder'] = $this->placeholder;
+        $values['allowedDomains'] = array_values($this->allowedDomains);
 
         return $values;
+    }
+
+    public function getEffectiveAllowedDomains(): array
+    {
+        if ($this->allowedDomains !== []) {
+            return array_values($this->allowedDomains);
+        }
+
+        return array_values(Hyper::$plugin->getSettings()->embedAllowedDomains);
+    }
+
+    public function isEmbedUrlAllowed(string $url): bool
+    {
+        $domains = $this->getEffectiveAllowedDomains();
+
+        if ($domains === []) {
+            return true;
+        }
+
+        return Hyper::$plugin->getSettings()->doesUrlMatchDomain($url, $domains);
+    }
+
+    public static function parseListSetting(string $value): array
+    {
+        $lines = preg_split('/\R+/', $value) ?: [];
+        $out = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line !== '') {
+                $out[] = $line;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    private static function _normalizeEmbedImageMeta(mixed $image): array
+    {
+        if ($image === null || $image === '') {
+            return [];
+        }
+
+        if ($image instanceof \Stringable || is_scalar($image)) {
+            return ['image' => (string)$image];
+        }
+
+        if (!is_array($image)) {
+            return [];
+        }
+
+        // Detector returned ['image' => …, 'imageWidth' => …] — keep named keys
+        if (array_key_exists('image', $image) || array_key_exists('imageWidth', $image)) {
+            $meta = [];
+
+            if (array_key_exists('image', $image)) {
+                $meta['image'] = $image['image'] instanceof \Stringable || is_scalar($image['image'] ?? null)
+                    ? (string)$image['image']
+                    : null;
+            }
+
+            if (isset($image['imageWidth'])) {
+                $meta['imageWidth'] = (int)$image['imageWidth'];
+            }
+
+            if (isset($image['imageHeight'])) {
+                $meta['imageHeight'] = (int)$image['imageHeight'];
+            }
+
+            return $meta;
+        }
+
+        // List-shaped fallback (legacy)
+        $first = $image[0] ?? null;
+
+        if ($first instanceof \Stringable || is_scalar($first)) {
+            return ['image' => (string)$first];
+        }
+
+        return [];
     }
 
     public function getLinkUrl(): ?string
@@ -235,7 +330,40 @@ class Embed extends Link
     {
         $code = $this->linkValue['code'] ?? '';
 
-        return Template::raw($code);
+        if ($code === '' || $code === null) {
+            return null;
+        }
+
+        return Template::raw((string)$code);
+    }
+
+    public function getIframeSrc(): ?string
+    {
+        $code = trim((string)($this->linkValue['code'] ?? ''));
+
+        if ($code === '') {
+            return null;
+        }
+
+        if (preg_match('/<iframe[^>]+src=["\']([^"\']+)["\']/i', $code, $matches)) {
+            return html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5);
+        }
+
+        return null;
+    }
+
+    public function getEmbedProviderName(): ?string
+    {
+        $name = $this->linkValue['providerName'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : null;
+    }
+
+    public function getEmbedImage(): ?string
+    {
+        $image = $this->linkValue['image'] ?? null;
+
+        return is_string($image) && $image !== '' ? $image : null;
     }
 
     public function getData(): ?array

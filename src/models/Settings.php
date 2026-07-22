@@ -30,8 +30,14 @@ class Settings extends Model
         return array_replace_recursive($defaults, $this->embedClientConfig);
     }
 
-    public function doesUrlMatchDomain(string $url): bool
+    public function doesUrlMatchDomain(string $url, ?array $allowedDomains = null): bool
     {
+        $domains = $allowedDomains ?? $this->embedAllowedDomains;
+
+        if ($domains === []) {
+            return true;
+        }
+
         // Parse the URL to get the domain
         $parsedUrl = parse_url($url);
 
@@ -40,8 +46,8 @@ class Settings extends Model
             $domain = str_replace('www.', '', $parsedUrl['host']);
 
             // Check if the domain is in the TLD list
-            foreach ($this->embedAllowedDomains as $tld) {
-                if (strpos($domain, $tld) !== false) {
+            foreach ($domains as $tld) {
+                if (strpos($domain, (string)$tld) !== false) {
                     return true;
                 }
             }

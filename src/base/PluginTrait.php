@@ -4,11 +4,15 @@ namespace verbb\hyper\base;
 use verbb\hyper\Hyper;
 use verbb\hyper\services\Cache;
 use verbb\hyper\services\Content;
-use verbb\hyper\services\ElementCache;
-use verbb\hyper\services\FieldCache;
+use verbb\hyper\services\LinkRelations;
+use verbb\hyper\services\LinkedElementEagerLoader;
 use verbb\hyper\services\Links;
+use verbb\hyper\services\LinkTypeConfigs;
+use verbb\hyper\services\Migrations;
+use verbb\hyper\services\MultisiteLinks;
 use verbb\hyper\services\Service;
 use verbb\hyper\web\assets\field\HyperAsset;
+use verbb\hyper\migrations\plugins\PluginMigrator;
 
 use verbb\base\LogTrait;
 use verbb\base\helpers\Plugin;
@@ -40,16 +44,19 @@ trait PluginTrait
             'components' => [
                 'cache' => Cache::class,
                 'content' => Content::class,
-                'elementCache' => ElementCache::class,
-                'fieldCache' => FieldCache::class,
+                'linkRelations' => LinkRelations::class,
+                'linkedElementEagerLoader' => LinkedElementEagerLoader::class,
                 'links' => Links::class,
+                'linkTypeConfigs' => LinkTypeConfigs::class,
+                'migrations' => Migrations::class,
+                'multisiteLinks' => MultisiteLinks::class,
                 'service' => Service::class,
                 'vite' => [
                     'class' => VitePluginService::class,
                     'assetClass' => HyperAsset::class,
                     'useDevServer' => true,
                     'devServerPublic' => 'http://localhost:4010/',
-                    'errorEntry' => 'js/main.js',
+                    'errorEntry' => 'field/src/js/hyper.ts',
                     'cacheKeySuffix' => '',
                     'devServerInternal' => 'http://localhost:4010/',
                     'checkDevServer' => true,
@@ -73,19 +80,39 @@ trait PluginTrait
         return $this->get('content');
     }
 
-    public function getElementCache(): ElementCache
+    public function getLinkRelations(): LinkRelations
     {
-        return $this->get('elementCache');
+        return $this->get('linkRelations');
     }
 
-    public function getFieldCache(): FieldCache
+    public function getLinkedElementEagerLoader(): LinkedElementEagerLoader
     {
-        return $this->get('fieldCache');
+        return $this->get('linkedElementEagerLoader');
     }
 
     public function getLinks(): Links
     {
         return $this->get('links');
+    }
+
+    public function getLinkTypeConfigs(): LinkTypeConfigs
+    {
+        return $this->get('linkTypeConfigs');
+    }
+
+    public function getMigrations(): Migrations
+    {
+        return $this->get('migrations');
+    }
+
+    public function createMigrator(string $migrationClass, array $config = []): PluginMigrator
+    {
+        return $this->getMigrations()->createMigrator($migrationClass, $config);
+    }
+
+    public function getMultisiteLinks(): MultisiteLinks
+    {
+        return $this->get('multisiteLinks');
     }
 
     public function getService(): Service

@@ -2,16 +2,19 @@
 namespace verbb\hyper\base;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\elements\conditions\ElementLinkCondition;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\LinkField;
+use verbb\hyper\models\LinkInstance;
 
 use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
+use craft\base\conditions\ConditionInterface;
+use craft\elements\conditions\ElementConditionInterface;
 use craft\elements\db\ElementQueryInterface;
-use craft\elements\Asset;
-
-use craft\commerce\elements\Variant;
+use craft\helpers\Cp;
+use craft\helpers\StringHelper;
 
 abstract class ElementLink extends Link implements ElementLinkInterface
 {
@@ -23,16 +26,37 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         return Craft::t('app', 'Choose');
     }
 
-    /**
-     * Whether the element selector should apply a non-empty site `uri` criterion when
-     * “Allow elements without URIs” is off.
-     *
-     * Return false when this link type’s elements are not meaningfully filtered by `elements_sites.uri`
-     * (e.g. assets, whose URLs come from the volume instead).
-     */
+    public static function supportsBulkCreation(): bool
+    {
+        return true;
+    }
+
+    public static function bulkCreationMode(): ?string
+    {
+        return 'elements';
+    }
+
     public static function supportsUriSelectorCriteria(): bool
     {
         return true;
+    }
+
+    public static function supportsSourceUriFiltering(): bool
+    {
+        return false;
+    }
+
+    public static function limitSourcesLabel(): string
+    {
+        return Craft::t('hyper', 'Limit Sources with URIs');
+    }
+
+    public static function createCondition(): ElementConditionInterface
+    {
+        return Craft::createObject(ElementLinkCondition::class, [
+            static::class,
+            ['targetElementType' => static::elementType()],
+        ]);
     }
 
 
@@ -50,9 +74,10 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     public ?string $selectionLabel = null;
     public bool $showSiteMenu = true;
     public bool $allowElementsWithoutUri = false;
+    public bool $limitSourcesToSectionsWithUri = false;
 
     private ?ElementInterface $_element = null;
-    private ?ElementInterface $_elementCache = null;
+    private array|null|ElementConditionInterface $_selectionCondition = null;
 
 
     // Public Methods
@@ -68,8 +93,23 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function count(): int|bool
     {
-        // Override `Link::count` to not rely on a URL, as not all elements have a URL, but still have a value
-        return $this->getElement() ? true : false;
+        return $this->isEmpty() ? false : true;
+    }
+
+    public function toInstance(): LinkInstance
+    {
+        $instance = parent::toInstance();
+        $instance->linkSiteId = $this->linkSiteId;
+
+        return $instance;
+    }
+
+    public function clearContentState(): void
+    {
+        parent::clearContentState();
+
+        $this->linkSiteId = null;
+        $this->_element = null;
     }
 
     public function setAttributes($values, $safeOnly = true): void
@@ -91,9 +131,16 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             }
         }
 
-        $values['linkValue'] = $linkValue;
+        $linkValue = array_values(array_filter($linkValue, static fn(mixed $value): bool => $value !== null && $value !== ''));
+        $values['linkValue'] = $linkValue === [] ? null : $linkValue;
+
+        $previousTargetId = $this->_getLinkTargetId();
 
         parent::setAttributes($values, $safeOnly);
+
+        if ($this->_getLinkTargetId() !== $previousTargetId) {
+            $this->_element = null;
+        }
     }
 
     public function getInputConfig(): array
@@ -111,6 +158,12 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $values['selectionLabel'] = $this->selectionLabel;
         $values['showSiteMenu'] = $this->showSiteMenu;
         $values['allowElementsWithoutUri'] = $this->allowElementsWithoutUri;
+        $values['limitSourcesToSectionsWithUri'] = $this->limitSourcesToSectionsWithUri;
+
+        // Persist only when rules exist — empty builders stay out of project config.
+        if ($selectionCondition = $this->getSelectionCondition()) {
+            $values['selectionCondition'] = $selectionCondition->getConfig();
+        }
 
         return $values;
     }
@@ -132,8 +185,47 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $variables['lowerElementType'] = $elementType::lowerDisplayName();
         $variables['pluralElementType'] = $elementType::pluralLowerDisplayName();
         $variables['showAllowElementsWithoutUri'] = static::supportsUriSelectorCriteria();
+        $variables['showLimitSourcesToSectionsWithUri'] = static::supportsSourceUriFiltering();
+        $variables['selectionCondition'] = $this->getSelectionConditionBuilderHtml();
 
         return $variables;
+    }
+
+    public function getSelectionCondition(): ?ElementConditionInterface
+    {
+        if ($this->_selectionCondition !== null && !$this->_selectionCondition instanceof ConditionInterface) {
+            $condition = Craft::$app->getConditions()->createCondition($this->_selectionCondition);
+
+            if (!empty($condition->getConditionRules())) {
+                $this->_selectionCondition = $condition;
+            } else {
+                $this->_selectionCondition = null;
+            }
+        }
+
+        return $this->_selectionCondition;
+    }
+
+    public function setSelectionCondition(mixed $condition): void
+    {
+        if ($condition instanceof ConditionInterface && !$condition->getConditionRules()) {
+            $condition = null;
+        }
+
+        // Defer instantiation until getSelectionCondition() — same as BaseRelationField.
+        $this->_selectionCondition = $condition;
+    }
+
+    public function supportsSelectionCondition(): bool
+    {
+        return $this->createSelectionCondition() !== null;
+    }
+
+    public function getSelectionConditionConfig(): ?array
+    {
+        $condition = $this->getSelectionCondition();
+
+        return $condition ? $condition->getConfig() : null;
     }
 
     public function getInputHtmlVariables(LinkField $layoutField, HyperField $field): array
@@ -156,12 +248,18 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $sources = Craft::$app->getElementSources()->getSources(static::elementType(), 'modal');
 
         foreach ($sources as $source) {
-            if (!isset($source['heading'])) {
-                $options[] = [
-                    'label' => $source['label'],
-                    'value' => $source['key']
-                ];
+            if (isset($source['heading'])) {
+                continue;
             }
+
+            if ($this->shouldLimitSourcesToElementsWithUri() && !$this->_sourceKeyHasElementUris($source['key'])) {
+                continue;
+            }
+
+            $options[] = [
+                'label' => $source['label'],
+                'value' => $source['key'],
+            ];
         }
 
         // Sort alphabetically by label
@@ -174,7 +272,33 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getAvailableSources(): string|array|null
     {
+        if (!$this->shouldLimitSourcesToElementsWithUri()) {
+            return $this->sources;
+        }
+
+        if ($this->sources === '*') {
+            return array_column($this->getSourceOptions(), 'value') ?: ['-1'];
+        }
+
+        if (is_array($this->sources)) {
+            $sources = array_values(array_filter(
+                $this->sources,
+                fn(string $sourceKey): bool => $this->_sourceKeyHasElementUris($sourceKey),
+            ));
+
+            return $sources ?: ['-1'];
+        }
+
         return $this->sources;
+    }
+
+    public function shouldLimitSourcesToElementsWithUri(): bool
+    {
+        if ($this->allowElementsWithoutUri || !static::supportsUriSelectorCriteria() || !static::supportsSourceUriFiltering()) {
+            return false;
+        }
+
+        return $this->limitSourcesToSectionsWithUri;
     }
 
     public function getElements(): array
@@ -199,25 +323,37 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getElement(mixed $status = Element::STATUS_ENABLED): ?ElementInterface
     {
-        if ($this->_element) {
-            return $this->_element;
-        }
+        $targetId = $this->_getLinkTargetId();
 
-        if (!$this->linkValue) {
+        if (!$targetId) {
+            $this->_element = null;
+
             return null;
         }
 
-        /** @var ElementInterface|string $elementType */
-        $elementType = static::elementType();
+        if ($this->_element !== null && (int)$this->_element->id === $targetId) {
+            return $this->_element;
+        }
 
-        $query = $elementType::find()
-            ->id($this->linkValue)
-            ->siteId($this->linkSiteId)
-            ->status($status);
+        $this->_element = null;
 
-        $this->modifyElementQuery($query, $status);
+        if ($element = $this->_getPrimedElement($status)) {
+            return $this->_element = $element;
+        }
 
-        return $this->_element = $query->one();
+        $resolutionSiteId = $this->linkSiteId
+            ?? $this->ownerSiteId
+            ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        $element = Hyper::$plugin->getMultisiteLinks()->resolveElement(
+            static::elementType(),
+            $targetId,
+            $resolutionSiteId ? (int)$resolutionSiteId : null,
+            $status,
+            fn(ElementQueryInterface $query, mixed $queryStatus) => $this->modifyElementQuery($query, $queryStatus),
+        );
+
+        return $this->_element = $element;
     }
 
     public function hasElement(mixed $status = Element::STATUS_ENABLED): bool
@@ -232,20 +368,6 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getLinkUrl(): ?string
     {
-        if ($cached = $this->_getElementCache()) {
-            // Asset links skip the cache for the moment, as they're more complicated than a `uri`
-            $skippedElementTypes = [Asset::class];
-
-            // If a variant, there's some issues with it being cached and the parent product, so skip
-            if (Hyper::$plugin->getService()->isPluginInstalledAndEnabled('commerce')) {
-                $skippedElementTypes[] = Variant::class;
-            }
-
-            if (!in_array(get_class($cached), $skippedElementTypes)) {
-                return $cached->getUrl();
-            }
-        }
-
         if ($element = $this->getElement()) {
             return $element->getUrl();
         }
@@ -259,8 +381,9 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             return $this->linkText;
         }
 
-        if ($cached = $this->_getElementCache()) {
-            return $cached->title;
+        // Layout default (e.g. "Learn More") wins over element title when set.
+        if ($default = $this->getLinkTextLayoutDefault()) {
+            return $default;
         }
 
         if ($element = $this->getElement()) {
@@ -271,8 +394,42 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     }
 
 
+    public function getSelectionConditionBuilderHtml(): ?string
+    {
+        $selectionCondition = $this->getSelectionCondition() ?? $this->createSelectionCondition();
+
+        if (!$selectionCondition) {
+            return null;
+        }
+
+        /** @var ElementInterface|string $elementType */
+        $elementType = static::elementType();
+
+        // Unique id per link-type row — Hyper fields can have multiple Entry types.
+        $handle = $this->handle ?: 'new';
+        $selectionCondition->mainTag = 'div';
+        $selectionCondition->id = 'selection-condition-' . StringHelper::toKebabCase($handle);
+        $selectionCondition->name = 'selectionCondition';
+        $selectionCondition->forProjectConfig = true;
+        $selectionCondition->queryParams[] = 'site';
+
+        return Cp::fieldHtml($selectionCondition->getBuilderHtml(), [
+            'label' => Craft::t('app', 'Selectable {type} Condition', [
+                'type' => $elementType::pluralDisplayName(),
+            ]),
+            'instructions' => StringHelper::upperCaseFirst(Craft::t('app', 'Only allow {type} to be selected if they match the following rules:', [
+                'type' => $elementType::pluralLowerDisplayName(),
+            ])),
+        ]);
+    }
+
     // Protected Methods
     // =========================================================================
+
+    protected function createSelectionCondition(): ?ElementConditionInterface
+    {
+        return null;
+    }
 
     protected function defineRules(): array
     {
@@ -282,38 +439,108 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             return $model->enabled;
         }];
 
-        $rules[] = [['allowElementsWithoutUri'], 'boolean'];
+        $rules[] = [['allowElementsWithoutUri', 'limitSourcesToSectionsWithUri'], 'boolean'];
+        $rules[] = [['selectionCondition'], 'safe'];
 
         return $rules;
+    }
+
+    private function _sourceKeyHasElementUris(string $sourceKey): bool
+    {
+        if ($sourceKey === 'singles') {
+            return true;
+        }
+
+        if (str_starts_with($sourceKey, 'section:')) {
+            $section = Craft::$app->getEntries()->getSectionByUid(substr($sourceKey, 8));
+
+            return !$section || self::_sectionHasUris($section);
+        }
+
+        if (str_starts_with($sourceKey, 'group:')) {
+            $group = Craft::$app->getCategories()->getGroupByUid(substr($sourceKey, 8));
+
+            return !$group || self::_groupHasUris($group);
+        }
+
+        // Unknown/custom sources — keep them visible.
+        return true;
+    }
+
+    private static function _sectionHasUris(\craft\models\Section $section): bool
+    {
+        foreach ($section->getSiteSettings() as $siteSettings) {
+            if ($siteSettings->hasUrls && trim((string)$siteSettings->uriFormat) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function _groupHasUris(\craft\models\CategoryGroup $group): bool
+    {
+        foreach ($group->getSiteSettings() as $siteSettings) {
+            if ($siteSettings->hasUrls && trim((string)$siteSettings->uriFormat) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
     // Private Methods
     // =========================================================================
 
-    private function _getElementCache(): ?ElementInterface
+    private function _getLinkTargetId(): ?int
     {
-        if ($this->_elementCache) {
-            return $this->_elementCache;
+        $linkValue = $this->linkValue;
+
+        if (is_array($linkValue)) {
+            return (int)($linkValue[0] ?? 0) ?: null;
         }
 
-        // Temp normalization during development
-        if (is_array($this->linkValue)) {
-            $this->linkValue = $this->linkValue[0] ?? null;
+        return (int)$linkValue ?: null;
+    }
+
+    private function _getPrimedElement(mixed $status = Element::STATUS_ENABLED): ?ElementInterface
+    {
+        $targetId = $this->_getLinkTargetId();
+
+        if (!$targetId) {
+            return null;
         }
 
-        if ($cached = Hyper::$plugin->getElementCache()->getCache($this->linkValue, $this->linkSiteId)) {
-            $elementType = static::elementType();
+        $targetSiteId = $this->linkSiteId ? (int)$this->linkSiteId : null;
+        $candidates = [$targetSiteId];
 
-            $element = new $elementType($cached);
+        if ($targetSiteId === null) {
+            $candidates[] = Craft::$app->getSites()->getCurrentSite()->id;
+        }
 
-            // Ensure we only return for "live" elements
-            if ($element && $element->getStatus() === Element::STATUS_ENABLED) {
-                return $this->_elementCache = $element;
+        foreach ($candidates as $siteId) {
+            $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, $siteId ? (int)$siteId : null);
+
+            if ($element && $this->_matchesElementStatus($element, $status)) {
+                return $element;
             }
         }
 
         return null;
+    }
+
+    private function _matchesElementStatus(ElementInterface $element, mixed $status): bool
+    {
+        if ($status === null) {
+            return true;
+        }
+
+        if ($status === Element::STATUS_ENABLED) {
+            return $element->enabled && $element->getEnabledForSite();
+        }
+
+        return $element->getStatus() === $status;
     }
 
 }

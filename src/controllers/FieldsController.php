@@ -124,6 +124,105 @@ class FieldsController extends Controller
         ]);
     }
 
+    public function actionCreateLinks(): Response
+    {
+        $this->requireCpRequest();
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $fieldId = $this->request->getRequiredBodyParam('fieldId');
+        $handle = (string)$this->request->getRequiredBodyParam('handle');
+        $mode = (string)$this->request->getBodyParam('mode', 'elements');
+        $siteId = (int)($this->request->getBodyParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
+
+        $field = Craft::$app->getFields()->getFieldById((int)$fieldId);
+
+        if (!($field instanceof HyperField)) {
+            throw new NotFoundHttpException('Field not found.');
+        }
+
+        // Relation/element inputs resolve their target site from the current site.
+        if ($site = Craft::$app->getSites()->getSiteById($siteId)) {
+            Craft::$app->getSites()->setCurrentSite($site);
+        }
+
+        // Map the posted selection into hydration seeds for HyperField::getBulkLinkBlocks().
+        $seeds = [];
+
+        if ($mode === 'elements') {
+            foreach ((array)$this->request->getBodyParam('elements', []) as $element) {
+                $elementId = is_array($element) ? ($element['id'] ?? null) : $element;
+
+                if (!$elementId) {
+                    continue;
+                }
+
+                $seeds[] = [
+                    'linkValue' => (int)$elementId,
+                    'linkSiteId' => (int)((is_array($element) ? ($element['siteId'] ?? null) : null) ?: $siteId),
+                ];
+            }
+        } else {
+            $values = $this->request->getBodyParam('values', []);
+
+            // Accept a raw textarea blob (one value per line) or a pre-split array.
+            if (is_string($values)) {
+                $values = preg_split('/\r\n|\r|\n/', $values) ?: [];
+            }
+
+            foreach ((array)$values as $value) {
+                $value = trim((string)$value);
+
+                if ($value === '') {
+                    continue;
+                }
+
+                $seeds[] = ['linkValue' => $value];
+            }
+        }
+
+        $view = $this->getView();
+        $blocks = $field->getBulkLinkBlocks($handle, $seeds);
+
+        return $this->asJson([
+            'blocks' => $blocks,
+            'headHtml' => $view->getHeadHtml(),
+            'bodyHtml' => $view->getBodyHtml(),
+        ]);
+    }
+
+    public function actionBulkElementSelect(): Response
+    {
+        $this->requireCpRequest();
+        $this->requireAcceptsJson();
+
+        $fieldId = $this->request->getRequiredParam('fieldId');
+        $handle = (string)$this->request->getRequiredParam('handle');
+        $limit = $this->request->getParam('limit');
+        $limit = ($limit === null || $limit === '') ? null : (int)$limit;
+        $siteId = (int)($this->request->getParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
+
+        $field = Craft::$app->getFields()->getFieldById((int)$fieldId);
+
+        if (!($field instanceof HyperField)) {
+            throw new NotFoundHttpException('Field not found.');
+        }
+
+        // Relation/element pickers resolve their target site from the current site.
+        if ($site = Craft::$app->getSites()->getSiteById($siteId)) {
+            Craft::$app->getSites()->setCurrentSite($site);
+        }
+
+        $view = $this->getView();
+        $html = $field->getBulkElementSelectHtml($handle, $limit);
+
+        return $this->asJson([
+            'html' => $html,
+            'headHtml' => $view->getHeadHtml(),
+            'bodyHtml' => $view->getBodyHtml(),
+        ]);
+    }
+
     public function actionInputSettings(): Response
     {
         $this->requireCpRequest();
@@ -152,10 +251,19 @@ class FieldsController extends Controller
             throw new NotFoundHttpException('Field Layout not found.');
         }
 
-        // Update the content on the link, passed from Vue
+        // Update the content on the link, passed from the field UI
         $linkType->setAttributes($data, false);
 
-        // Remove the first tab (already shown in main Vue component)
+        // Advanced-tab relation fields (e.g. Entries) resolve site from the Link element /
+        // current site. Stamp the owner entry's site so pickers are not stuck on the primary site.
+        $siteId = (int)($this->request->getParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
+        $linkType->siteId = $siteId;
+
+        if ($site = Craft::$app->getSites()->getSiteById($siteId)) {
+            Craft::$app->getSites()->setCurrentSite($site);
+        }
+
+        // Remove the first tab (already shown in the main field UI)
         $layoutTabs = $fieldLayout->getTabs();
         array_shift($layoutTabs);
         $fieldLayout->setTabs($layoutTabs);
@@ -183,7 +291,10 @@ class FieldsController extends Controller
 
     public function actionPreviewEmbed(): Response
     {
-        $url = $this->request->getParam('value');
+        $url = (string)$this->request->getParam('value');
+        $fieldId = $this->request->getParam('fieldId');
+        $linkTypeHandle = (string)$this->request->getParam('linkTypeHandle', '');
+
         $data = Embed::fetchEmbedData($url);
 
         if (isset($data['error'])) {
@@ -193,13 +304,42 @@ class FieldsController extends Controller
         $html = $data['code'] ?? '';
         $preview = Embed::getPreviewHtml($html);
 
-        // Check for validation
-        $settings = Hyper::$plugin->getSettings();
+        // Resolve per link-type allowlists when the CP passes field + handle
+        $embedLink = $this->_resolveEmbedLinkType($fieldId, $linkTypeHandle);
 
-        if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($url)) {
-            return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+        if ($embedLink) {
+            if (!$embedLink->isEmbedUrlAllowed($url)) {
+                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+            }
+        } else {
+            $settings = Hyper::$plugin->getSettings();
+
+            if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($url)) {
+                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+            }
         }
 
         return $this->asSuccess(null, ['data' => $data, 'preview' => $preview]);
+    }
+
+    private function _resolveEmbedLinkType(mixed $fieldId, string $linkTypeHandle): ?Embed
+    {
+        if (!$fieldId || $linkTypeHandle === '') {
+            return null;
+        }
+
+        $field = Craft::$app->getFields()->getFieldById((int)$fieldId);
+
+        if (!$field instanceof HyperField) {
+            return null;
+        }
+
+        foreach ($field->getLinkTypes() as $linkType) {
+            if ($linkType->handle === $linkTypeHandle && $linkType instanceof Embed) {
+                return $linkType;
+            }
+        }
+
+        return null;
     }
 }
