@@ -60,9 +60,11 @@
     cursor: move;
 }
 
-.hc-sidebar-item-move svg {
+.hc-sidebar-item-move pk-icon {
     width: 100%;
     height: 100%;
+    font-size: 13px;
+    color: inherit;
 }
 
 .hc-sidebar-item {
@@ -530,13 +532,8 @@
     fill: currentColor;
 }
 
-.hyper-header-actions .hyper-header-move svg {
-    display: block;
-    width: 11px;
-    height: 11px;
-    margin: 0;
+.hyper-header-actions .hyper-header-move .hyper-menu-icon {
     color: #596673;
-    fill: currentColor;
 }
 
 .hyper-header-actions .hyper-header-new-window:hover:not(:disabled),

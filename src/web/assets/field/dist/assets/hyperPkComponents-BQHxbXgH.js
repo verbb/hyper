@@ -1,0 +1,2 @@
+var e=globalThis.HTMLElement!==void 0&&Object.prototype.hasOwnProperty.call(globalThis.HTMLElement.prototype,`popover`),t=[`pk-button`,`pk-copy-button`,`pk-dialog`,`pk-dropdown-menu`,`pk-dropdown-item`,`pk-dropdown-separator`,`pk-icon`,`pk-input-group`,`pk-input-group-addon`];export{e as n,t};
+//# sourceMappingURL=hyperPkComponents-BQHxbXgH.js.map

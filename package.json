@@ -21,9 +21,9 @@
     "dependencies": {
         "@dnd-kit/abstract": "^0.4.0",
         "@dnd-kit/dom": "^0.4.0",
-        "@verbb/plugin-kit-core": "^2.0.5",
-        "@verbb/plugin-kit-icons": "^2.0.5",
-        "@verbb/plugin-kit-web": "^2.0.5",
+        "@verbb/plugin-kit-core": "^2.0.9",
+        "@verbb/plugin-kit-icons": "^2.0.9",
+        "@verbb/plugin-kit-web": "^2.0.9",
         "lodash-es": "^4.17.21"
     }
 }
