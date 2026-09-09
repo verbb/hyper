@@ -1,7 +1,9 @@
 <?php
 namespace verbb\hyper\links;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
+use verbb\hyper\helpers\UrlSafety;
 
 use Craft;
 use craft\helpers\App;
@@ -85,8 +87,15 @@ class Url extends Link
             return;
         }
 
-        // Custom URI schemes such as slack:// or ftp://
+        $extraSchemes = Hyper::$plugin?->getSettings()->allowedUriSchemes ?? [];
+
+        // Reject executable / non-allowlisted schemes before Craft's UrlValidator
+        // (which only understands http(s)-shaped values).
         if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $value)) {
+            if (!UrlSafety::isAllowedUrl($value, $extraSchemes)) {
+                $this->addError($attribute, Craft::t('hyper', 'Please enter a valid URL.'));
+            }
+
             return;
         }
 

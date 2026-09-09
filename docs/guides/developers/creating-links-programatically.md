@@ -71,6 +71,8 @@ $link->fields = [
 $entry->setFieldValue('ctaLink', [$link]);
 ```
 
+When you assign Link objects, Hyper rebinds them onto the field’s configured link-type prototype and layout (so custom fields resolve against the destination layout, not a bare `new Url()` without a layout). Prefer serialized arrays with `linkTypeHandle` when you want the exact stored shape.
+
 Element link types use an element ID (or ID list) as `linkValue`:
 
 ```php

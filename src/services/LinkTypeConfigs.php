@@ -110,9 +110,44 @@ class LinkTypeConfigs extends Component
             ]);
     }
 
-    public function resolveConfig(?string $handle): LinkTypeConfig
+    /**
+     * Normalize a field’s linkTypeConfig setting to a durable UID when possible.
+     * Dual-reads legacy handle references; `custom` stays the magic custom token.
+     */
+    public function normalizeFieldConfigRef(?string $ref): string
     {
-        return $this->getConfigByHandle($handle) ?? $this->getDefaultConfig();
+        $ref = trim((string)$ref);
+
+        if ($ref === '' || $ref === self::CUSTOM_HANDLE) {
+            return $ref === self::CUSTOM_HANDLE ? self::CUSTOM_HANDLE : self::DEFAULT_HANDLE;
+        }
+
+        // Already a UID (known or orphaned) — keep as-is for resolve/warn behaviour.
+        if (StringHelper::isUUID($ref)) {
+            return $ref;
+        }
+
+        $config = $this->getConfigByHandle($ref);
+
+        return $config?->uid ?? $ref;
+    }
+
+    public function resolveConfig(?string $ref): LinkTypeConfig
+    {
+        if ($ref && $ref !== self::CUSTOM_HANDLE) {
+            $config = StringHelper::isUUID($ref)
+                ? $this->getConfigByUid($ref)
+                : $this->getConfigByHandle($ref);
+
+            if ($config) {
+                return $config;
+            }
+
+            // Explicit unknown handle/UID — do not silently substitute Default (Astra A07).
+            Craft::warning("Hyper link type config “{$ref}” was not found; falling back to Default.", __METHOD__);
+        }
+
+        return $this->getDefaultConfig();
     }
 
     public function getSerializedLinkTypes(?string $handle = null): array

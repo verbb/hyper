@@ -95,6 +95,8 @@ export class HyperLinkState {
             id: current.id,
             handle,
             linkTypeHandle: handle,
+            // Preserve occurrence identity across type switches (Astra H3-A05).
+            uid: current.uid,
             isNew: current.isNew,
             newWindow: current.newWindow ?? false,
             ...preserved,

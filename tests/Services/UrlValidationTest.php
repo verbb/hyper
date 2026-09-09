@@ -16,14 +16,31 @@ it('accepts hash-only url link values', function() {
     expect($link->getLinkUrl())->toBe('#section');
 });
 
-it('accepts non-http uri schemes on url link values', function() {
+it('rejects non-allowlisted uri schemes on url link values by default', function() {
     $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
     $link = Hyper::$plugin->getLinks()->createLink(Url::class);
     $link->field = $field;
     $link->setAttributes(['linkValue' => 'slack://channel?team=T123'], false);
 
-    expect($link->validate())->toBeTrue();
-    expect($link->getLinkUrl())->toBe('slack://channel?team=T123');
+    expect($link->validate())->toBeFalse();
+});
+
+it('accepts extra uri schemes when configured on plugin settings', function() {
+    $settings = Hyper::$plugin->getSettings();
+    $previous = $settings->allowedUriSchemes;
+    $settings->allowedUriSchemes = ['slack'];
+
+    try {
+        $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
+        $link = Hyper::$plugin->getLinks()->createLink(Url::class);
+        $link->field = $field;
+        $link->setAttributes(['linkValue' => 'slack://channel?team=T123'], false);
+
+        expect($link->validate())->toBeTrue();
+        expect($link->getLinkUrl())->toBe('slack://channel?team=T123');
+    } finally {
+        $settings->allowedUriSchemes = $previous;
+    }
 });
 
 it('does not require link text when the link value is empty but link text is marked required', function() {

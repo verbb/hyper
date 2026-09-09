@@ -59,6 +59,10 @@ export class HyperInput {
 
     private initialized = false;
 
+    private clipboardChangeHandler: (() => void) | null = null;
+
+    private storageHandler: ((event: StorageEvent) => void) | null = null;
+
     constructor(container: HTMLElement) {
         this.container = container;
 
@@ -262,12 +266,37 @@ export class HyperInput {
         }
 
         this.refreshPasteUi();
-        window.addEventListener('hyper:clipboard-change', () => this.refreshPasteUi());
-        window.addEventListener('storage', (event) => {
+        this.clipboardChangeHandler = () => this.refreshPasteUi();
+        this.storageHandler = (event: StorageEvent) => {
             if (event.key === 'hyper:linkClipboard') {
                 this.refreshPasteUi();
             }
-        });
+        };
+        window.addEventListener('hyper:clipboard-change', this.clipboardChangeHandler);
+        window.addEventListener('storage', this.storageHandler);
+    }
+
+    /** Tear down listeners when the field root is removed from the CP (Astra H3-A16). */
+    destroy(): void {
+        this.unregisterSubmitSync?.();
+        this.unregisterSubmitSync = null;
+
+        if (this.clipboardChangeHandler) {
+            window.removeEventListener('hyper:clipboard-change', this.clipboardChangeHandler);
+            this.clipboardChangeHandler = null;
+        }
+
+        if (this.storageHandler) {
+            window.removeEventListener('storage', this.storageHandler);
+            this.storageHandler = null;
+        }
+
+        this.sortable?.destroy();
+        this.sortable = null;
+
+        this.blocks.forEach((block) => block.destroy());
+        this.blocks = [];
+        this.initialized = false;
     }
 
     private bindTypeChanges(): void {
@@ -386,6 +415,7 @@ export class HyperInput {
             data: {
                 fieldId: this.settings.fieldId,
                 siteId: this.settings.siteId,
+                elementId: this.settings.elementId ?? undefined,
                 handle,
                 limit,
             },
@@ -413,6 +443,7 @@ export class HyperInput {
                 data: {
                     fieldId: this.settings.fieldId,
                     siteId: this.settings.siteId,
+                    elementId: this.settings.elementId ?? undefined,
                     handle,
                     mode,
                     ...params,
@@ -668,7 +699,7 @@ export class HyperInput {
         this.refreshPasteUi();
     }
 
-    private copyBlock(block: HyperLinkBlock, options: { silent?: boolean } = {}): boolean {
+    private copyBlock(block: HyperLinkBlock, options: { silent?: boolean; preserveUid?: boolean } = {}): boolean {
         if (this.linksRoot) {
             this.linkState.applyPortalContent(this.linksRoot);
         }
@@ -691,7 +722,9 @@ export class HyperInput {
             linkTypeHandle: typeConfig.handle,
         };
 
-        if (!writeClipboard(buildClipboardPayload(clipboardLink, typeConfig.type))) {
+        if (!writeClipboard(buildClipboardPayload(clipboardLink, typeConfig.type, {
+            preserveUid: !!options.preserveUid,
+        }))) {
             Craft.cp.displayError(Craft.t('app', 'A server error occurred.'));
             return false;
         }
@@ -733,7 +766,7 @@ export class HyperInput {
     }
 
     private cutBlock(block: HyperLinkBlock): void {
-        if (!this.copyBlock(block, { silent: true })) {
+        if (!this.copyBlock(block, { silent: true, preserveUid: true })) {
             return;
         }
 
@@ -741,7 +774,7 @@ export class HyperInput {
         Craft.cp.displayNotice(Craft.t('hyper', 'Link cut.'));
     }
 
-    private pasteLink(): void {
+    private async pasteLink(): Promise<void> {
         const clipboard = readClipboard();
 
         if (!clipboard) {
@@ -765,8 +798,45 @@ export class HyperInput {
             return;
         }
 
-        this.addLink(handle, clipboard.link);
-        Craft.cp.displayNotice(Craft.t('hyper', 'Link pasted.'));
+        // Server-render populated widgets (same path as bulk add) — blank templates cannot
+        // hydrate element cards / complex custom fields (Astra H3-A12).
+        try {
+            const response = await Craft.sendActionRequest('POST', 'hyper/fields/create-links', {
+                data: {
+                    fieldId: this.settings.fieldId,
+                    siteId: this.settings.siteId,
+                    elementId: this.settings.elementId ?? undefined,
+                    handle,
+                    mode: 'seed',
+                    seeds: [clipboard.link],
+                },
+            });
+
+            const blocks = (response?.data?.blocks ?? []) as HyperSeededBlock[];
+            const headHtml = response?.data?.headHtml as string | undefined;
+            const bodyHtml = response?.data?.bodyHtml as string | undefined;
+
+            if (!blocks.length) {
+                Craft.cp.displayError(Craft.t('hyper', 'Couldn’t paste link.'));
+                return;
+            }
+
+            if (headHtml) {
+                Craft.appendHeadHtml(headHtml);
+            }
+
+            if (bodyHtml) {
+                Craft.appendBodyHtml(bodyHtml);
+            }
+
+            blocks.forEach((block) => {
+                this.addLink(block.handle, this.seedFromServerBlock(block), block);
+            });
+
+            Craft.cp.displayNotice(Craft.t('hyper', 'Link pasted.'));
+        } catch {
+            Craft.cp.displayError(Craft.t('hyper', 'Couldn’t paste link.'));
+        }
     }
 
     /** Show/hide paste affordances from localStorage clipboard state. */

@@ -26,14 +26,16 @@ export function registerHyperGlobals(): void {
                 return;
             }
 
-            const elementSelectInstance = $elementSelect.data('elementSelect');
+            const elementSelectInstance = $elementSelect.data('elementSelect') as {
+                on(event: string, handler: (event?: { elements?: Array<{ siteId: number }> }) => void): void;
+            } | undefined;
 
             if (!elementSelectInstance) {
                 return;
             }
 
-            elementSelectInstance.on('selectElements', (event: { elements?: Array<{ siteId: number }> }) => {
-                if (event.elements && event.elements.length) {
+            elementSelectInstance.on('selectElements', (event) => {
+                if (event?.elements && event.elements.length) {
                     $siteId.val(event.elements[0].siteId);
                 }
             });
@@ -51,10 +53,15 @@ export function registerHyperGlobals(): void {
             const $response = $container.find('.hyper-embed-response');
             const hyperFieldId = $container.attr('data-hyper-field-id') || '';
             const linkTypeHandle = $container.attr('data-hyper-link-type-handle') || '';
+            const $ownerField = $container.closest('[data-hyper-input]');
+            const ownerElementId = $ownerField.attr('data-hyper-element-id') || '';
+            const ownerSiteId = $ownerField.attr('data-hyper-site-id') || '';
+            // Correlate async responses with the latest typed URL (Astra H3-A13).
+            let fetchGeneration = 0;
 
-            $('body').on('keyup blur change', `${fieldId} input`, debounce((event) => {
+            $('body').on('keyup blur change', `${fieldId} input`, debounce((event: JQueryEventObject) => {
                 const $target = $(event.target);
-                const value = $target.val();
+                const value = String($target.val() ?? '');
                 const prevValue = $target.attr('data-value');
 
                 if (value === prevValue) {
@@ -62,36 +69,67 @@ export function registerHyperGlobals(): void {
                 }
 
                 $target.attr('data-value', value);
+                const generation = ++fetchGeneration;
 
                 $container.find('.favicon-icon').remove();
-                $container.find('.link-embed-data').val(JSON.stringify());
+                $response.empty();
+
+                // Persist the latest URL immediately so a slow/failed fetch cannot wipe it.
+                const $embedData = $container.find('.link-embed-data');
 
                 if (value) {
+                    $embedData.val(JSON.stringify({ url: value }));
                     $spinner.removeClass('hidden');
-                    $response.html('');
 
                     Craft.sendActionRequest('GET', Craft.getActionUrl('hyper/fields/preview-embed', {
                         value,
                         fieldId: hyperFieldId || undefined,
                         linkTypeHandle: linkTypeHandle || undefined,
+                        elementId: ownerElementId || undefined,
+                        siteId: ownerSiteId || undefined,
                     }))
                         .then((response) => {
-                            if (response?.data?.data) {
-                                $container.find('.link-embed-data').val(JSON.stringify(response.data.data));
+                            if (generation !== fetchGeneration) {
+                                return;
+                            }
 
-                                if (response.data.data.icon) {
-                                    $container.append(`<div class="favicon-icon"><img src="${response.data.data.icon}"></div>`);
+                            if (response?.data?.data) {
+                                const embedPayload = response.data.data as Record<string, unknown>;
+                                $embedData.val(JSON.stringify(embedPayload));
+
+                                const icon = embedPayload.icon;
+
+                                if (typeof icon === 'string' && icon) {
+                                    const wrap = document.createElement('div');
+                                    wrap.className = 'favicon-icon';
+                                    const img = document.createElement('img');
+                                    img.src = icon;
+                                    wrap.appendChild(img);
+                                    $container.append(wrap);
                                 }
                             }
                         })
                         .catch(({ response }) => {
+                            if (generation !== fetchGeneration) {
+                                return;
+                            }
+
                             if (response?.data?.message) {
-                                $response.html(`<div class="error">${response.data.message}</div>`);
+                                const err = document.createElement('div');
+                                err.className = 'error';
+                                err.textContent = String(response.data.message);
+                                $response.empty().append(err);
                             }
                         })
                         .finally(() => {
-                            $spinner.addClass('hidden');
+                            if (generation === fetchGeneration) {
+                                $spinner.addClass('hidden');
+                            }
                         });
+                } else {
+                    // Clear invalidates pending results by bumping generation above.
+                    $embedData.val(JSON.stringify({}));
+                    $spinner.addClass('hidden');
                 }
             }, 500));
         },

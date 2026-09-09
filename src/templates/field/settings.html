@@ -81,15 +81,22 @@
 
 {% set configOptions = [] %}
 {% for config in linkTypeConfigs ?? [] %}
-    {% set configOptions = configOptions | merge([{ label: config.name, value: config.handle }]) %}
+    {% set configOptions = configOptions | merge([{ label: config.name, value: config.uid }]) %}
 {% endfor %}
 {% set configOptions = configOptions | merge([{ label: 'Custom' | t('app'), value: 'custom' }]) %}
+{% set selectedConfig = field.linkTypeConfig ?? 'default' %}
+{# Dual-read: older field settings may still store a handle instead of a UID. #}
+{% for config in linkTypeConfigs ?? [] %}
+    {% if selectedConfig == config.handle or selectedConfig == config.uid %}
+        {% set selectedConfig = config.uid %}
+    {% endif %}
+{% endfor %}
 
 {{ forms.selectField({
     label: 'Link Type Config' | t('hyper'),
-    instructions: 'Select a shared link type config, or choose Custom to define link types just for this field.' | t('hyper'),
+    instructions: 'Select a shared link type config, or choose Custom to define link types just for this field. Named configs are stored by UID so renaming a handle does not break fields.' | t('hyper'),
     name: 'linkTypeConfig',
-    value: field.linkTypeConfig ?? 'default',
+    value: selectedConfig,
     options: configOptions,
     errors: field.getErrors('linkTypeConfig'),
     toggle: true,

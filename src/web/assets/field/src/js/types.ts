@@ -50,6 +50,8 @@ export type HyperInputSettings = {
     handle: string;
     /** Owner element site id — Advanced-tab Entries pickers use this. */
     siteId?: number | null;
+    /** Owner element id when saved — FieldsController canSave checks. */
+    elementId?: number | null;
     defaultLinkType: string;
     defaultNewWindow?: boolean;
     newWindow?: boolean;

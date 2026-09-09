@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- CP warning chrome for unsupported / missing link types (data retained; type switch disabled; delete still allowed).
+- FieldsController authz: layout designer requires admin; create-links / paste / bulk / embed / input-settings require owner `canSave` when `elementId` is posted.
+- `hyper/content/sync-relations` console action to rebuild `hyper_links` from canonical owner JSON.
+- Opaque `MissingLink` retention for unknown/disabled content type handles through normalize/save.
+- `HyperField::getHydratedLinkBlocks()` shared by bulk add and clipboard paste (`mode=seed`).
+
+### Changed
+- Named **Link Type Config** field settings are stored by config **UID** (dual-read legacy handles on load). Renaming a config handle no longer orphans fields.
+- Embed fetches resolve redirects manually with a public-IP policy; Curl `follow_location` is forced off even if overridden in `embedClientSettings`.
+- Normalize CP General Settings chrome to the shared `verbb-base` settings layout (Settings → Plugins → Hyper crumbs, `pageTabs` / `pageTitle` helpers; empty settings message unchanged).
+- Escape author link text in `getLink()` by default; template-supplied Twig `Markup` remains trusted. Custom attribute names are validated (no `on*` handlers). CP embed preview always isolates HTML in a sandboxed `data:` iframe.
+- URL link values only allow `http` / `https` / `mailto` / `tel` / `sms` (plus `#` fragments and relative paths) by default. Configure `allowedUriSchemes` for extras; `javascript` / `data` / `vbscript` are always blocked.
+- Embed domain allowlists use exact host or subdomain matching (not substring). Preview fetches only after the allowlist check; string URL hydration no longer triggers a network fetch. Embed Curl defaults enable TLS verification.
+- Legacy `default-<kebab-fqcn>` link handles canonicalize to short type keys on hydrate/serialize (GraphQL type names stay registered).
+- Multisite structure merge joins translations by content `uid` (position fallback only for pre-UID content).
+- Clipboard **copy** mints a new UID; **cut** preserves UID. Paste uses server-rendered blocks (same path as Bulk Add).
+- GraphQL interface `fields` bag respects active-schema `includeInGqlSchema` restrictions.
+- Named link type config miss logs a warning before falling back to Default.
+
+### Fixed
+- Portal serialization no longer restores cleared custom fields / trailing array entries, and no longer coerces numeric-looking strings (phones, codes, large IDs) to JavaScript numbers.
+- `Content::modify()` relation sync used `getElementById($id, $siteId)` incorrectly (site was passed as element type); index could stay stale after successful JSON transforms.
+- Request batch priming stopped after the first owner batch; later owners regressed to N+1.
+- Primed element cache no longer falls back to an ID-only (wrong-site) hit; instance cache rechecks site/status.
+- Reverse relations no longer confuse target class with owner class; empty queries return `[]` instead of a `-1` sentinel.
+- Nested Matrix `with(['matrix.hyper.linkedElements…'])` uses Craft 5 `getEntryTypes()` (removed `getBlockTypes()`).
+- Programmatic bare `new Url()` objects rebind onto the destination field layout (documented custom-field path).
+- Vizy migration content path skips writes during dry-run; CP migration aborts when a requested backup fails.
+- Embed CP fetch uses a generation token so out-of-order responses cannot overwrite a newer URL; URL persists immediately while metadata loads.
+- HyperInput unregisters sync callbacks and listeners when the field root is removed from the DOM.
+- TypeScript `tsc --noEmit` declaration debt for the CP field bundle (lodash-es types, Craft/Garnish/jQuery stubs, Plugin Kit icon import clash).
+
 ## 3.0.0-beta.1 - 2026-07-22
 
 ### Added

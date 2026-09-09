@@ -154,7 +154,19 @@ export function mergeLinkWithBlockContent(
 
     const blockContent = normalizePortalBlockContent(rawBlockContent, link);
 
-    return merge({}, link, blockContent) as LinkInstance;
+    // Replace semantics for portal-owned keys. Lodash deep-merge retains cleared
+    // custom fields and trailing array entries (Astra H3-A01).
+    const next: LinkInstance = { ...link, ...blockContent } as LinkInstance;
+
+    if ('fields' in blockContent) {
+        next.fields = (blockContent.fields ?? {}) as LinkInstance['fields'];
+    }
+
+    if ('customAttributes' in blockContent) {
+        next.customAttributes = blockContent.customAttributes as LinkInstance['customAttributes'];
+    }
+
+    return next;
 }
 
 export function mergeLinksWithBlockContent(

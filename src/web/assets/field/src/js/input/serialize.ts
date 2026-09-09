@@ -2,19 +2,18 @@ import { isEqual } from 'lodash-es';
 
 import type { LinkInstance } from '../types';
 
-const isConvertibleNumber = (value: string): boolean => /^[0-9]+(\.[0-9]+)?$/.test(value);
-
 const isEmptyObject = (obj: unknown): obj is Record<string, never> => (
     typeof obj === 'object' && obj !== null && !Array.isArray(obj) && Object.keys(obj).length === 0
 );
 
+/**
+ * Normalize portal JSON for storage without mutating author strings.
+ * Numeric-looking strings (phones, codes, large IDs) must stay strings — never
+ * tree-wide Number() coercion (Astra H3-A01).
+ */
 export const normalizeJson = (data: unknown, reference: unknown = null): unknown => {
     if (Array.isArray(data)) {
         return data.map((item, index) => {
-            if (typeof item === 'string' && isConvertibleNumber(item)) {
-                return Number(item);
-            }
-
             const refItem = Array.isArray(reference) ? reference[index] : undefined;
 
             return normalizeJson(item, refItem);
@@ -30,6 +29,7 @@ export const normalizeJson = (data: unknown, reference: unknown = null): unknown
                 : undefined;
 
             if (isEmptyObject(value)) {
+                // Empty objects from Craft widgets → empty array (historical store shape).
                 normalized[key] = [];
             } else if (value === '' && (refValue === null || refValue === undefined)) {
                 normalized[key] = null;
@@ -37,8 +37,6 @@ export const normalizeJson = (data: unknown, reference: unknown = null): unknown
                 normalized[key] = [];
             } else if (Array.isArray(value)) {
                 normalized[key] = normalizeJson(value, refValue);
-            } else if (typeof value === 'string' && isConvertibleNumber(value)) {
-                normalized[key] = Number(value);
             } else {
                 normalized[key] = normalizeJson(value, refValue);
             }
@@ -50,28 +48,10 @@ export const normalizeJson = (data: unknown, reference: unknown = null): unknown
     return data;
 };
 
-const pruneEmptyFieldValues = (fields: unknown): Record<string, unknown> | undefined => {
-    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
-        return undefined;
-    }
-
-    const pruned: Record<string, unknown> = {};
-
-    Object.entries(fields as Record<string, unknown>).forEach(([key, value]) => {
-        if (value === '' || value === null || value === undefined) {
-            return;
-        }
-
-        if (Array.isArray(value) && value.length === 0) {
-            return;
-        }
-
-        pruned[key] = value;
-    });
-
-    return Object.keys(pruned).length > 0 ? pruned : undefined;
-};
-
+/**
+ * Prepare portal POST for merge. Keep explicit clears (`''` / `[]`) so replace
+ * semantics can wipe previous values — do not prune empties before merge (A01).
+ */
 export const normalizePortalBlockContent = (
     blockContent: Record<string, unknown>,
     reference: Record<string, unknown>,
@@ -83,16 +63,6 @@ export const normalizePortalBlockContent = (
             normalized[key] = null;
         }
     });
-
-    if ('fields' in normalized) {
-        const prunedFields = pruneEmptyFieldValues(normalized.fields);
-
-        if (prunedFields) {
-            normalized.fields = prunedFields;
-        } else {
-            delete normalized.fields;
-        }
-    }
 
     return normalized;
 };

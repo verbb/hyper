@@ -18,11 +18,12 @@ class MissingLink extends Link
 
     // Properties
     // =========================================================================
-    
+
     public ?string $expectedType = null;
     public ?string $errorMessage = null;
 
     private array $_missingProperties = [];
+    private ?array $_opaqueSerializedPayload = null;
 
 
     // Public Methods
@@ -58,6 +59,15 @@ class MissingLink extends Link
         }
     }
 
+    /**
+     * Retain the original serialized content blob for unsupported types so a later
+     * resave cannot discard temporarily unresolvable links (Astra H3-A07).
+     */
+    public function setOpaqueSerializedPayload(array $payload): void
+    {
+        $this->_opaqueSerializedPayload = $payload;
+    }
+
     public function getSettingsConfigForDb(): array
     {
         $values = parent::getSettingsConfigForDb();
@@ -70,6 +80,28 @@ class MissingLink extends Link
         }
 
         return $values;
+    }
+
+    public function getSerializedValues(): array
+    {
+        if ($this->_opaqueSerializedPayload !== null) {
+            $payload = $this->_opaqueSerializedPayload;
+
+            if (empty($payload['uid'])) {
+                $payload['uid'] = $this->uid ?: \craft\helpers\StringHelper::UUID();
+                $this->uid = $payload['uid'];
+            }
+
+            if (empty($payload['linkTypeHandle']) && $this->handle) {
+                $payload['linkTypeHandle'] = $this->handle;
+            }
+
+            return array_filter($payload, static function($value) {
+                return ($value !== null && $value !== '' && $value !== []);
+            });
+        }
+
+        return parent::getSerializedValues();
     }
 
     public function getLinkUrl(): ?string

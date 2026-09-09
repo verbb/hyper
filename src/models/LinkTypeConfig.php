@@ -77,7 +77,10 @@ class LinkTypeConfig extends Model
             if (
                 $field instanceof HyperField &&
                 !$field->hasCustomLinkTypes() &&
-                $field->linkTypeConfig === $this->handle
+                (
+                    $field->linkTypeConfig === $this->handle ||
+                    $field->linkTypeConfig === $this->uid
+                )
             ) {
                 return false;
             }

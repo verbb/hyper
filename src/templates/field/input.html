@@ -36,6 +36,8 @@
         data-hyper-input
         data-hyper-input-config="{{ inputConfig | json_encode | e('html_attr') }}"
         data-view-mode="{{ settings.viewMode ?? 'blocks' }}"
+        {% if settings.elementId %}data-hyper-element-id="{{ settings.elementId }}"{% endif %}
+        {% if settings.siteId %}data-hyper-site-id="{{ settings.siteId }}"{% endif %}
     >
         <div class="hyper-links" data-hyper-links>
             {% for link in links %}

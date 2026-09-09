@@ -57,7 +57,8 @@ it('retains legacy v2 content shape after resave', function() {
 
     expect($link->getLinkUrl())->toBe('https://example.test/legacy-v2');
     expect($link->getCustomLinkText())->toBe('Legacy link');
-    expect($serialized[0]['linkTypeHandle'] ?? null)->toBe('default-verbb-hyper-links-url');
+    // Legacy verbose handles canonicalize to the short type key on hydrate/resave (A08).
+    expect($serialized[0]['linkTypeHandle'] ?? null)->toBe('url');
     expect($serialized[0]['type'] ?? null)->toBeNull();
     expect($serialized[0]['handle'] ?? null)->toBeNull();
 });

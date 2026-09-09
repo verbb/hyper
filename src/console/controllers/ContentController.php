@@ -125,4 +125,59 @@ class ContentController extends Controller
 
         return ExitCode::OK;
     }
+
+    /**
+     * Rebuild hyper_links rows from canonical owner JSON for a Hyper field.
+     *
+     * Example:
+     * ./craft hyper/content/sync-relations --field=navLinks --dry-run=0
+     */
+    public function actionSyncRelations(): int
+    {
+        if ($this->field === '') {
+            $this->stderr("--field is required.\n", Console::FG_RED);
+
+            return ExitCode::UNSPECIFIED_ERROR;
+        }
+
+        $field = Craft::$app->getFields()->getFieldByHandle($this->field);
+
+        if (!$field instanceof HyperField) {
+            $this->stderr("Hyper field “{$this->field}” not found.\n", Console::FG_RED);
+
+            return ExitCode::UNSPECIFIED_ERROR;
+        }
+
+        $elementIds = null;
+
+        if ($this->elementIds) {
+            $elementIds = array_values(array_filter(array_map(
+                static fn(string $id): int => (int)trim($id),
+                explode(',', $this->elementIds),
+            )));
+        }
+
+        $options = new ModifyOptions(
+            dryRun: (bool)$this->dryRun,
+            // Always request sync when writing; identity transform still forces index rebuild.
+            syncRelations: !$this->dryRun,
+            includeNested: (bool)$this->includeNested,
+            elementIds: $elementIds,
+            contentContains: $this->contentContains,
+        );
+
+        $this->stdout(sprintf(
+            "Reconciling hyper_links for “%s”%s...\n",
+            $field->handle,
+            $options->dryRun ? ' [dry run]' : '',
+        ));
+
+        // Force a no-op content rewrite that still records modifications when syncRelations
+        // needs owners — Content::modify skips identical encodes, so nudge via sync-only path.
+        $synced = Hyper::$plugin->getContent()->reconcileRelations($field, $options);
+
+        $this->stdout(sprintf("Owners reconciled: %d\n", $synced), Console::FG_GREEN);
+
+        return ExitCode::OK;
+    }
 }

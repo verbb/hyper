@@ -2,8 +2,10 @@
 namespace verbb\hyper\models;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\models\LinkInstance;
 
 use craft\base\ElementInterface;
 
@@ -31,10 +33,10 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
         $this->_element = $element;
         $this->_field = $field;
 
-        // Convert serialized data to a collection of links via LinkInstance adapter.
+        // Convert serialized data / Link objects to destination-bound links.
         foreach ($links as $data) {
             if ($data instanceof LinkInterface) {
-                $this->_links[] = $data;
+                $this->_links[] = $this->_rebindLinkObject($field, $data, $element);
                 continue;
             }
 
@@ -254,6 +256,64 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Rebind a bare Link object onto this field’s configured prototype/layout so
+     * programmatic `new Url(); $link->fields = […]` examples work (Astra H3-A17).
+     */
+    private function _rebindLinkObject(HyperField $field, LinkInterface $link, ?ElementInterface $element): LinkInterface
+    {
+        if ($link instanceof Link) {
+            // Build an instance without calling getSerializedValues() — bare objects may
+            // lack a field layout and that path would NPE on custom fields (A17).
+            $instance = new LinkInstance();
+            $instance->linkTypeHandle = (string)($link->handle ?: $link::typeKey());
+            $instance->uid = $link->uid;
+            $instance->newWindow = $link->newWindow;
+            $instance->linkValue = $link->linkValue;
+            $instance->linkText = $link->linkText;
+            $instance->ariaLabel = $link->ariaLabel;
+            $instance->urlSuffix = $link->urlSuffix;
+            $instance->linkTitle = $link->linkTitle;
+            $instance->classes = $link->classes;
+            $instance->customAttributes = $link->customAttributes ?? [];
+            $instance->fields = $link->fields ?? [];
+
+            if ($link instanceof \verbb\hyper\base\ElementLink && $link->linkSiteId) {
+                $instance->linkSiteId = (int)$link->linkSiteId;
+            }
+
+            $rebound = Hyper::$plugin->getLinks()->createLinkFromInstance($field, $instance);
+
+            if ($rebound) {
+                if ($element) {
+                    $rebound->ownerSiteId = $element->siteId;
+                }
+
+                if ($instance->fields && $rebound instanceof Link) {
+                    foreach ($instance->fields as $handle => $value) {
+                        try {
+                            $rebound->setFieldValue($handle, $value);
+                        } catch (\Throwable) {
+                            // Unknown handle on destination layout.
+                        }
+                    }
+
+                    $rebound->fields = $instance->fields;
+                }
+
+                return $rebound;
+            }
+        }
+
+        $link->field = $field;
+
+        if ($element) {
+            $link->ownerSiteId = $element->siteId;
+        }
+
+        return $link;
+    }
 
     private function _syncFirstLink(): void
     {

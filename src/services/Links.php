@@ -11,6 +11,7 @@ use verbb\hyper\models\LinkInstance;
 
 use Craft;
 use craft\base\Component;
+use craft\base\ElementInterface;
 use craft\errors\MissingComponentException;
 use craft\events\RegisterComponentTypesEvent;
 use craft\helpers\Component as ComponentHelper;
@@ -129,15 +130,29 @@ class Links extends Component
 
     public function createLinkFromInstance(HyperField $field, LinkInstance $instance): ?LinkInterface
     {
-        $prototype = $field->getLinkTypeByHandle($instance->linkTypeHandle);
+        $requestedHandle = $instance->linkTypeHandle;
+        $prototype = $field->getLinkTypeByHandle($requestedHandle);
 
         if (!$prototype) {
-            return null;
+            // Retain opaque unresolved content through read/serialize (Astra H3-A07).
+            return $this->_createUnsupportedContentLink($field, $instance);
+        }
+
+        // Canonicalize identity at the hydration boundary (Astra H3-A08): legacy
+        // `default-<kebab-fqcn>` aliases resolve to the stock prototype, then runtime
+        // + serialize use the field’s configured handle (e.g. `url`).
+        if ($prototype->handle && $instance->linkTypeHandle !== $prototype->handle) {
+            $instance->linkTypeHandle = (string)$prototype->handle;
         }
 
         $link = clone $prototype;
         $link->field = $field;
         $link->populateFromInstance($instance);
+
+        // Ensure handle stays canonical even if populate re-applied a stored alias.
+        if ($prototype->handle) {
+            $link->handle = (string)$prototype->handle;
+        }
 
         return $link;
     }
@@ -212,6 +227,42 @@ class Links extends Component
         }
 
         return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * Build a MissingLink that round-trips unknown/disabled type payloads instead of
+     * dropping them from the collection on normalize/save.
+     */
+    private function _createUnsupportedContentLink(HyperField $field, LinkInstance $instance): LinkInterface
+    {
+        $payload = $instance->toSerialized();
+        $handle = $instance->linkTypeHandle !== '' ? $instance->linkTypeHandle : 'missing';
+
+        $link = new linkTypes\MissingLink([
+            'handle' => $handle,
+            'expectedType' => $handle,
+            'errorMessage' => Craft::t('hyper', 'Unsupported or missing link type “{handle}”.', [
+                'handle' => $handle,
+            ]),
+            'field' => $field,
+            'uid' => $instance->uid,
+            'newWindow' => $instance->newWindow,
+            'linkValue' => $instance->linkValue,
+            'linkText' => $instance->linkText,
+            'ariaLabel' => $instance->ariaLabel,
+            'urlSuffix' => $instance->urlSuffix,
+            'linkTitle' => $instance->linkTitle,
+            'classes' => $instance->classes,
+            'customAttributes' => $instance->customAttributes,
+        ]);
+
+        $link->setOpaqueSerializedPayload($payload);
+
+        return $link;
     }
 
 }

@@ -68,6 +68,39 @@ class Content extends Component
         return $result;
     }
 
+    /**
+     * Rebuild hyper_links from canonical owner JSON without changing content bytes.
+     * Used to repair stale indexes after Content::modify sync failures (Astra A06).
+     */
+    public function reconcileRelations(HyperField $field, ?ModifyOptions $options = null): int
+    {
+        $options ??= new ModifyOptions();
+        $adapter = new HyperFieldAdapter($field);
+        $store = new ElementContentStore($options->db);
+        $synced = 0;
+
+        $store->eachFieldValue($field, function(ContentRef $ref) use ($adapter, $field, $options, &$synced) {
+            $collection = $adapter->decode($ref->value, $ref);
+
+            if (!$collection instanceof LinkCollection) {
+                return false;
+            }
+
+            if ($options->dryRun) {
+                $synced++;
+
+                return false;
+            }
+
+            $this->_syncRelations($field, $ref, $collection);
+            $synced++;
+
+            return false;
+        }, $options);
+
+        return $synced;
+    }
+
     public function modifyLinkInstances(
         HyperField $field,
         callable $transform,
@@ -278,15 +311,25 @@ class Content extends Component
 
     private function _resolveRelationOwner(ContentRef $ref): ?ElementInterface
     {
-        if (preg_match('/\.(\d+)\.fields\./', $ref->jsonPath, $matches)) {
-            $blockOwner = Craft::$app->getElements()->getElementById((int)$matches[1], $ref->siteId);
+        $elementId = $ref->elementId;
+        $siteId = $ref->siteId;
 
-            if ($blockOwner) {
-                return $blockOwner;
+        // Nested Matrix/Neo owners are identified by block entry id in the JSON path.
+        if (preg_match('/\.(\d+)\.fields\./', $ref->jsonPath, $matches)) {
+            $elementId = (int)$matches[1];
+        }
+
+        // Craft signature: getElementById($id, $elementType = null, $siteId = null).
+        if ($siteId) {
+            $owner = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
+
+            if ($owner) {
+                return $owner;
             }
         }
 
-        return Craft::$app->getElements()->getElementById($ref->elementId, $ref->siteId);
+        // Fall back without site constraint so standalone modify() callers still sync.
+        return Craft::$app->getElements()->getElementById($elementId);
     }
 
     private function _serializedValuesEqual(mixed $left, mixed $right): bool

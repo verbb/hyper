@@ -1,17 +1,21 @@
-{% extends 'hyper/_layouts' %}
+{% extends 'verbb-base/_layouts/settings' %}
 
 {% requireAdmin %}
 
+{% do view.registerAssetBundle('verbb\\hyper\\web\\assets\\cp\\HyperCpAsset') -%}
+
 {% set crumbs = [
-    { label: craft.hyper.plugin.name, url: url('hyper') },
-    { label: 'Settings' | t('app'), url: url('hyper/settings') },
-] %}
+    { label: 'Settings' | t('app'), url: url('settings') },
+    { label: 'Plugins' | t('app'), url: url('settings/plugins') },
+    { label: craft.hyper.plugin.name | t('hyper'), url: url('hyper/settings') },
+] | merge(crumbs ?? []) %}
 
-{% set selectedTab = selectedTab ?? craft.app.request.getSegment(3) ?? 'general' %}
+{% set pageTabs = craft.hyper.settingsNavItems %}
 
-{% block sidebar %}
-    {% include 'hyper/_includes/settings-nav' %}
-{% endblock %}
+{% set pageTitle = pageTitle ?? false %}
+{% if title is not defined and pageTitle %}
+    {% set title = pageTitle %}
+{% endif %}
 
 {% css %}
 .log-label {

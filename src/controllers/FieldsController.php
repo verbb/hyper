@@ -8,6 +8,7 @@ use verbb\hyper\links\Embed;
 
 use Craft;
 use craft\base\Element;
+use craft\base\ElementInterface;
 use craft\elements\Entry;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
@@ -16,6 +17,7 @@ use craft\models\FieldLayout;
 use craft\web\Controller;
 use craft\web\Response as CraftResponse;
 
+use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -26,6 +28,10 @@ class FieldsController extends Controller
 
     public function actionLayoutDesigner(): Response
     {
+        // Field layout designer is an admin / field-settings surface.
+        $this->requireAdmin();
+        $this->requireCpRequest();
+
         $view = Craft::$app->getView();
 
         $fieldLayoutUid = $this->request->getParam('layoutUid');
@@ -86,6 +92,9 @@ class FieldsController extends Controller
 
     public function actionCreateMatrixEntry()
     {
+        $this->requireCpRequest();
+        $this->_requireOwnerElementAccess();
+
         // Override `MatrixController::actionCreateEntry` to handle non-saved-element owners.
         $fieldId = $this->request->getRequiredBodyParam('fieldId');
         $entryTypeId = $this->request->getRequiredBodyParam('entryTypeId');
@@ -129,6 +138,7 @@ class FieldsController extends Controller
         $this->requireCpRequest();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
+        $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredBodyParam('fieldId');
         $handle = (string)$this->request->getRequiredBodyParam('handle');
@@ -146,10 +156,20 @@ class FieldsController extends Controller
             Craft::$app->getSites()->setCurrentSite($site);
         }
 
-        // Map the posted selection into hydration seeds for HyperField::getBulkLinkBlocks().
+        // Map the posted selection into hydration seeds for HyperField::getHydratedLinkBlocks().
         $seeds = [];
+        $requireBulkSupport = true;
 
-        if ($mode === 'elements') {
+        if ($mode === 'seed') {
+            // Full serialized payloads (clipboard paste) — any enabled type.
+            $requireBulkSupport = false;
+
+            foreach ((array)$this->request->getBodyParam('seeds', []) as $seed) {
+                if (is_array($seed)) {
+                    $seeds[] = $seed;
+                }
+            }
+        } elseif ($mode === 'elements') {
             foreach ((array)$this->request->getBodyParam('elements', []) as $element) {
                 $elementId = is_array($element) ? ($element['id'] ?? null) : $element;
 
@@ -182,7 +202,7 @@ class FieldsController extends Controller
         }
 
         $view = $this->getView();
-        $blocks = $field->getBulkLinkBlocks($handle, $seeds);
+        $blocks = $field->getHydratedLinkBlocks($handle, $seeds, null, $requireBulkSupport);
 
         return $this->asJson([
             'blocks' => $blocks,
@@ -195,6 +215,7 @@ class FieldsController extends Controller
     {
         $this->requireCpRequest();
         $this->requireAcceptsJson();
+        $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredParam('fieldId');
         $handle = (string)$this->request->getRequiredParam('handle');
@@ -226,6 +247,7 @@ class FieldsController extends Controller
     public function actionInputSettings(): Response
     {
         $this->requireCpRequest();
+        $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredParam('fieldId');
         $data = $this->request->getRequiredParam('data');
@@ -283,6 +305,9 @@ class FieldsController extends Controller
 
     public function actionInputSettingsSave(): Response
     {
+        $this->requireCpRequest();
+        $this->_requireOwnerElementAccess();
+
         $variables = $this->request->post();
         unset($variables['action']);
 
@@ -291,20 +316,14 @@ class FieldsController extends Controller
 
     public function actionPreviewEmbed(): Response
     {
+        $this->requireCpRequest();
+        $this->_requireOwnerElementAccess();
+
         $url = (string)$this->request->getParam('value');
         $fieldId = $this->request->getParam('fieldId');
         $linkTypeHandle = (string)$this->request->getParam('linkTypeHandle', '');
 
-        $data = Embed::fetchEmbedData($url);
-
-        if (isset($data['error'])) {
-            return $this->asFailure($data['error']);
-        }
-
-        $html = $data['code'] ?? '';
-        $preview = Embed::getPreviewHtml($html);
-
-        // Resolve per link-type allowlists when the CP passes field + handle
+        // Allowlist / scheme gate before any network I/O (Astra H3-A03).
         $embedLink = $this->_resolveEmbedLinkType($fieldId, $linkTypeHandle);
 
         if ($embedLink) {
@@ -318,6 +337,37 @@ class FieldsController extends Controller
                 return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
             }
         }
+
+        $data = Embed::fetchEmbedData($url);
+
+        if (isset($data['error'])) {
+            return $this->asFailure($data['error']);
+        }
+
+        // Reject metadata whose final URL left the allowlist (open redirects).
+        $finalUrl = is_string($data['url'] ?? null) ? (string)$data['url'] : $url;
+
+        if ($embedLink) {
+            if (!$embedLink->isEmbedUrlAllowed($finalUrl)) {
+                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+            }
+        } else {
+            $settings = Hyper::$plugin->getSettings();
+
+            if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($finalUrl)) {
+                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+            }
+        }
+
+        // Final URL must also stay on a public host (defense in depth vs oEmbed lying).
+        $finalHost = parse_url($finalUrl, PHP_URL_HOST);
+
+        if (is_string($finalHost) && $finalHost !== '' && !\verbb\hyper\helpers\UrlSafety::isPublicFetchHost($finalHost)) {
+            return $this->asFailure(Craft::t('hyper', 'Embed URL host is not allowed.'));
+        }
+
+        $html = $data['code'] ?? '';
+        $preview = Embed::getPreviewHtml($html);
 
         return $this->asSuccess(null, ['data' => $data, 'preview' => $preview]);
     }
@@ -341,5 +391,36 @@ class FieldsController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * When the CP posts an owner elementId, require canSave on that element.
+     * New/unsaved owners (no id yet) keep CP-login + CSRF only — same as native fields.
+     */
+    private function _requireOwnerElementAccess(): void
+    {
+        $elementId = $this->request->getParam('elementId')
+            ?? $this->request->getBodyParam('elementId');
+
+        if ($elementId === null || $elementId === '' || (int)$elementId <= 0) {
+            return;
+        }
+
+        $siteId = (int)(
+            $this->request->getParam('siteId')
+            ?? $this->request->getBodyParam('siteId')
+            ?: Craft::$app->getSites()->getCurrentSite()->id
+        );
+
+        /** @var ElementInterface|null $element */
+        $element = Craft::$app->getElements()->getElementById((int)$elementId, null, $siteId);
+
+        if (!$element) {
+            throw new ForbiddenHttpException('Element not found.');
+        }
+
+        if (!Craft::$app->getElements()->canSave($element)) {
+            throw new ForbiddenHttpException('User is not authorized to edit this element.');
+        }
     }
 }

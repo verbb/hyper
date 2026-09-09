@@ -33,7 +33,7 @@ class LinkRelations extends Component
     private array $_hydratedElements = [];
     private array $_pendingOwners = [];
     private array $_linkedElementWith = [];
-    private bool $_ownersPrimed = false;
+    private bool $_priming = false;
 
 
     // Public Methods
@@ -168,19 +168,29 @@ class LinkRelations extends Component
 
     public function primePendingOwners(): void
     {
-        if ($this->_ownersPrimed || !$this->_pendingOwners) {
+        if ($this->_priming || !$this->_pendingOwners) {
             return;
         }
 
-        // Mark primed before batch queries so nested populate events cannot recurse.
-        $this->_ownersPrimed = true;
-        $this->primeElementsForOwners(array_values($this->_pendingOwners));
+        // Recursion guard only while draining — later registerOwner() calls must
+        // schedule another batch (Astra H3-A10).
+        $this->_priming = true;
+
+        try {
+            while ($this->_pendingOwners) {
+                $batch = array_values($this->_pendingOwners);
+                $this->_pendingOwners = [];
+                $this->primeElementsForOwners($batch);
+            }
+        } finally {
+            $this->_priming = false;
+        }
     }
 
     public function resetRequestState(): void
     {
         $this->_pendingOwners = [];
-        $this->_ownersPrimed = false;
+        $this->_priming = false;
         $this->_hydratedElements = [];
         $this->_linkedElementWith = [];
     }
@@ -202,8 +212,8 @@ class LinkRelations extends Component
         if ($withPath !== '' && !in_array($withPath, $paths, true)) {
             $this->_linkedElementWith[$fieldId][] = $withPath;
 
-            if ($this->_ownersPrimed) {
-                $this->_ownersPrimed = false;
+            // Newly registered target with-paths should refresh already-seen owners.
+            if (!$this->_priming && $this->_hydratedElements) {
                 $this->primePendingOwners();
             }
         }
@@ -279,23 +289,19 @@ class LinkRelations extends Component
             }
 
             foreach ($query->all() as $element) {
+                // Site-specific keys only — no ID-only locale fallback (Astra H3-A04).
                 $this->_hydratedElements[$this->_elementCacheKey($element->id, $element->siteId)] = $element;
-                $this->_hydratedElements[$this->_elementCacheKey($element->id, null)] = $element;
             }
         }
     }
 
     public function getPrimedElement(int $targetId, ?int $targetSiteId): ?ElementInterface
     {
-        if ($element = $this->_hydratedElements[$this->_elementCacheKey($targetId, $targetSiteId)] ?? null) {
-            return $element;
+        if ($targetSiteId === null) {
+            return null;
         }
 
-        if ($targetSiteId !== null) {
-            return $this->_hydratedElements[$this->_elementCacheKey($targetId, null)] ?? null;
-        }
-
-        return null;
+        return $this->_hydratedElements[$this->_elementCacheKey($targetId, $targetSiteId)] ?? null;
     }
 
     public function clearPrimedElements(): void
@@ -318,14 +324,16 @@ class LinkRelations extends Component
             return null;
         }
 
-        $elementType = $params['elementType'] ?? Entry::class;
+        // Owner query type (what we return) vs target type (what is linked).
+        $ownerElementType = $params['elementType'] ?? Entry::class;
+        $targetType = $params['targetType'] ?? $targetElement::class;
 
         $result = (new Query())
             ->select(['ownerId AS id', 'ownerSiteId AS siteId'])
             ->from(['{{%hyper_links}}'])
             ->where([
                 'fieldId' => $hyperField->id,
-                'targetType' => $elementType,
+                'targetType' => $targetType,
                 'targetId' => $targetElement->id,
                 'targetSiteId' => $targetElement->siteId,
             ])
@@ -340,7 +348,8 @@ class LinkRelations extends Component
         }
 
         if (!$elementParams) {
-            $elementParams['id'] = -1;
+            // Empty result — do not use the `-1` id sentinel as a returned element id.
+            $elementParams['id'] = false;
         }
 
         if (isset($params['site'])) {
@@ -359,7 +368,7 @@ class LinkRelations extends Component
             }
         }
 
-        $elementQuery = $elementType::find();
+        $elementQuery = $ownerElementType::find();
         Craft::configure($elementQuery, $elementParams);
 
         return $elementQuery;

@@ -219,13 +219,42 @@ class MultisiteLinks extends Component
         $targetLinks = $target->getLinks();
         $payloads = [];
 
+        // Index target translations by content uid when available (Astra H3-A05).
+        $targetByUid = [];
+
+        foreach ($targetLinks as $targetLink) {
+            if (!$targetLink instanceof LinkInterface) {
+                continue;
+            }
+
+            $uid = $targetLink->uid ?? null;
+
+            if (is_string($uid) && $uid !== '') {
+                $targetByUid[$uid] = $targetLink;
+            }
+        }
+
+        $useUidJoin = $targetByUid !== [];
+
         foreach ($sourceLinks as $index => $sourceLink) {
             if (!$sourceLink instanceof LinkInterface) {
                 continue;
             }
 
             $payload = $sourceLink->getSerializedValues();
-            $targetLink = $targetLinks[$index] ?? null;
+
+            // Prefer UID match; fall back to position once for pre-UID content.
+            $targetLink = null;
+
+            if ($useUidJoin) {
+                $sourceUid = $sourceLink->uid ?? ($payload['uid'] ?? null);
+
+                if (is_string($sourceUid) && $sourceUid !== '' && isset($targetByUid[$sourceUid])) {
+                    $targetLink = $targetByUid[$sourceUid];
+                }
+            } else {
+                $targetLink = $targetLinks[$index] ?? null;
+            }
 
             if ($targetLink instanceof LinkInterface) {
                 if ($targetLink->getCustomLinkText() !== null && $targetLink->getCustomLinkText() !== '') {

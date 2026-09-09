@@ -154,6 +154,16 @@ class PluginMigration extends Migration
             return;
         }
 
+        // Dry-run must not invoke Vizy’s committing content mutation (Astra H3-A14).
+        if ($this->dryRun) {
+            $this->stdout('Skipping Vizy content mutation during dry-run.' . PHP_EOL);
+            $this->getMigrationResult()?->addLine(
+                Line::info('Vizy content skipped (dry-run).')
+            );
+
+            return;
+        }
+
         $field ??= Craft::$app->getFields()->getFieldById($fieldData['id'] ?? 0);
 
         if (!$field instanceof HyperField) {

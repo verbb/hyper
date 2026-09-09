@@ -332,7 +332,19 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         }
 
         if ($this->_element !== null && (int)$this->_element->id === $targetId) {
-            return $this->_element;
+            // Recheck site + status on every hit — never trust a stale locale cache (A04).
+            $wantedSiteId = $this->linkSiteId
+                ?? $this->ownerSiteId
+                ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+            if (
+                (int)$this->_element->siteId === (int)$wantedSiteId
+                && $this->_matchesElementStatus($this->_element, $status)
+            ) {
+                return $this->_element;
+            }
+
+            $this->_element = null;
         }
 
         $this->_element = null;
@@ -512,15 +524,20 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             return null;
         }
 
-        $targetSiteId = $this->linkSiteId ? (int)$this->linkSiteId : null;
-        $candidates = [$targetSiteId];
+        $candidates = [];
 
-        if ($targetSiteId === null) {
+        if ($this->linkSiteId) {
+            $candidates[] = (int)$this->linkSiteId;
+        } else {
+            if ($this->ownerSiteId) {
+                $candidates[] = (int)$this->ownerSiteId;
+            }
+
             $candidates[] = Craft::$app->getSites()->getCurrentSite()->id;
         }
 
-        foreach ($candidates as $siteId) {
-            $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, $siteId ? (int)$siteId : null);
+        foreach (array_unique($candidates) as $siteId) {
+            $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, (int)$siteId);
 
             if ($element && $this->_matchesElementStatus($element, $status)) {
                 return $element;

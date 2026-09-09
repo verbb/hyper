@@ -104,5 +104,5 @@ it('returns an empty result query when no owners link to the target', function()
         ],
     ])?->ids();
 
-    expect($related)->toBe([-1]);
+    expect($related)->toBe([]);
 });

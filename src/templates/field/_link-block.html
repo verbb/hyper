@@ -1,7 +1,8 @@
 {% set showSettingsMenu = not settings.isStatic %}
 {% set tabLabels = link.tabLabels ?? [] %}
-{% set showLayoutTabs = tabLabels|length > 1 and not settings.isStatic %}
-{% set canChangeType = not settings.isStatic and linkTypes|length > 1 %}
+{% set isUnsupported = link.unsupported ?? false %}
+{% set showLayoutTabs = tabLabels|length > 1 and not settings.isStatic and not isUnsupported %}
+{% set canChangeType = not settings.isStatic and linkTypes|length > 1 and not isUnsupported %}
 {# Match the CP header/dropdown against the resolved canonical handle (falls back to the stored
    handle for the empty-field chrome template). Legacy `default-<fqcn>` content still shows the
    type's display label, not the raw handle. #}
@@ -15,15 +16,16 @@
 {# Header icon when field enables new window and this type’s layout does not own it. #}
 {% set showHeaderNewWindow = link.showHeaderNewWindow ?? settings.newWindow %}
 {# Keep header chrome when field enables new window so type switches can show/hide the icon. #}
-{% set showHeader = settings.multipleLinks or settings.isStatic or settings.newWindow or linkTypes|length > 1 or showLayoutTabs or showSettingsMenu %}
+{% set showHeader = settings.multipleLinks or settings.isStatic or settings.newWindow or linkTypes|length > 1 or showLayoutTabs or showSettingsMenu or isUnsupported %}
 
 <div
-    class="hyper-link"
+    class="hyper-link{{ isUnsupported ? ' is-unsupported' : '' }}"
     data-hyper-link
     data-link-id="{{ link.id }}"
     {# Canonical CP type handle (not legacy stored `default-…` content keys) — type menu, copy/paste, and portal merges key off this. #}
     data-link-handle="{{ currentTypeHandle }}"
     data-link-index="{{ blockIndex }}"
+    {% if isUnsupported %}data-unsupported="true"{% endif %}
     {% if link.js %}data-link-js="{{ link.js | e('html_attr') }}"{% endif %}
 >
     <div class="hyper-wrapper{{ showHeader ? '' : ' no-header' }}">
@@ -120,7 +122,7 @@
                                 title="{{ 'New Window' | t('hyper') }}"
                                 aria-label="{{ 'New Window' | t('hyper') }}"
                                 {% if not showHeaderNewWindow %}hidden{% endif %}
-                                {% if settings.isStatic %}disabled{% endif %}
+                                {% if settings.isStatic or isUnsupported %}disabled{% endif %}
                             >
                                 <pk-icon class="hyper-menu-icon" icon="arrow-up-right-from-square"></pk-icon>
                             </button>
@@ -142,20 +144,22 @@
                                 >
                                     <pk-icon class="hyper-menu-icon" icon="ellipsis"></pk-icon>
                                 </button>
-                                <pk-dropdown-item value="copy" data-hyper-action="copy">
-                                    <pk-icon slot="start" icon="copy"></pk-icon>
-                                    {{ 'Copy' | t('app') }}
-                                </pk-dropdown-item>
-                                <pk-dropdown-item value="cut" data-hyper-action="cut">
-                                    <pk-icon slot="start" icon="scissors"></pk-icon>
-                                    {{ 'Cut' | t('app') }}
-                                </pk-dropdown-item>
-                                <pk-dropdown-item value="paste" data-hyper-action="paste" data-hyper-paste-item hidden>
-                                    <pk-icon slot="start" icon="clipboard"></pk-icon>
-                                    {{ 'Paste' | t('app') }}
-                                </pk-dropdown-item>
-                                {% if settings.multipleLinks %}
+                                {% if not isUnsupported %}
+                                    <pk-dropdown-item value="copy" data-hyper-action="copy">
+                                        <pk-icon slot="start" icon="copy"></pk-icon>
+                                        {{ 'Copy' | t('app') }}
+                                    </pk-dropdown-item>
+                                    <pk-dropdown-item value="cut" data-hyper-action="cut">
+                                        <pk-icon slot="start" icon="scissors"></pk-icon>
+                                        {{ 'Cut' | t('app') }}
+                                    </pk-dropdown-item>
+                                    <pk-dropdown-item value="paste" data-hyper-action="paste" data-hyper-paste-item hidden>
+                                        <pk-icon slot="start" icon="clipboard"></pk-icon>
+                                        {{ 'Paste' | t('app') }}
+                                    </pk-dropdown-item>
                                     <pk-dropdown-separator></pk-dropdown-separator>
+                                {% endif %}
+                                {% if settings.multipleLinks %}
                                     <pk-dropdown-item
                                         value="move-up"
                                         data-hyper-action="move-up"
@@ -173,17 +177,11 @@
                                         {{ 'Move down' | t('app') }}
                                     </pk-dropdown-item>
                                     <pk-dropdown-separator></pk-dropdown-separator>
-                                    <pk-dropdown-item value="delete" destructive data-hyper-action="delete">
-                                        <pk-icon slot="start" icon="xmark"></pk-icon>
-                                        {{ 'Delete' | t('app') }}
-                                    </pk-dropdown-item>
-                                {% else %}
-                                    <pk-dropdown-separator></pk-dropdown-separator>
-                                    <pk-dropdown-item value="delete" destructive data-hyper-action="delete">
-                                        <pk-icon slot="start" icon="xmark"></pk-icon>
-                                        {{ 'Delete' | t('app') }}
-                                    </pk-dropdown-item>
                                 {% endif %}
+                                <pk-dropdown-item value="delete" destructive data-hyper-action="delete">
+                                    <pk-icon slot="start" icon="xmark"></pk-icon>
+                                    {{ 'Delete' | t('app') }}
+                                </pk-dropdown-item>
                             </pk-dropdown-menu>
                         {% endif %}
 
@@ -194,6 +192,23 @@
                         {% endif %}
                     </div>
                 </div>
+            </div>
+        {% endif %}
+
+        {% if isUnsupported %}
+            <div class="hyper-unsupported-banner" role="status">
+                <p class="hyper-unsupported-banner__title">
+                    {{ 'Unsupported link type' | t('hyper') }}
+                    {% if link.unsupportedHandle %}
+                        <span class="hyper-unsupported-banner__handle">({{ link.unsupportedHandle }})</span>
+                    {% endif %}
+                </p>
+                <p class="hyper-unsupported-banner__body">
+                    {{ 'This link’s data is retained. Delete it, or restore the link type and resave.' | t('hyper') }}
+                </p>
+                {% if link.unsupportedSummary %}
+                    <p class="hyper-unsupported-banner__summary">{{ link.unsupportedSummary }}</p>
+                {% endif %}
             </div>
         {% endif %}
 

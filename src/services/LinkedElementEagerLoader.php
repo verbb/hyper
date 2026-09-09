@@ -97,8 +97,9 @@ class LinkedElementEagerLoader extends Component
         }
 
         if ($field instanceof Matrix) {
-            foreach ($field->getBlockTypes() as $blockType) {
-                $layout = $blockType->getFieldLayout();
+            // Craft 5 Matrix uses entry types — getBlockTypes() was removed (Astra H3-A11).
+            foreach ($field->getEntryTypes() as $entryType) {
+                $layout = $entryType->getFieldLayout();
 
                 if (!$layout) {
                     continue;

@@ -26,6 +26,7 @@ const CP_ONLY_KEYS = new Set(['id', 'isNew', 'html', 'js', 'type']);
 export function buildClipboardPayload(
     link: LinkInstance,
     typeFqcn: string,
+    options: { preserveUid?: boolean } = {},
 ): HyperLinkClipboardPayload {
     const linkCopy: Record<string, unknown> = {};
 
@@ -49,7 +50,8 @@ export function buildClipboardPayload(
         linkCopy[key] = value;
     });
 
-    const uid = typeof link.uid === 'string' && link.uid
+    // Cut preserves UID (move); copy always mints a new occurrence id (Astra H3-A12).
+    const uid = options.preserveUid && typeof link.uid === 'string' && link.uid
         ? link.uid
         : (typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()

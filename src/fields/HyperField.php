@@ -182,6 +182,16 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         parent::init();
 
         $this->viewMode = self::normalizeViewMode($this->viewMode);
+
+        // Named configs are stored by UID; dual-read legacy handle refs on load.
+        if ($this->linkTypeConfig && $this->linkTypeConfig !== LinkTypeConfigs::CUSTOM_HANDLE) {
+            try {
+                $this->linkTypeConfig = Hyper::$plugin->getLinkTypeConfigs()
+                    ->normalizeFieldConfigRef($this->linkTypeConfig);
+            } catch (\Throwable) {
+                // Plugin/service not ready during early construction — leave as-is.
+            }
+        }
     }
 
     public function getSettings(): array
@@ -197,7 +207,18 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         );
         unset($settings['editorMode']);
 
-        $settings['linkTypeConfig'] = $this->linkTypeConfig ?: LinkTypeConfigs::DEFAULT_HANDLE;
+        // Persist durable UID for named configs (handles remain dual-readable on load).
+        if ($this->hasCustomLinkTypes()) {
+            $settings['linkTypeConfig'] = LinkTypeConfigs::CUSTOM_HANDLE;
+        } else {
+            try {
+                $settings['linkTypeConfig'] = Hyper::$plugin->getLinkTypeConfigs()
+                    ->normalizeFieldConfigRef($this->linkTypeConfig ?: LinkTypeConfigs::DEFAULT_HANDLE);
+            } catch (\Throwable) {
+                $settings['linkTypeConfig'] = $this->linkTypeConfig ?: LinkTypeConfigs::DEFAULT_HANDLE;
+            }
+        }
+
         unset($settings['customLinkTypes'], $settings['usePluginLinkTypes']);
 
         // Shared config: store no private link types — the named config is the source of truth.
@@ -612,9 +633,27 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function useLinkTypeConfig(?string $handle = null): void
     {
-        $this->linkTypeConfig = $handle && $handle !== LinkTypeConfigs::CUSTOM_HANDLE
-            ? $handle
-            : LinkTypeConfigs::DEFAULT_HANDLE;
+        if (!$handle || $handle === LinkTypeConfigs::CUSTOM_HANDLE) {
+            $this->linkTypeConfig = LinkTypeConfigs::DEFAULT_HANDLE;
+        } else {
+            try {
+                $this->linkTypeConfig = Hyper::$plugin->getLinkTypeConfigs()
+                    ->normalizeFieldConfigRef($handle);
+            } catch (\Throwable) {
+                $this->linkTypeConfig = $handle;
+            }
+        }
+
+        // Rewrite default handle → uid when the stock config exists.
+        if ($this->linkTypeConfig === LinkTypeConfigs::DEFAULT_HANDLE) {
+            try {
+                $this->linkTypeConfig = Hyper::$plugin->getLinkTypeConfigs()
+                    ->normalizeFieldConfigRef(LinkTypeConfigs::DEFAULT_HANDLE);
+            } catch (\Throwable) {
+                // leave handle
+            }
+        }
+
         $this->setLinkTypes([]);
     }
 
@@ -744,9 +783,12 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
         foreach ($this->_serializedLinkTypes as $key => $config) {
-            // Check if the saved link type is still registered. Be sure to check if this is an early
-            // initialization where no registered link types are available - that's okay.
-            if ($registeredLinkTypes && !in_array($config['type'], $registeredLinkTypes)) {
+            // Unregistered classes become MissingLink prototypes so settings still round-trip
+            // instead of silently dropping the type (Astra H3-A07 settings half).
+            if ($registeredLinkTypes && is_array($config) && !in_array($config['type'] ?? null, $registeredLinkTypes, true)) {
+                $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
+                $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($config);
+                $this->_linkTypes[$sortOrder] = $linkType;
                 continue;
             }
 
@@ -865,6 +907,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'handle' => $this->handle,
             // CP Advanced-tab relation pickers need the owner site.
             'siteId' => $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id,
+            // Owner element id for FieldsController canSave checks (when already saved).
+            'elementId' => $element?->id,
             'defaultLinkType' => $this->defaultLinkType,
             'defaultNewWindow' => $this->defaultNewWindow,
             'newWindow' => $this->newWindow,
@@ -909,18 +953,36 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             // Header icon when field enables new window and this type’s layout does not own it.
             $newWindowInLayout = (bool)($linkType?->getFieldLayout()?->isFieldIncluded('newWindow'));
 
+            // Unsupported / missing types keep opaque data — flag for CP warning chrome.
+            $isUnsupported = ($linkData['type'] ?? '') === linkTypes\MissingLink::class;
+            $unsupportedSummary = null;
+
+            if ($isUnsupported) {
+                $text = trim((string)($linkData['linkText'] ?? ''));
+                $value = $linkData['linkValue'] ?? null;
+
+                if (is_array($value)) {
+                    $value = $value['url'] ?? null;
+                }
+
+                $value = is_string($value) ? trim($value) : '';
+                $unsupportedSummary = $text !== '' ? $text : ($value !== '' ? $value : null);
+            }
+
             $linksForTwig[] = [
                 'id' => $linkId,
-                // Stored content handle — kept as-is for the store / serialize / portal so legacy
-                // `default-<fqcn>` content is not rewritten on unrelated saves (content retention).
-                'handle' => $handle,
-                // Resolved canonical handle + display label for the CP header/type dropdown only.
-                // Legacy content resolves to the short type key so the UI shows "URL" (not the FQCN
-                // handle) and marks the current type, without touching the persisted value.
+                // Persist the canonical resolved handle (legacy aliases rewrite on hydrate/save).
+                'handle' => $linkType?->handle ?? $handle,
+                // Resolved canonical handle + display label for the CP header/type dropdown.
                 'typeHandle' => $linkType?->handle ?? $handle,
-                'label' => $linkType ? Craft::t('hyper', (string)$linkType->label) : $handle,
+                'label' => $isUnsupported
+                    ? Craft::t('hyper', 'Unsupported link type')
+                    : ($linkType ? Craft::t('hyper', (string)$linkType->label) : $handle),
                 'newWindow' => !empty($linkData['newWindow']),
-                'showHeaderNewWindow' => $this->newWindow && !$newWindowInLayout,
+                'showHeaderNewWindow' => $this->newWindow && !$newWindowInLayout && !$isUnsupported,
+                'unsupported' => $isUnsupported,
+                'unsupportedHandle' => $isUnsupported ? $handle : null,
+                'unsupportedSummary' => $unsupportedSummary,
                 'bodyHtml' => $this->_parseBlockPlaceholder($html, $linkId, $placeholderKey),
                 'js' => $this->_namespaceDeferredFieldPayload(
                     $this->_parseBlockPlaceholder($js, $linkId, $placeholderKey),
@@ -1092,21 +1154,35 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function getBulkLinkBlocks(string $handle, array $seeds, ?ElementInterface $element = null): array
     {
+        return $this->getHydratedLinkBlocks($handle, $seeds, $element, requireBulkSupport: true);
+    }
+
+    /**
+     * Server-render fully populated link blocks from content seeds (bulk add + clipboard paste).
+     * When $requireBulkSupport is false, any enabled type can hydrate (paste path).
+     */
+    public function getHydratedLinkBlocks(
+        string $handle,
+        array $seeds,
+        ?ElementInterface $element = null,
+        bool $requireBulkSupport = true,
+    ): array {
         $prototype = $this->getLinkTypeByHandle($handle);
 
-        // Respect the type-level opt-in — never render a type that didn't ask for bulk creation.
-        if (!$prototype || !$prototype->enabled || !$prototype::supportsBulkCreation()) {
+        if (!$prototype || !$prototype->enabled) {
+            return [];
+        }
+
+        if ($requireBulkSupport && !$prototype::supportsBulkCreation()) {
             return [];
         }
 
         $view = Craft::$app->getView();
         $oldNamespace = $view->getNamespace();
 
-        // Deltas off while rendering our own field HTML (matches the other render paths).
         $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
         $view->setIsDeltaRegistrationActive(false);
 
-        // Must reuse the cached placeholder key so the client's id-swap contract lines up.
         $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->_getCacheKey('placeholderKey'), function() {
             return StringHelper::randomString(10);
         });
@@ -1120,16 +1196,15 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $blocks = [];
 
         foreach ($seeds as $seed) {
-            $instance = new LinkInstance();
-            $instance->linkTypeHandle = $handle;
-            $instance->newWindow = $this->defaultNewWindow;
-
-            if (isset($seed['linkValue']) && $seed['linkValue'] !== '') {
-                $instance->linkValue = $seed['linkValue'];
+            if (!is_array($seed)) {
+                continue;
             }
 
-            if (!empty($seed['linkSiteId'])) {
-                $instance->linkSiteId = (int)$seed['linkSiteId'];
+            $seed['linkTypeHandle'] = $handle;
+            $instance = LinkInstance::fromSerialized($seed, $this);
+
+            if ($instance->newWindow === null) {
+                $instance->newWindow = $this->defaultNewWindow;
             }
 
             $link = Hyper::$plugin->getLinks()->createLinkFromInstance($this, $instance);
@@ -1139,15 +1214,25 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             }
 
             $link->isNew = true;
-            $link->newWindow = $this->defaultNewWindow;
-            // Fake id so layout sub-fields (e.g. Matrix) render; site drives relation pickers.
             $link->id = rand();
             $link->siteId = $instance->linkSiteId ?: $ownerSiteId;
+
+            // Apply handle-keyed custom fields from paste/bulk seeds onto the layout.
+            if (!empty($instance->fields) && is_array($instance->fields)) {
+                foreach ($instance->fields as $fieldHandle => $value) {
+                    try {
+                        $link->setFieldValue($fieldHandle, $value);
+                    } catch (\Throwable) {
+                        // Ignore unknown destination handles.
+                    }
+                }
+
+                $link->fields = $instance->fields;
+            }
 
             $view->startJsBuffer();
             $view->startScriptBuffer();
 
-            // Keep our field data out of parent namespaces — same key the templates use.
             $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
 
             $html = $this->_getBlockHtml($view, $link);
@@ -1163,7 +1248,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 'tabCount' => count($tabLabels) ?: $prototype->getTabCount(),
                 'tabLabels' => $tabLabels,
                 'showHeaderNewWindow' => $showHeaderNewWindow,
-                'newWindow' => (bool)$this->defaultNewWindow,
+                'newWindow' => (bool)($link->newWindow ?? $this->defaultNewWindow),
                 'html' => $this->_parseBlockPlaceholder($html, '__LINK_ID__', $placeholderKey),
                 'js' => $this->_namespaceDeferredFieldPayload(
                     $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
@@ -1317,11 +1402,14 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
         if ($link instanceof linkTypes\MissingLink) {
-            $error = Craft::t('hyper', 'Link type class \'{type}\' is invalid.', [
-                'type' => $link->expectedType,
-            ]);
+            $handle = $link->handle ?: ($link->expectedType ?: 'unknown');
+            $error = $link->errorMessage ?: Craft::t(
+                'hyper',
+                'This link type (“{handle}”) is unavailable. Content is retained — delete the link or restore the type, then resave.',
+                ['handle' => $handle],
+            );
 
-            return Html::tag('div', $error, ['class' => 'error']);
+            return Html::tag('div', Html::encode($error), ['class' => 'error']);
         }
 
         try {
@@ -1606,7 +1694,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return '';
         }
 
-        return Html::tag('a', $value->getText(), [
+        return Html::tag('a', Html::encode((string)$value->getText()), [
             'href' => $value->getUrl(),
             'rel' => 'noopener',
             'target' => '_blank',

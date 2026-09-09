@@ -11,6 +11,7 @@ use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\TextField;
 use verbb\hyper\helpers\Html;
+use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\links\MissingLink;
 use verbb\hyper\models\LinkInstance;
 
@@ -369,10 +370,13 @@ abstract class Link extends Element implements LinkInterface
 
         // Convert custom fields from using their handles to the fieldLayoutUid's
         $fieldContent = [];
+        $fieldLayout = $this->getFieldLayout();
 
-        foreach ($this->fields as $fieldHandle => $value) {
-            if ($field = $this->getFieldLayout()->getFieldByHandle($fieldHandle)) {
-                $fieldContent[$field->layoutElement->uid] = $value;
+        if ($fieldLayout && $this->fields) {
+            foreach ($this->fields as $fieldHandle => $value) {
+                if ($field = $fieldLayout->getFieldByHandle($fieldHandle)) {
+                    $fieldContent[$field->layoutElement->uid] = $value;
+                }
             }
         }
 
@@ -711,7 +715,7 @@ abstract class Link extends Element implements LinkInterface
         return null;
     }
 
-    public function getSerializedLayoutFields(): array
+    public function getSerializedLayoutFields(?\craft\models\GqlSchema $schema = null): array
     {
         $fieldLayout = $this->getFieldLayout();
 
@@ -719,9 +723,22 @@ abstract class Link extends Element implements LinkInterface
             return [];
         }
 
+        if ($schema === null) {
+            try {
+                $schema = Craft::$app->getGql()->getActiveSchema();
+            } catch (\Throwable) {
+                $schema = null;
+            }
+        }
+
         $serialized = [];
 
         foreach ($fieldLayout->getCustomFields() as $field) {
+            // Convenience `fields` bag must honour the same schema gate as typed GQL fields (A09).
+            if ($schema && !$field->includeInGqlSchema($schema)) {
+                continue;
+            }
+
             $serialized[$field->handle] = $field->serializeValue($this->getFieldValue($field->handle), $this);
         }
 
@@ -730,7 +747,16 @@ abstract class Link extends Element implements LinkInterface
 
     public function getUrl(): ?string
     {
-        return trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
+        $url = trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
+
+        if ($url === null) {
+            return null;
+        }
+
+        // Render path enforces the same scheme policy as validation (Astra A02).
+        $extra = Hyper::$plugin?->getSettings()->allowedUriSchemes ?? [];
+
+        return UrlSafety::isAllowedUrl($url, $extra) ? $url : null;
     }
 
     public function getLinkUri(): ?string
@@ -800,7 +826,14 @@ abstract class Link extends Element implements LinkInterface
         $attributes = [];
 
         foreach ($this->customAttributes as $value) {
-            $attributes[$value['attribute']] = $value['value'];
+            $name = (string)($value['attribute'] ?? '');
+
+            // Drop event-handler / malformed names — Yii interpolates attribute names raw.
+            if (!UrlSafety::isSafeAttributeName($name)) {
+                continue;
+            }
+
+            $attributes[$name] = $value['value'] ?? '';
         }
 
         return $attributes;
@@ -814,6 +847,11 @@ abstract class Link extends Element implements LinkInterface
 
         // Rip out any custom text and use that. Note that this overrides `getText()`
         $text = ArrayHelper::remove($attributes, 'text') ?? $this->getText();
+
+        // Stored / author strings are escaped; template-supplied Markup stays trusted (DECISIONS 2026-09-08).
+        if ($text !== null && !$text instanceof Markup) {
+            $text = Html::encode((string)$text);
+        }
 
         $attributes = $this->getLinkAttributes($attributes);
 

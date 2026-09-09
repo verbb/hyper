@@ -8,6 +8,7 @@ use verbb\hyper\fields\HyperField;
 use verbb\hyper\links\Url;
 use verbb\hyper\models\LinkInstance;
 use verbb\hyper\models\LinkTypeDefinition;
+use verbb\hyper\services\LinkTypeConfigs;
 
 it('round-trips link instance content through v3 serialization', function() {
     $field = HyperFixtureFactory::hyperField();
@@ -211,12 +212,15 @@ it('coerces legacy editor modes to blocks view mode', function() {
 });
 
 it('uses a named link type config or the custom dropdown option', function() {
+    $defaultUid = Hyper::$plugin->getLinkTypeConfigs()
+        ->normalizeFieldConfigRef(LinkTypeConfigs::DEFAULT_HANDLE);
+
     $field = new HyperField([
         'name' => 'Attached Hyper',
         'handle' => HyperFixtureFactory::handle('hyperAttached'),
     ]);
 
-    expect($field->linkTypeConfig)->toBe('default');
+    expect($field->linkTypeConfig)->toBe($defaultUid);
     expect($field->hasCustomLinkTypes())->toBeFalse();
     expect($field->getLinkTypes())->not->toBeEmpty();
 
@@ -228,9 +232,10 @@ it('uses a named link type config or the custom dropdown option', function() {
 
     $field->useLinkTypeConfig('default');
 
-    expect($field->linkTypeConfig)->toBe('default');
+    expect($field->linkTypeConfig)->toBe($defaultUid);
     expect($field->hasCustomLinkTypes())->toBeFalse();
     expect($field->getSettings()['linkTypes'])->toBe([]);
+    expect($field->getSettings()['linkTypeConfig'])->toBe($defaultUid);
 });
 
 it('treats existing fields with stored link types as custom without migration', function() {

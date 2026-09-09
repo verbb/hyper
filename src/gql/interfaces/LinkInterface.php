@@ -150,7 +150,7 @@ class LinkInterface extends BaseInterfaceType
             ],
             'fields' => [
                 'name' => 'fields',
-                'description' => 'Custom layout field values keyed by handle (JSON). Use when you need layout fields without casting to a concrete link type.',
+                'description' => 'Custom layout field values keyed by handle (JSON). Respects the active GraphQL schema’s field restrictions.',
                 'type' => Type::string(),
                 'resolve' => function($link) {
                     return Json::encode($link->getSerializedLayoutFields());

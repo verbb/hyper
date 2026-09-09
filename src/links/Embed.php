@@ -4,6 +4,7 @@ namespace verbb\hyper\links;
 use verbb\hyper\Hyper;
 use verbb\hyper\base\Link;
 use verbb\hyper\helpers\EmbedImagesExtractor;
+use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\models\Settings;
 
 use Craft;
@@ -12,7 +13,6 @@ use craft\helpers\Json;
 use craft\helpers\Template;
 
 use DateTime;
-use Exception;
 use Throwable;
 use Twig\Markup;
 
@@ -29,6 +29,12 @@ class Embed extends Link
         return Craft::t('hyper', 'Embed');
     }
 
+    /**
+     * Fetch oEmbed/metadata for a URL. Callers must enforce domain allowlists
+     * before invoking this — the method itself rejects non-http(s) schemes,
+     * resolves redirects onto public IPs only, and applies TLS-safe Curl defaults
+     * with follow-location disabled (Astra H3-A03 / SSRF).
+     */
     public static function fetchEmbedData(string $url): array
     {
         /* @var Settings $settings */
@@ -40,11 +46,26 @@ class Embed extends Link
             return [];
         }
 
+        if (!UrlSafety::isEmbedFetchUrl($url)) {
+            return ['error' => Craft::t('hyper', 'Embed URLs must use http or https.')];
+        }
+
+        // Resolve redirect chain ourselves so private / metadata hops never leave the CP.
+        $resolveError = null;
+        $resolvedUrl = UrlSafety::resolvePublicEmbedUrl($url, 5, $resolveError);
+
+        if ($resolvedUrl === null) {
+            return ['error' => Craft::t('hyper', $resolveError ?: 'Embed URL host is not allowed.')];
+        }
+
+        $url = $resolvedUrl;
+        $clientSettings = $settings->getEmbedClientSettings();
+
         try {
             if (class_exists(CurlClient::class)) {
                 // Handle Embed v4 support
                 $client = new CurlClient();
-                $client->setSettings($settings->embedClientSettings);
+                $client->setSettings($clientSettings);
 
                 $crawler = new Crawler($client);
                 $crawler->addDefaultHeaders($settings->embedHeaders);
@@ -79,13 +100,13 @@ class Embed extends Link
 
                 // If no embed code, create it
                 if (!trim($data['code'])) {
-                    $data['code'] = '<iframe src="' . $info->url . '"></iframe>';
+                    $data['code'] = '<iframe src="' . Html::encode($info->url) . '"></iframe>';
                 }
 
                 return $data;
             } else {
                 // Handle Embed v3 support
-                $dispatcher = new \Embed\Http\CurlDispatcher($settings->embedClientSettings);
+                $dispatcher = new \Embed\Http\CurlDispatcher($clientSettings);
 
                 $info = \Embed\Embed::create($url, $settings->getEmbedClientConfig(), $dispatcher);
 
@@ -108,7 +129,7 @@ class Embed extends Link
 
                 // If no embed code, create it
                 if (!trim($data['code'])) {
-                    $data['code'] = '<iframe src="' . $info->url . '"></iframe>';
+                    $data['code'] = '<iframe src="' . Html::encode($info->url) . '"></iframe>';
                 }
 
                 return $data;
@@ -132,15 +153,22 @@ class Embed extends Link
         return [];
     }
 
+    /**
+     * CP preview isolation: always wrap fetched HTML in a sandboxed data-URL
+     * iframe so author/oEmbed markup never enters the CP DOM (Astra A02).
+     */
     public static function getPreviewHtml(string $html): ?string
     {
-        // Check if this contains an iframe already, if not - create one
-        if (!str_contains($html, '<iframe')) {
-            $src = htmlspecialchars('data:text/html,' . rawurlencode($html));
-            $html = Html::tag('iframe', '', ['src' => $src, 'height' => 200]);
-        }
+        $src = 'data:text/html;charset=utf-8,' . rawurlencode($html);
+        $iframe = Html::tag('iframe', '', [
+            'src' => $src,
+            'height' => 200,
+            'loading' => 'lazy',
+            'referrerpolicy' => 'no-referrer',
+            'sandbox' => 'allow-scripts allow-same-origin allow-presentation',
+        ]);
 
-        return Html::tag('div', $html, ['class' => 'hyper-iframe-container']);
+        return Html::tag('div', $iframe, ['class' => 'hyper-iframe-container']);
     }
 
 
@@ -156,7 +184,8 @@ class Embed extends Link
 
     public function setAttributes($values, $safeOnly = true): void
     {
-        // Normalize the link value
+        // Normalize the link value — never fetch during hydration (Astra A03).
+        // Metadata comes from explicit preview/fetch or a posted JSON payload.
         $linkValue = $values['linkValue'] ?? null;
 
         if (is_string($linkValue)) {
@@ -164,15 +193,9 @@ class Embed extends Link
                 // We might be sending JSON from the CP
                 $values['linkValue'] = Json::decodeIfJson($values['linkValue']);
             } else {
-                // Or, we provided just the URL — persist the URL even if embed fetch fails or is slow
+                // URL-only string: persist the URL without network I/O
                 $url = trim($linkValue);
-                $data = self::fetchEmbedData($url);
-
-                if (isset($data['error']) || ($url && empty($data))) {
-                    $values['linkValue'] = $url ? ['url' => $url] : null;
-                } else {
-                    $values['linkValue'] = $data ?: null;
-                }
+                $values['linkValue'] = $url !== '' ? ['url' => $url] : null;
             }
         }
 
@@ -257,51 +280,6 @@ class Embed extends Link
         return array_values(array_unique($out));
     }
 
-    private static function _normalizeEmbedImageMeta(mixed $image): array
-    {
-        if ($image === null || $image === '') {
-            return [];
-        }
-
-        if ($image instanceof \Stringable || is_scalar($image)) {
-            return ['image' => (string)$image];
-        }
-
-        if (!is_array($image)) {
-            return [];
-        }
-
-        // Detector returned ['image' => …, 'imageWidth' => …] — keep named keys
-        if (array_key_exists('image', $image) || array_key_exists('imageWidth', $image)) {
-            $meta = [];
-
-            if (array_key_exists('image', $image)) {
-                $meta['image'] = $image['image'] instanceof \Stringable || is_scalar($image['image'] ?? null)
-                    ? (string)$image['image']
-                    : null;
-            }
-
-            if (isset($image['imageWidth'])) {
-                $meta['imageWidth'] = (int)$image['imageWidth'];
-            }
-
-            if (isset($image['imageHeight'])) {
-                $meta['imageHeight'] = (int)$image['imageHeight'];
-            }
-
-            return $meta;
-        }
-
-        // List-shaped fallback (legacy)
-        $first = $image[0] ?? null;
-
-        if ($first instanceof \Stringable || is_scalar($first)) {
-            return ['image' => (string)$first];
-        }
-
-        return [];
-    }
-
     public function getLinkUrl(): ?string
     {
         return $this->linkValue['url'] ?? null;
@@ -369,6 +347,55 @@ class Embed extends Link
     public function getData(): ?array
     {
         return $this->linkValue;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private static function _normalizeEmbedImageMeta(mixed $image): array
+    {
+        if ($image === null || $image === '') {
+            return [];
+        }
+
+        if ($image instanceof \Stringable || is_scalar($image)) {
+            return ['image' => (string)$image];
+        }
+
+        if (!is_array($image)) {
+            return [];
+        }
+
+        // Detector returned ['image' => …, 'imageWidth' => …] — keep named keys
+        if (array_key_exists('image', $image) || array_key_exists('imageWidth', $image)) {
+            $meta = [];
+
+            if (array_key_exists('image', $image)) {
+                $meta['image'] = $image['image'] instanceof \Stringable || is_scalar($image['image'] ?? null)
+                    ? (string)$image['image']
+                    : null;
+            }
+
+            if (isset($image['imageWidth'])) {
+                $meta['imageWidth'] = (int)$image['imageWidth'];
+            }
+
+            if (isset($image['imageHeight'])) {
+                $meta['imageHeight'] = (int)$image['imageHeight'];
+            }
+
+            return $meta;
+        }
+
+        // List-shaped fallback (legacy)
+        $first = $image[0] ?? null;
+
+        if ($first instanceof \Stringable || is_scalar($first)) {
+            return ['image' => (string)$first];
+        }
+
+        return [];
     }
 
 }

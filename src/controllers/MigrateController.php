@@ -78,7 +78,10 @@ class MigrateController extends Controller
         if ($createBackup && !$dryRun) {
             try {
                 Craft::$app->getDb()->backup();
-            } catch (Throwable) {
+            } catch (Throwable $e) {
+                return $this->asFailure(Craft::t('hyper', 'Database backup failed: {message}', [
+                    'message' => $e->getMessage(),
+                ]));
             }
         }
 

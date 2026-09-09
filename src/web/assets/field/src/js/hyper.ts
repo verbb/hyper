@@ -11,7 +11,7 @@ const INPUT_SELECTOR = '[data-hyper-input]';
 const SETTINGS_SELECTOR = '[data-hyper-settings]';
 const HYPER_FIELD_SELECTOR = `${INPUT_SELECTOR}, ${SETTINGS_SELECTOR}`;
 
-const mountedInputs = new WeakSet<Element>();
+const mountedInputs = new WeakMap<Element, HyperInput>();
 const mountedSettings = new WeakSet<Element>();
 
 registerHyperGlobals();
@@ -22,8 +22,20 @@ const mountInput = (root: Element) => {
         return;
     }
 
-    new HyperInput(root).init();
-    mountedInputs.add(root);
+    const input = new HyperInput(root);
+    input.init();
+    mountedInputs.set(root, input);
+};
+
+const unmountInput = (root: Element) => {
+    const input = mountedInputs.get(root);
+
+    if (!input) {
+        return;
+    }
+
+    input.destroy();
+    mountedInputs.delete(root);
 };
 
 const mountSettings = (root: Element) => {
@@ -43,6 +55,18 @@ const mountAll = (scope: ParentNode = document) => {
 const startObserver = () => {
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
+            mutation.removedNodes.forEach((node) => {
+                if (!(node instanceof HTMLElement)) {
+                    return;
+                }
+
+                if (node.matches(INPUT_SELECTOR)) {
+                    unmountInput(node);
+                }
+
+                node.querySelectorAll(INPUT_SELECTOR).forEach(unmountInput);
+            });
+
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType !== Node.ELEMENT_NODE) {
                     return;
@@ -101,7 +125,8 @@ const awaitHyperPk = async () => {
         [...scopes].map((scope) =>
             allDefined({
                 match: pkMatch,
-                root: scope,
+                // Kit typings only list Document|ShadowRoot; Element works at runtime for query scope.
+                root: scope as unknown as Document | ShadowRoot,
             }),
         ),
     );
