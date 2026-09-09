@@ -3,17 +3,17 @@
 {% import '_includes/forms' as forms %}
 {% import 'verbb-base/_macros' as macros %}
 
-{% set selectedNavItem = 'typedLink' %}
+{% set selectedTab = 'typedLink' %}
+{% set pageTitle = 'Typed Link Field' | t('hyper') %}
 {% set fullPageForm = response is not defined %}
 {% set settings = craft.hyper.plugin.settings %}
 
 {% block actionButton %}{% endblock %}
 
-{% block blockContent %}
+{% block settingsContent %}
 
 {{ redirectInput('hyper/settings/migrate/typed-link') }}
 
-<h2 class="first">{{ 'Migrate Typed Link Fields' | t('hyper') }}</h2>
 
 {% if response is not defined %}
     <p>{{ 'Migrate your Typed Link fields and content to Hyper fields.' | t('hyper') }}</p>

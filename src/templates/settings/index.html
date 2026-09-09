@@ -3,22 +3,9 @@
 {% import '_includes/forms' as forms %}
 {% import 'verbb-base/_macros' as macros %}
 
-{% set selectedNavItem = 'general' %}
-{% set fullPageForm = false %}
+{% set selectedTab = 'general' %}
+{% set pageTitle = 'General Settings' | t('hyper') %}
 
-{% block content %}
-
-<h2>{{ 'General Settings' | t('hyper') }}</h2>
-
-{{ actionInput('plugins/save-plugin-settings') }}
-{{ hiddenInput('hyper') }}
-{{ redirectInput('hyper/settings') }}
-{{ csrfInput() }}
-
-{% namespace 'settings' %}
-
+{% block settingsContent %}
 <p>{{ 'No settings available.' | t('hyper') }}</p>
-
-{% endnamespace %}
-
 {% endblock %}

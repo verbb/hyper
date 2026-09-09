@@ -3,17 +3,17 @@
 {% import '_includes/forms' as forms %}
 {% import 'verbb-base/_macros' as macros %}
 
-{% set selectedNavItem = 'link' %}
+{% set selectedTab = 'link' %}
+{% set pageTitle = 'Link' | t('hyper') %}
 {% set fullPageForm = response is not defined %}
 {% set settings = craft.hyper.plugin.settings %}
 
 {% block actionButton %}{% endblock %}
 
-{% block blockContent %}
+{% block settingsContent %}
 
 {{ redirectInput('hyper/settings/migrate/link') }}
 
-<h2 class="first">{{ 'Migrate Link Fields' | t('hyper') }}</h2>
 
 {% if response is not defined %}
     <p>{{ 'Migrate your Link fields and content to Hyper fields.' | t('hyper') }}</p>
