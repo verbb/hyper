@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Fix the Create backup option being ignored when migrating Link, Linkit and Typed Link fields.
+
 ## 2.3.12 - 2026-09-13
 
 ### Changed
