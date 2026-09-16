@@ -173,3 +173,15 @@ it('removes native Craft email and phone schemes before Hyper rendering', functi
     ['tel', 'tel:+61312345678', '+61312345678'],
     ['email', 'hello@example.test', 'hello@example.test'],
 ]);
+
+it('converts explicitly empty legacy oEmbed values to an empty collection', function(array $source) {
+    $field = HyperFixtureFactory::hyperField(['linkTypes' => [\verbb\hyper\links\Embed::class]]);
+    $migration = new \verbb\hyper\migrations\MigrateOembedContent();
+    expect($migration->convertModel($field, $source))->toBe([]);
+    $existing = [['linkTypeHandle' => 'embed', 'linkValue' => ['url' => 'https://example.test/video']]];
+    expect($migration->convertModel($field, $existing))->toBeNull();
+})->with([
+    [['url' => '']],
+    [['url' => '   ']],
+    [['']],
+]);

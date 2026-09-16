@@ -15,7 +15,6 @@ class MigrateOembedContent extends PluginContentMigration
     // =========================================================================
 
     public array $typeMap = [];
-
     public string $oldFieldTypeClass = 'wrav\\oembed\\fields\\OembedField';
 
 
@@ -37,7 +36,11 @@ class MigrateOembedContent extends PluginContentMigration
 
         $url = $this->_extractUrl($oldSettings);
 
-        if ($url === null || $url === '') {
+        if ($url === '') {
+            return [];
+        }
+
+        if ($url === null) {
             return null;
         }
 
@@ -54,7 +57,7 @@ class MigrateOembedContent extends PluginContentMigration
         $link->handle = $handle;
         $link->field = $field;
 
-        // Persist URL; Embed::setAttributes fetches metadata when given a string
+        // Persist the URL without fetching remote metadata during conversion.
         $link->setAttributes(['linkValue' => $url], false);
 
         if (!$link->getLinkUrl()) {
