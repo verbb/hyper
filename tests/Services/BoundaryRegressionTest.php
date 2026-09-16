@@ -77,6 +77,26 @@ it('adopts one-sided and pre-serialized legacy UIDs without losing translations'
     }
 });
 
+it('rolls content back on index failure and reconciles unchanged content', function () {
+    $f = F::hyperField();
+    $s = F::entrySection($f);
+    $a = F::plainEntry($s, 'A');
+    $owner = F::plainEntry($s, 'Owner', [$f->handle => [['handle' => 'entry', 'linkValue' => [$a->id]]]]);
+    // Exercise an actual storage failure, independent of single-row/batch insertion.
+    $transform = fn() => new LinkCollection($f, [['handle' => 'entry', 'linkValue' => [$a->id], 'linkText' => 'Changed']]);
+    \Tests\Support\FailingRelationWrites::install('hyper_content_test_fail');
+    try {
+        expect(fn() => Hyper::$plugin->content->modify($f, $transform, new ModifyOptions(elementIds: [$owner->id])))->toThrow(\yii\db\Exception::class);
+    } finally {
+        \Tests\Support\FailingRelationWrites::remove('hyper_content_test_fail');
+    }
+    $reload = Entry::find()->id($owner->id)->status(null)->one();
+    expect($reload->getFieldValue($f->handle)->getLinks()[0]->linkValue)->toBe([$a->id]);
+    LinkRelation::deleteAll(['ownerId' => $owner->id]);
+    expect(Hyper::$plugin->content->reconcileRelations($f, new ModifyOptions(elementIds: [$owner->id])))->toBe(1);
+    expect((int) LinkRelation::find()->where(['ownerId' => $owner->id])->one()->targetId)->toBe($a->id);
+});
+
 it('preserves unavailable custom fields and does not reinterpret orphaned shared configs', function () {
     $f = F::hyperField(['linkTypes' => [Url::class]]);
     $raw = ['handle' => 'url', 'linkValue' => 'https://example.test', 'fields' => ['unavailable' => '00123']];

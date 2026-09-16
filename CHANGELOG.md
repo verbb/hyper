@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed content migration and relation updates not rolling back together when synchronization fails.
 - Fixed explicit empty content replacements being treated as unchanged during maintenance.
 - Fixed content maintenance selecting all owners for an empty selection and applying content filters inconsistently.
 - Fixed content migrations changing unrelated JSON values or overwriting concurrent edits.

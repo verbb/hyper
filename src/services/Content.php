@@ -68,42 +68,50 @@ class Content extends Component
         ?ModifyOptions $options = null,
     ): ModifyResult {
         $options ??= new ModifyOptions();
-        $adapter = new HyperFieldAdapter($field);
-        $store = new ElementContentStore($options->db);
+        $db = $options->db ?? Craft::$app->getDb();
 
-        $result = $store->eachFieldValue($field, function(ContentRef $ref, ModifyOptions $modifyOptions, ModifyResult $result) use ($adapter, $transform, $field, $options) {
-            $decoded = $adapter->decode($ref->value, $ref);
-            $existingEncoded = $adapter->encode($decoded, $ref);
-            $newValue = $transform($decoded, $ref);
-
-            if ($newValue === null) {
-                $newValue = new LinkCollection($field, []);
-            }
-
-            $encoded = $adapter->encode($newValue, $ref);
-
-            if ($this->_serializedValuesEqual($existingEncoded, $encoded)
-                && !($options->persistTransformedValues && $newValue !== $decoded)) {
-                return false;
-            }
-
-            if (!$options->dryRun) {
-                $ref->value = $encoded;
-                $result->recordModification($ref, $newValue);
-            }
-
-            return true;
-        }, $options);
-
-        if (!$options->dryRun && $options->syncRelations) {
-            foreach ($result->modifications as $modification) {
-                if ($modification['value'] instanceof LinkCollection) {
-                    $this->_syncRelations($field, $modification['ref'], $modification['value']);
-                }
-            }
+        if ($options->syncRelations && $db !== Craft::$app->getDb()) {
+            throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }
 
-        return $result;
+        return $db->transaction(function() use ($field, $transform, $options) {
+            $adapter = new HyperFieldAdapter($field);
+            $store = new ElementContentStore($options->db);
+
+            $result = $store->eachFieldValue($field, function(ContentRef $ref, ModifyOptions $modifyOptions, ModifyResult $result) use ($adapter, $transform, $field, $options) {
+                $decoded = $adapter->decode($ref->value, $ref);
+                $existingEncoded = $adapter->encode($decoded, $ref);
+                $newValue = $transform($decoded, $ref);
+
+                if ($newValue === null) {
+                    $newValue = new LinkCollection($field, []);
+                }
+
+                $encoded = $adapter->encode($newValue, $ref);
+
+                if ($this->_serializedValuesEqual($existingEncoded, $encoded)
+                    && !($options->persistTransformedValues && $newValue !== $decoded)) {
+                    return false;
+                }
+
+                if (!$options->dryRun) {
+                    $ref->value = $encoded;
+                    $result->recordModification($ref, $newValue);
+                }
+
+                return true;
+            }, $options);
+
+            if (!$options->dryRun && $options->syncRelations) {
+                foreach ($result->modifications as $modification) {
+                    if ($modification['value'] instanceof LinkCollection) {
+                        $this->_syncRelations($field, $modification['ref'], $modification['value']);
+                    }
+                }
+            }
+
+            return $result;
+        });
     }
 
     /**
