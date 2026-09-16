@@ -26,6 +26,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed Typed Link migrations losing the required custom-text setting.
 - Fixed Feed Me imports losing single-link custom fields and mixing nested field rows between links.
 - Fixed reverse-relation queries returning unrelated translations of linked owners.
 - Fixed recursive linked-element priming for self-links and cycles, including later owner batches.

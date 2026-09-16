@@ -2,6 +2,7 @@
 namespace verbb\hyper\migrations;
 
 use verbb\hyper\base\ElementLink;
+use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\links as linkTypes;
 
@@ -49,7 +50,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
             $settings = Json::decode($field['settings']);
             $allowCustomText = $settings['allowCustomText'] ?? true;
             $allowTarget = $settings['allowTarget'] ?? true;
-            $customTextRequired = $settings['customTextRequired'] ?? true;
+            $customTextRequired = $settings['customTextRequired'] ?? false;
             $defaultLinkName = $settings['defaultLinkName'] ?? '';
             $defaultText = $settings['defaultText'] ?? '';
             $enableAllLinkTypes = $settings['enableAllLinkTypes'] ?? true;
@@ -90,6 +91,13 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 }
 
                 $fieldLayout = self::getDefaultFieldLayout($linkType, $allowCustomText, $enableTitle, $enableAriaLabel, $enableSuffix);
+                foreach ($fieldLayout->getTabs() as $tab) {
+                    foreach ($tab->getElements() as $element) {
+                        if ($element instanceof LinkTextField) {
+                            $element->required = $customTextRequired;
+                        }
+                    }
+                }
                 $linkType->layoutUid = StringHelper::UUID();
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 
