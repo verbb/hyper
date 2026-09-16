@@ -9,7 +9,7 @@ use Craft;
 use craft\helpers\App;
 use craft\validators\UrlValidator;
 
-class Url extends Link 
+class Url extends Link
 {
     // Static Methods
     // =========================================================================
@@ -61,17 +61,30 @@ class Url extends Link
         return rtrim(Craft::$app->getSites()->primarySite->baseUrl, '/');
     }
 
-
-    // Protected Methods
-    // =========================================================================
-
-    protected function defineRules(): array
+    public function setAttributes($values, $safeOnly = true): void
     {
-        $rules = parent::defineRules();
+        if (($fixed = $this->_getFixedLinkValue()) !== null) {
+            $values['linkValue'] = $fixed;
+        }
 
-        $rules[] = [['linkValue'], 'validateLinkValue'];
+        parent::setAttributes($values, $safeOnly);
+    }
 
-        return $rules;
+    public function getLinkUrl(): ?string
+    {
+        return $this->_getFixedLinkValue() ?? parent::getLinkUrl();
+    }
+
+    public function getSerializedValues(): array
+    {
+        $values = parent::getSerializedValues();
+
+        // Enforce the setting for imported/programmatic values as well as CP input.
+        if (($fixed = $this->_getFixedLinkValue()) !== null) {
+            $values['linkValue'] = $fixed;
+        }
+
+        return $values;
     }
 
     public function validateLinkValue(string $attribute): void
@@ -103,4 +116,27 @@ class Url extends Link
         $validator->validateAttribute($this, $attribute);
     }
 
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        $rules[] = [['linkValue'], 'validateLinkValue'];
+
+        return $rules;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _getFixedLinkValue(): ?string
+    {
+        return $this->fixedLinkValue && $this->defaultLinkValue !== null && $this->defaultLinkValue !== ''
+            ? $this->defaultLinkValue
+            : null;
+    }
 }

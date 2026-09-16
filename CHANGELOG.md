@@ -25,6 +25,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed configured fixed URLs being overridden by submitted or imported link content.
 - Fixed an authorization vulnerability.
 - Fixed missing or unpublished destinations rendering their retained suffix as a link.
 - Fixed a phone destination of “0” failing to render with its telephone prefix.
