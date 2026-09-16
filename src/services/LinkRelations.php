@@ -391,6 +391,14 @@ class LinkRelations extends Component
         $elementQuery = $ownerElementType::find();
         Craft::configure($elementQuery, $elementParams);
 
+        // Independent ID/site filters form a cross product. Keep each recorded pair intact,
+        // including when callers request all sites or supply additional query criteria.
+        $pairs = array_map(static fn(array $row): array => [
+            'elements.id' => (int)$row['id'],
+            'elements_sites.siteId' => (int)$row['siteId'],
+        ], array_values($result));
+        $elementQuery->andWhere($pairs ? ['or', ...$pairs] : '0=1');
+
         return $elementQuery;
     }
 

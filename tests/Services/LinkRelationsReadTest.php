@@ -6,6 +6,33 @@ use craft\elements\Entry;
 use Tests\Support\Fixtures\HyperFixtureFactory;
 use verbb\hyper\Hyper;
 
+it('keeps reverse relation owner and site pairs together', function() {
+    [$s1, $s2] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField(['translationMethod' => \craft\base\Field::TRANSLATION_METHOD_SITE]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $target = HyperFixtureFactory::plainEntry($section, 'Target', [], $s1);
+    $payload = HyperFixtureFactory::entryLinkPayload($target) + ['linkSiteId' => $s1->id];
+    $a = HyperFixtureFactory::plainEntry($section, 'A', [$field->handle => [$payload]], $s1);
+    $a2 = HyperFixtureFactory::localizedEntryForSite($a, $s2);
+    $a2->setFieldValue($field->handle, []);
+    expect(Craft::$app->elements->saveElement($a2))->toBeTrue();
+    $b = HyperFixtureFactory::plainEntry($section, 'B', [], $s1);
+    $b2 = HyperFixtureFactory::localizedEntryForSite($b, $s2);
+    $b2->setFieldValue($field->handle, [$payload]);
+    expect(Craft::$app->elements->saveElement($b2))->toBeTrue();
+    $params = ['relatedTo' => ['field' => $field->handle, 'targetElement' => $target], 'site' => '*'];
+    $pairs = fn($query) => array_map(fn($e) => $e->id . ':' . $e->siteId, $query->all());
+    expect($pairs(Hyper::$plugin->linkRelations->getRelatedElementsQuery($params)))
+        ->toEqualCanonicalizing([$a->id . ':' . $s1->id, $b->id . ':' . $s2->id]);
+    $params['site'] = $s1->handle;
+    expect($pairs(Hyper::$plugin->linkRelations->getRelatedElementsQuery($params)))
+        ->toBe([$a->id . ':' . $s1->id]);
+    $params['site'] = '*';
+    $params['criteria'] = ['id' => $b->id];
+    expect($pairs(Hyper::$plugin->linkRelations->getRelatedElementsQuery($params)))
+        ->toBe([$b->id . ':' . $s2->id]);
+});
+
 it('uses batch-primed elements when resolving entry links after a query', function() {
     $field = HyperFixtureFactory::hyperField();
     $section = HyperFixtureFactory::entrySection($field);
