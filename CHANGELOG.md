@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.0.0-beta.2 - 2026-09-17
 
 ### Added
 - Added a raw content API for custom fields inside links, including composition with Vizy’s content API. Third-party migrations now convert source values before Hyper normalisation.
