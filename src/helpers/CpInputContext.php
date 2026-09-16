@@ -4,6 +4,7 @@ namespace verbb\hyper\helpers;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
 use craft\base\ElementInterface;
@@ -54,11 +55,27 @@ class CpInputContext
         foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
             if ($field instanceof BaseRelationField || $field instanceof Matrix) {
                 foreach ($element->getFieldValue($field->handle)->all() as $selected) {
-                    if ($field instanceof Matrix && !$selected->id) {
-                        self::assertVisibleSelections($selected);
-                    } else {
+                    if (!$field instanceof Matrix || $selected->id) {
                         self::_assertVisible($selected);
                     }
+
+                    if ($field instanceof Matrix) {
+                        self::assertVisibleSelections($selected);
+                    }
+                }
+            } elseif ($field instanceof HyperField) {
+                $links = $element->getFieldValue($field->handle);
+
+                if ($links instanceof LinkCollectionInterface) {
+                    foreach ($links->getLinks() as $link) {
+                        self::assertVisibleSelections($link);
+                    }
+                }
+            } elseif (class_exists(\verbb\vizy\fields\VizyField::class) && $field instanceof \verbb\vizy\fields\VizyField) {
+                $nodes = $element->getFieldValue($field->handle);
+
+                if ($nodes instanceof \verbb\vizy\models\NodeCollection) {
+                    self::_assertVisibleVizySelections($nodes->getNodes(), $element);
                 }
             }
         }
@@ -79,6 +96,23 @@ class CpInputContext
         }
 
         return $data;
+    }
+
+    private static function _assertVisibleVizySelections(array $nodes, ElementInterface $owner): void
+    {
+        foreach ($nodes as $node) {
+            if ($node instanceof \verbb\vizy\nodes\VizyBlock) {
+                $block = $node->getBlockElement($owner);
+
+                foreach ($block->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+                    $block->setFieldValue($field->handle, $node->getFieldValue($field->handle));
+                }
+
+                self::assertVisibleSelections($block);
+            }
+
+            self::_assertVisibleVizySelections($node->getContent(), $owner);
+        }
     }
 
     private static function _assertVisible(ElementInterface $element): void
