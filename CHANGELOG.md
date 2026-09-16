@@ -33,6 +33,7 @@
 
 ### Fixed
 - Fixed an information disclosure vulnerability.
+- Fixed GraphQL dropping Content Block values inside links.
 - Fixed native Craft Link migrations dropping IDs, rel values, and download settings.
 - Fixed explicit linked-element eager loading having no effect in console commands.
 - Fixed linked-element batching unnecessarily loading unused Matrix and Neo content.

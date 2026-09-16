@@ -10,6 +10,7 @@ use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\TextField;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\GqlFieldSerializer;
 use verbb\hyper\helpers\Html;
 use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\links\MissingLink;
@@ -734,18 +735,7 @@ abstract class Link extends Element implements LinkInterface
             }
         }
 
-        $serialized = [];
-
-        foreach ($fieldLayout->getCustomFields() as $field) {
-            // Convenience `fields` bag must honour the same schema gate as typed GQL fields (A09).
-            if ($schema && !$field->includeInGqlSchema($schema)) {
-                continue;
-            }
-
-            $serialized[$field->handle] = $field->serializeValue($this->getFieldValue($field->handle), $this);
-        }
-
-        return $serialized;
+        return GqlFieldSerializer::serialize($this, $schema);
     }
 
     public function getUrl(): ?string
