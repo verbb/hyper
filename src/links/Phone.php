@@ -58,7 +58,9 @@ class Phone extends Link
 
     public function getUrlPrefix(): ?string
     {
-        return $this->getLinkUrl() ? 'tel:' : null;
+        $url = $this->getLinkUrl();
+
+        return $url !== null && $url !== '' ? 'tel:' : null;
     }
 
 

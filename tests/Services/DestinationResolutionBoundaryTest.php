@@ -8,6 +8,14 @@ use verbb\hyper\links\Phone;
 use verbb\hyper\links\Site;
 use verbb\hyper\links\Url;
 
+it('keeps valid suffixes and a zero phone destination', function() {
+    $field = F::hyperField(['linkTypes' => [Url::class, Phone::class]]);
+    $url = Hyper::$plugin->links->createLinkFromSerialized($field, ['linkTypeHandle' => 'url', 'linkValue' => 'https://example.test', 'urlSuffix' => '#section']);
+    expect($url->getUrl())->toBe('https://example.test#section');
+    $phone = Hyper::$plugin->links->createLinkFromSerialized($field, ['linkTypeHandle' => 'phone', 'linkValue' => '0']);
+    expect($phone->getUrl())->toBe('tel:0');
+});
+
 it('ignores unavailable sites in options while retaining valid site destinations', function() {
     $site = Craft::$app->sites->primarySite;
     $type = new Site(['sites' => ['unavailable-site', $site->uid]]);
