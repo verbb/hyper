@@ -10,7 +10,7 @@ class Html extends CraftHtml
 
     public static function renderTagAttributes($attributes): string
     {
-        if (isset($attributes['class']) && is_array($attributes['class'])) {
+        if (is_array($attributes['class'] ?? null) && $attributes['class'] !== []) {
             $classes = $attributes['class'];
 
             if (static::$normalizeClassAttribute && count($classes) > 1) {
