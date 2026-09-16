@@ -116,23 +116,24 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     {
         // Protect against invalid values for some link types. This can happen due to migrations gone wrong
         // https://github.com/verbb/hyper/issues/10
-        $linkValue = $values['linkValue'] ?? [];
+        // Omitted selections are unchanged during a partial label/attribute update.
+        if (array_key_exists('linkValue', $values)) {
+            $linkValue = $values['linkValue'];
 
-        // Normalize to an array. The value is only ever a single ID, but this help with change-detection in Vue
-        // as the element select field produces an array as its value.
-        if (!is_array($linkValue)) {
-            $linkValue = [$linkValue];
-        }
-
-        foreach ($linkValue as $key => $value) {
-            if (is_string($value)) {
-                // Cast to an integer to ensure it's a valid ID (it might still be a string)
-                $linkValue[$key] = (int)$value ?: null;
+            // Element selects submit an array even though a link has one target.
+            if (!is_array($linkValue)) {
+                $linkValue = [$linkValue];
             }
-        }
 
-        $linkValue = array_values(array_filter($linkValue, static fn(mixed $value): bool => $value !== null && $value !== ''));
-        $values['linkValue'] = $linkValue === [] ? null : $linkValue;
+            foreach ($linkValue as $key => $value) {
+                if (is_string($value)) {
+                    $linkValue[$key] = (int)$value ?: null;
+                }
+            }
+
+            $linkValue = array_values(array_filter($linkValue, static fn(mixed $value): bool => $value !== null && $value !== ''));
+            $values['linkValue'] = $linkValue === [] ? null : $linkValue;
+        }
 
         $previousTargetId = $this->_getLinkTargetId();
 

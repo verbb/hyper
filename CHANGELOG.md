@@ -25,6 +25,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed partial element-link updates clearing the selected target.
 - Fixed an information disclosure vulnerability.
 - Portal serialization no longer restores cleared custom fields / trailing array entries, and no longer coerces numeric-looking strings (phones, codes, large IDs) to JavaScript numbers.
 - `Content::modify()` relation sync used `getElementById($id, $siteId)` incorrectly (site was passed as element type); index could stay stale after successful JSON transforms.
