@@ -22,9 +22,7 @@ class ResetTestDatabase
         }
 
         try {
-            foreach (LinkRelationRecord::find()->all() as $record) {
-                $record->delete();
-            }
+            LinkRelationRecord::deleteAll();
 
             if ($db->tableExists('{{%hyper_element_cache}}')) {
                 $db->createCommand()->delete('{{%hyper_element_cache}}')->execute();
