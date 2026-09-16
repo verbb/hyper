@@ -86,15 +86,14 @@ class LinkRelations extends Component
                 'ownerSiteId' => $element->siteId,
             ]);
 
-            foreach ($rows as $row) {
-                $record = new LinkRelationRecord();
-                $record->setAttributes($row, false);
-
-                if (!$record->save(false)) {
-                    $transaction->rollBack();
-
-                    return false;
-                }
+            // This is a derived index with no per-record lifecycle. Batch its writes;
+            // Craft adds timestamps/UIDs, and the transaction retains the old index on failure.
+            foreach (array_chunk($rows, 500) as $batch) {
+                Craft::$app->getDb()->createCommand()->batchInsert(
+                    LinkRelationRecord::tableName(),
+                    array_keys($batch[0]),
+                    array_map('array_values', $batch),
+                )->execute();
             }
 
             $transaction->commit();
