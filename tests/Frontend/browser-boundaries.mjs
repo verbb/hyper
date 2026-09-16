@@ -218,3 +218,5 @@ try {
     assert.equal(await page.evaluate(()=>pending.length),before+1);
     console.log(JSON.stringify({ok:true,scenarios:['direct Craft save and autosave','immediate URL','response race','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}
+
+await import('./input-lifecycle.mjs');

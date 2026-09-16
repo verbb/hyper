@@ -28,6 +28,9 @@ const mountInput = (root: Element) => {
 };
 
 const unmountInput = (root: Element) => {
+    // Sorting/moving connected DOM nodes is not a widget teardown.
+    if (root.isConnected) return;
+
     const input = mountedInputs.get(root);
 
     if (!input) {

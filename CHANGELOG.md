@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed moving or sorting a field tearing down its active Hyper inputs.
 - Fixed control-panel field operations accepting missing or conflicting owner contexts and inaccessible selections.
 - Fixed Matrix blocks inside links using persisted-owner operations when adding, copying, or updating their layouts.
 - Fixed repeated or concurrent clipboard pastes duplicating link identities.
