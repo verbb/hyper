@@ -85,7 +85,10 @@ export function createMatrixInput(...args: unknown[]): unknown {
                 if (!this.matrix.hyperJsonOwner) return this.base(button);
                 const action = $(button).data('action');
                 if (action === 'copy') {
-                    const entries = this.bulkActionMode() ? Array.from(this.matrix.entrySelect.getSelectedItems()) as HTMLElement[] : [this.$container[0]];
+                    const bulk = typeof this.bulkActionMode === 'function'
+                        ? this.bulkActionMode()
+                        : this.matrix.entrySelect.totalSelected > 1 && this.matrix.entrySelect.isSelected(this.$container);
+                    const entries = bulk ? Array.from(this.matrix.entrySelect.getSelectedItems()) as HTMLElement[] : [this.$container[0]];
                     try {
                         localStorage.setItem(matrixClipboardKey, JSON.stringify(entries.map((node: HTMLElement) => ({
                             hyperMatrix: true,

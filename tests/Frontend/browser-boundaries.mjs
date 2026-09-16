@@ -227,6 +227,38 @@ try {
     });
     assert.equal(new Set(pasted.copyUids).size,2);assert(!pasted.copyUids.includes('source'));
     assert.equal(new Set(pasted.cutUids).size,3);assert.equal(pasted.cutUids.filter(x=>x==='source').length,1);
+    // Copy keeps the native single/bulk selection behavior on both Craft API shapes.
+    const matrixCopies = await page.evaluate(() => {
+        let entryMethods;
+        const original = {matrix:Craft.MatrixInput,cp:Craft.cp,t:Craft.t,post:Garnish.getPostData,expand:Craft.expandPostArray};
+        const host=document.createElement('div');
+        host.innerHTML='<div data-base-input-name="entries[a]" data-type-id="1" data-copy-id="a"></div><div data-base-input-name="entries[b]" data-type-id="1" data-copy-id="b"></div><button data-action="copy"></button>';
+        document.body.append(host);
+        const [a,b]=host.querySelectorAll('[data-copy-id]');
+        Craft.MatrixInput={Entry:{extend(methods){entryMethods=methods;return this;}},extend(methods){return class {constructor(){Object.assign(this,methods);}base(){}on(){}};}};
+        Craft.cp={displaySuccess(){},displayError(message){throw new Error(message);}};
+        Craft.t=(_category,message)=>message;
+        Garnish.getPostData=node=>({id:node.dataset.copyId});
+        Craft.expandPostArray=({id})=>({entries:{[id]:{title:id}}});
+        const matrix=Audit.createMatrixInput();
+        matrix.entrySelect={totalSelected:2,isSelected:()=>true,getSelectedItems:()=>$( [a,b] )};
+        const entry={matrix,$container:$(a),actionDisclosure:{hide(){}}};
+        const copy=()=>{entryMethods.onActionSelect.call(entry,host.querySelector('button'));return JSON.parse(localStorage.getItem('hyper.matrixClipboard.v1')).map(row=>row.data.title);};
+        try {
+            const legacyBulk=copy();
+            matrix.entrySelect.isSelected=()=>false;
+            const legacySingle=copy();
+            entry.bulkActionMode=()=>true;
+            const currentBulk=copy();
+            entry.bulkActionMode=()=>false;
+            const currentSingle=copy();
+            return {legacyBulk,legacySingle,currentBulk,currentSingle};
+        } finally {
+            matrix.destroy();host.remove();localStorage.removeItem('hyper.matrixClipboard.v1');
+            Craft.MatrixInput=original.matrix;Craft.cp=original.cp;Craft.t=original.t;Garnish.getPostData=original.post;Craft.expandPostArray=original.expand;
+        }
+    });
+    assert.deepEqual(matrixCopies,{legacyBulk:['a','b'],legacySingle:['a'],currentBulk:['a','b'],currentSingle:['a']});
     // Removal cancels the pending debounce; remount creates one request, no stale handler.
     const before=await page.evaluate(()=>{window.removed=document.querySelector('#embed');removed.remove();return pending.length;});
     await page.waitForTimeout(600);
