@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed explicit linked-element eager loading having no effect in console commands.
 - Fixed linked-element batching unnecessarily loading unused Matrix and Neo content.
 - Fixed uploads inside nested Hyper and Vizy fields remaining in temporary storage after saving.
 - Fixed Feed Me imports dropping default values for custom fields inside links.

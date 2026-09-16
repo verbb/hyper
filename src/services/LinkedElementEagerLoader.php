@@ -99,6 +99,8 @@ class LinkedElementEagerLoader extends Component
             $suffix = implode('.', array_slice($segments, $index + 1));
 
             if ($suffix === '' || $suffix === 'linkedElements') {
+                Hyper::$plugin->getLinkRelations()->registerLinkedElementWith($field->id, '');
+
                 return $index;
             }
 

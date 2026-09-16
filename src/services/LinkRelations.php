@@ -230,7 +230,8 @@ class LinkRelations extends Component
             return;
         }
 
-        $paths = $this->_linkedElementWith[$fieldId] ?? [];
+        $this->_linkedElementWith[$fieldId] ??= [];
+        $paths = $this->_linkedElementWith[$fieldId];
 
         if ($withPath !== '' && !in_array($withPath, $paths, true)) {
             $this->_linkedElementWith[$fieldId][] = $withPath;
@@ -240,6 +241,11 @@ class LinkRelations extends Component
             $this->_pendingOwners += $this->_primedOwners;
             $this->_primedOwners = [];
         }
+    }
+
+    public function hasRequestedEagerLoading(): bool
+    {
+        return $this->_linkedElementWith !== [];
     }
 
     public function getLinkedElementWithForField(int $fieldId): array

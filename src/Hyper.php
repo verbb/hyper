@@ -231,25 +231,31 @@ class Hyper extends Plugin
 
     private function _registerCachePreload(): void
     {
-        if (!$this->_shouldPrimeLinkedElements()) {
+        if (Craft::$app->getUpdates()->getAreMigrationsPending()) {
             return;
         }
 
+        $automatic = $this->_shouldPrimeLinkedElements();
+
         // Register directly — nesting on Application::EVENT_INIT misses console/test bootstrap.
-        Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENT, function(PopulateElementEvent $event) {
-            if (!$this->_isResponseOk() || !$event->element->id) {
+        Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENT, function(PopulateElementEvent $event) use ($automatic) {
+            $relations = Hyper::$plugin->getLinkRelations();
+
+            if ((!$automatic && !$relations->hasRequestedEagerLoading()) || !$this->_isResponseOk() || !$event->element->id) {
                 return;
             }
 
-            Hyper::$plugin->getLinkRelations()->registerElementForPriming($event->element);
+            $relations->registerElementForPriming($event->element);
         });
 
-        Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENTS, function(PopulateElementsEvent $event) {
-            if (!$this->_isResponseOk()) {
+        Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENTS, function(PopulateElementsEvent $event) use ($automatic) {
+            $relations = Hyper::$plugin->getLinkRelations();
+
+            if ((!$automatic && !$relations->hasRequestedEagerLoading()) || !$this->_isResponseOk()) {
                 return;
             }
 
-            Hyper::$plugin->getLinkRelations()->primePendingOwners();
+            $relations->primePendingOwners();
         });
     }
 
@@ -267,10 +273,6 @@ class Hyper extends Plugin
 
     private function _shouldPrimeLinkedElements(): bool
     {
-        if (Craft::$app->getUpdates()->getAreMigrationsPending()) {
-            return false;
-        }
-
         $request = Craft::$app->getRequest();
 
         if ($request->getIsSiteRequest()) {
