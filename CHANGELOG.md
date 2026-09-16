@@ -25,6 +25,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed missing or unpublished destinations rendering their retained suffix as a link.
 - Fixed a phone destination of “0” failing to render with its telephone prefix.
 - Fixed stale Site references breaking link rendering and site selectors.
 - Fixed partial element-link updates clearing the selected target.

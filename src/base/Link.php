@@ -746,11 +746,14 @@ abstract class Link extends Element implements LinkInterface
 
     public function getUrl(): ?string
     {
-        $url = trim($this->getUrlPrefix() . $this->getLinkUrl() . $this->getUrlSuffix()) ?: null;
+        $linkUrl = $this->getLinkUrl();
 
-        if ($url === null) {
+        // A suffix augments a destination; it cannot revive a missing/disabled target.
+        if ($linkUrl === null || trim($linkUrl) === '') {
             return null;
         }
+
+        $url = trim($this->getUrlPrefix() . $linkUrl . $this->getUrlSuffix());
 
         // Render path enforces the same scheme policy as validation (Astra A02).
         $extra = Hyper::$plugin?->getSettings()->allowedUriSchemes ?? [];

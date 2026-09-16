@@ -8,6 +8,19 @@ use verbb\hyper\links\Phone;
 use verbb\hyper\links\Site;
 use verbb\hyper\links\Url;
 
+it('does not render a suffix when the underlying destination is absent', function(string $type, mixed $value) {
+    $field = F::hyperField(['linkTypes' => [Url::class, Entry::class, Site::class, Phone::class, Email::class]]);
+    $link = Hyper::$plugin->links->createLinkFromSerialized($field, [
+        'linkTypeHandle' => $type, 'linkValue' => $value, 'linkText' => 'Retained label', 'urlSuffix' => '#section',
+    ]);
+    expect($link->getLinkUrl())->toBeNull();
+    expect($link->getUrl())->toBeNull();
+    expect($link->getLink())->toBeNull();
+    expect($link->getSerializedValues()['urlSuffix'])->toBe('#section');
+})->with([
+    ['url', null], ['entry', [999999999]], ['site', 'nonexistent-site'], ['phone', null], ['email', null],
+]);
+
 it('keeps valid suffixes and a zero phone destination', function() {
     $field = F::hyperField(['linkTypes' => [Url::class, Phone::class]]);
     $url = Hyper::$plugin->links->createLinkFromSerialized($field, ['linkTypeHandle' => 'url', 'linkValue' => 'https://example.test', 'urlSuffix' => '#section']);
