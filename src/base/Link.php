@@ -369,12 +369,17 @@ abstract class Link extends Element implements LinkInterface
         $fieldContent = [];
         $fieldLayout = $this->getFieldLayout();
 
-        if ($fieldLayout && $this->fields) {
-            foreach ($this->fields as $fieldHandle => $value) {
-                if ($field = $fieldLayout->getFieldByHandle($fieldHandle)) {
-                    $fieldContent[$field->layoutElement->uid] = $value;
-                }
+        foreach ($this->fields as $fieldHandle => $value) {
+            $field = $fieldLayout?->getFieldByHandle($fieldHandle);
+
+            // Programmatic field setters may receive normalized values such as
+            // element queries or dates. Let the owning field serialize those.
+            if ($field && is_object($value)) {
+                $value = $field->serializeValue($this->getFieldValue($fieldHandle), $this);
             }
+
+            // Missing custom fields retain their original key/value until restored.
+            $fieldContent[$field?->layoutElement?->uid ?? $fieldHandle] = $value;
         }
 
         // Return the values used in the Vue component, and what will be saved to the content table
@@ -530,7 +535,6 @@ abstract class Link extends Element implements LinkInterface
 
         // Prevent setting values retained when removed from field layout. Otherwise, stale values
         if ($fieldLayout = $this->getFieldLayout()) {
-            $customFields = $values['fields'] ?? [];
             $nativeFields = ArrayHelper::getColumn($fieldLayout->getAvailableNativeFields(), 'attribute');
 
             // Remove any native field (attribute) that aren't included in the field layout
@@ -544,34 +548,34 @@ abstract class Link extends Element implements LinkInterface
                 }
             }
 
-            $fieldContent = [];
+            // Partial native-attribute updates must not replace omitted custom fields.
+            if (array_key_exists('fields', $values) && (!$safeOnly || $this->isAttributeSafe('fields'))) {
+                $fieldContent = [];
 
-            // Convert from layoutElementUid saved to the database to handle
-            foreach ($customFields as $handle => $fieldValue) {
-                // Check if this is a handle or layoutElementUid - we migrated to the latter in Hyper 2.x
-                // So this check can eventually be removed at the next breakpoint, as we only store the UID
-                // But this would be a mammoth migration task trying to find all content for a Hyper field instance
-                // (note, not just a Hyper field, because you can create field instances)
-                if (str_contains($handle, '-')) {
-                    foreach ($fieldLayout->getCustomFields() as $field) {
-                        if ($field->layoutElement && $field->layoutElement->uid === $handle) {
-                            $fieldContent[$field->handle] = $fieldValue;
+                // Convert from layoutElementUid saved to the database to handle.
+                foreach ($values['fields'] ?? [] as $handle => $fieldValue) {
+                    if (str_contains($handle, '-')) {
+                        $fieldContent[$handle] = $fieldValue;
+
+                        foreach ($fieldLayout->getCustomFields() as $field) {
+                            if ($field->layoutElement && $field->layoutElement->uid === $handle) {
+                                unset($fieldContent[$handle]);
+                                $fieldContent[$field->handle] = $fieldValue;
+                            }
                         }
+                    } else {
+                        $fieldContent[$handle] = $fieldValue;
                     }
-                } else {
-                    $fieldContent[$handle] = $fieldValue;
                 }
-            }
 
-            // Remove any custom fields that aren't included in the field layout
-            foreach ($fieldContent as $handle => $fieldValue) {
-                if (!$fieldLayout->isFieldIncluded($handle)) {
-                    unset($fieldContent[$handle]);
+                // Reset omitted values on a replacement, including Craft's normalized
+                // field cache. Unknown fields remain opaque in the stored payload.
+                foreach ($fieldLayout->getCustomFields() as $field) {
+                    parent::setFieldValue($field->handle, $fieldContent[$field->handle] ?? null);
                 }
-            }
 
-            $values['fields'] = $fieldContent;
-            $this->setFieldValues($fieldContent);
+                $values['fields'] = $fieldContent;
+            }
         }
 
         // Check if new window is disabled at the field level
@@ -588,6 +592,15 @@ abstract class Link extends Element implements LinkInterface
         }
 
         parent::setAttributes($values, $safeOnly);
+    }
+
+    public function setFieldValue(string $fieldHandle, mixed $value): void
+    {
+        parent::setFieldValue($fieldHandle, $value);
+
+        // Craft's custom-field behaviour and Hyper's stored JSON must share edits.
+        // Keep raw values here so an unrelated save does not normalize other fields.
+        $this->fields[$fieldHandle] = $value;
     }
 
     public function getElement(mixed $status = null): ?ElementInterface
