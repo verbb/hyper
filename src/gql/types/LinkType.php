@@ -27,6 +27,17 @@ class LinkType extends ObjectType
 
     protected function resolve(mixed $source, array $arguments, mixed $context, ResolveInfo $resolveInfo): mixed
     {
-        return $source[$resolveInfo->fieldName];
+        // Element property access prefers custom fields; native GraphQL values must retain their getters.
+        return match ($resolveInfo->fieldName) {
+            'link' => $source->getLink(),
+            'linkUrl' => $source->getLinkUrl(),
+            'text' => $source->getText(),
+            'title' => $source->getTitle(),
+            'type' => $source->getType(),
+            'url' => $source->getUrl(),
+            'urlPrefix' => $source->getUrlPrefix(),
+            'linkUri' => $source->getLinkUri(),
+            default => $source[$resolveInfo->fieldName],
+        };
     }
 }

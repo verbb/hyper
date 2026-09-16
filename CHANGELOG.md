@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed custom layout field names overriding native GraphQL link values and types.
 - Fixed Passive links ignoring required Link Text when they contain other content.
 - Fixed conditional native fields preventing publication while hidden.
 - Fixed settings pages without an explicit title failing to load.

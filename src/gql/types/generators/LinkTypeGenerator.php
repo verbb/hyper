@@ -54,7 +54,8 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
             'name' => $typeName,
             'fields' => function() use ($context, $typeName) {
                 $contentFieldGqlTypes = self::getContentFields($context);
-                $linkTypeFields = array_merge(LinkInterface::getFieldDefinitions(), $contentFieldGqlTypes);
+                // Colliding custom values remain available through the fields JSON bag.
+                $linkTypeFields = LinkInterface::getFieldDefinitions() + $contentFieldGqlTypes;
 
                 return Craft::$app->getGql()->prepareFieldDefinitions($linkTypeFields, $typeName);
             },

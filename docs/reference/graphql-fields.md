@@ -12,6 +12,8 @@ A concrete type is named `{fieldHandle}_{PascalCaseLinkTypeHandle}_LinkType`. Fo
 
 Use a fragment on that concrete type to request its custom layout fields with their GraphQL types. Alternatively, `fields` returns permitted custom field values as a JSON string keyed by handle. Both forms respect the active schema’s field restrictions.
 
+Names listed in `HyperLinkInterface`, such as `text` and `url`, always return Hyper’s link values. If a custom field’s layout handle matches one of these names, read its value from `fields`, or give it a unique layout handle to query it in a typed fragment.
+
 If a saved link's type is unavailable, it returns the concrete type `HyperMissingLink`. Include `__typename` in your query to identify these items. Its saved label remains available through `linkText`, while `url`, `text` and `link` return null and `fields` returns the JSON string `[]`. Hyper retains the original content so restoring the type can make the link usable again.
 
 `element` also respects the schema’s permissions for the destination. A stored link does not grant access to a restricted entry, site or user group. It can return null even when the owner entry is readable.
