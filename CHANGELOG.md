@@ -28,6 +28,8 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed upgrades losing relation lookups for uncached links, duplicate targets, and repeated field placements.
+- Fixed upgrades and relation rebuilding failing on trashed content or permanently deleted link targets.
 - Fixed content migration and relation updates not rolling back together when synchronization fails.
 - Fixed explicit empty content replacements being treated as unchanged during maintenance.
 - Fixed content maintenance selecting all owners for an empty selection and applying content filters inconsistently.

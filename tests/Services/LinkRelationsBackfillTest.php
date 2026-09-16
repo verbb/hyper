@@ -59,20 +59,25 @@ it('skips duplicate rows when backfilling element cache records', function() {
         'Owner entry',
     );
 
-    $existingCount = (new Query())
-        ->from('{{%hyper_links}}')
-        ->where([
-            'ownerId' => $owner->id,
-            'ownerSiteId' => $owner->siteId,
-        ])
-        ->count();
-    expect((int)$existingCount)->toBe(1);
+    LegacyElementCacheSeeder::seedFromOwner($field, $owner);
+    $other = HyperFixtureFactory::entryWithLinkPayloads($section, [HyperFixtureFactory::entryLinkPayload($target)], 'Unindexed owner');
+    LegacyElementCacheSeeder::seedFromOwner($field, $other);
+    LinkRelationRecord::deleteAll(['ownerId' => $other->id]);
+    expect((int)(new Query())->from('{{%hyper_element_cache}}')->count())->toBe(2);
 
-    $inserted = Hyper::$plugin->getLinkRelations()->backfillFromElementCache();
+    $read = fn($id) => (new Query())->from('{{%hyper_links}}')->where(['ownerId' => $id])->orderBy('id')->all();
+    $before = $read($owner->id);
+    expect($before)->toHaveCount(1);
+    expect($read($other->id))->toBe([]);
 
-    expect($inserted)->toBe(0);
-    expect((int)(new Query())->from('{{%hyper_links}}')->where([
-        'ownerId' => $owner->id,
-        'ownerSiteId' => $owner->siteId,
-    ])->count())->toBe(1);
+    // The same run must skip the duplicate AND insert the missing relation.
+    expect(Hyper::$plugin->linkRelations->backfillFromElementCache())->toBe(1);
+    expect($read($owner->id))->toBe($before);
+    $inserted = $read($other->id);
+    expect($inserted)->toHaveCount(1);
+    expect((int)$inserted[0]['targetId'])->toBe($target->id);
+    expect((int)$inserted[0]['targetSiteId'])->toBe($other->siteId);
+    expect(Hyper::$plugin->linkRelations->backfillFromElementCache())->toBe(0);
+    expect($read($owner->id))->toBe($before);
+    expect($read($other->id))->toBe($inserted);
 });

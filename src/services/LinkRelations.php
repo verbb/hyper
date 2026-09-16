@@ -41,9 +41,16 @@ class LinkRelations extends Component
     // Public Methods
     // =========================================================================
 
+    /**
+     * Rebuild all placements of a field; an optional collection replaces the caller's placement.
+     * Without a replacement, read every value from the owner (after content migration writes).
+     */
     public function syncFromLinkCollection(HyperField $field, ElementInterface $element, ?LinkCollectionInterface $collection = null): bool
     {
-        if ($element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
+        // Vizy nodes have synthetic IDs, not durable element rows. Their content
+        // remains in the host field and cannot own a relation-index entry.
+        if ($element instanceof \verbb\vizy\elements\Block || $element->trashed
+            || $element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
             return true;
         }
 
@@ -75,6 +82,21 @@ class LinkRelations extends Component
                 'targetSiteId' => $target['targetSiteId'],
                 'targetType' => $target['targetType'],
             ];
+        }
+
+        if ($rows) {
+            // Historical content can retain references after a target is permanently
+            // deleted. Preserve that content, but only index targets that still exist.
+            // One lookup covers duplicate targets and avoids per-link resolution.
+            $targets = (new Query())
+                ->select(['id', 'type'])
+                ->from('{{%elements}}')
+                ->where(['id' => array_values(array_unique(array_column($rows, 'targetId')))])
+                ->indexBy('id')
+                ->all();
+            $rows = array_values(array_filter($rows, static fn(array $row): bool =>
+                isset($targets[$row['targetId']]) && $targets[$row['targetId']]['type'] === $row['targetType']
+            ));
         }
 
         $transaction = Craft::$app->getDb()->beginTransaction();
