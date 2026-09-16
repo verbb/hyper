@@ -3,7 +3,6 @@ namespace verbb\hyper\migrations;
 
 use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
-use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
@@ -11,6 +10,7 @@ use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\UrlSuffixField;
+use verbb\hyper\fields\HyperField;
 
 use Craft;
 use craft\db\Query;
@@ -27,85 +27,8 @@ use Exception;
 
 class PluginFieldMigration extends PluginMigration
 {
-    // Properties
+    // Static Methods
     // =========================================================================
-
-    public int $count = 0;
-
-
-    // Public Methods
-    // =========================================================================
-
-    public function safeUp(): bool
-    {
-        App::maxPowerCaptain();
-
-        $this->fields = (new Query())
-            ->from('{{%fields}}')
-            ->where(['type' => $this->getOldFieldTypeClasses()])
-            ->all();
-
-        $fieldService = Craft::$app->getFields();
-
-        // Update the field settings
-        $this->processFieldSettings();
-
-        // Refresh the internal fields cache
-        $fieldService->refreshFields();
-        
-        // Resave all fields to ensure they're properly saved in project config
-        if ($this->resaveFields) {
-            foreach ($this->fields as $fieldData) {
-                $this->stdout("Re-saving field “{$fieldData['handle']}”.");
-
-                $field = $fieldService->getFieldById($fieldData['id']);
-
-                if (!$field) {
-                    continue;
-                }
-
-                if (!$this->saveFieldForMigration($fieldService, $field)) {
-                    throw new Exception(Json::encode($field->getErrors()));
-                }
-
-                $this->stdout("    > Field “{$fieldData['handle']}” migration finalised." . PHP_EOL, Console::FG_GREEN);
-            }
-
-            // `saveField()` only writes `fields.*` project config for global fields. If a migration
-            // converted a field stored elsewhere in project config, update that field definition in place.
-            $this->syncMigratedFieldsToProjectConfig($fieldService);
-        }
-
-        if ($this->count) {
-            $this->stdout('Finished migration, processed ' . $this->count . '/' . count($this->fields) . ' fields.' . PHP_EOL, Console::FG_GREEN);
-        } else {
-            $this->stdout('No fields available to migrate.' . PHP_EOL, Console::FG_GREEN);
-        }
-
-        return true;
-    }
-
-    protected function saveFieldForMigration(Fields $fieldService, mixed $field): bool
-    {
-        try {
-            // Preserve normal validation so field-level issues are still reported.
-            return $fieldService->saveField($field);
-        } catch (\Throwable $e) {
-            // Some field validation paths rely on web sessions and will always fail in console requests.
-            // Fall back to a non-validating save only for this known, unavoidable console edge case.
-            if (
-                Craft::$app instanceof \craft\console\Application &&
-                str_contains($e->getMessage(), 'Session does not exist in a console request')
-            ) {
-                $fieldHandle = $field->handle ?? 'unknown';
-                $this->stdout("    > Field “{$fieldHandle}” triggered session-bound validation in console. Retrying without validation." . PHP_EOL, Console::FG_YELLOW);
-
-                return $fieldService->saveField($field, false);
-            }
-
-            throw $e;
-        }
-    }
 
     public static function getDefaultFieldLayout(LinkInterface $linkType, bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false, bool $enableSuffix = false): FieldLayout
     {
@@ -212,6 +135,99 @@ class PluginFieldMigration extends PluginMigration
         }
 
         return $sources;
+    }
+
+
+    // Properties
+    // =========================================================================
+
+    public int $count = 0;
+
+
+    // Public Methods
+    // =========================================================================
+
+    public function safeUp(): bool
+    {
+        App::maxPowerCaptain();
+
+        $this->fields = (new Query())
+            ->from('{{%fields}}')
+            ->where(['type' => $this->getOldFieldTypeClasses()])
+            ->all();
+
+        // Field saves also write project config; a database rollback alone cannot make them a dry-run.
+        if ($this->dryRun) {
+            $this->getMigrationResult()?->setStat('fieldsWouldMigrate', count($this->fields));
+            $this->stdout('Dry-run: found ' . count($this->fields) . ' candidate fields. Field settings and project config were not changed; conversion validation requires a real migration.' . PHP_EOL);
+
+            return true;
+        }
+
+        $fieldService = Craft::$app->getFields();
+
+        // Update the field settings
+        $this->processFieldSettings();
+
+        // Refresh the internal fields cache
+        $fieldService->refreshFields();
+
+        // Resave all fields to ensure they're properly saved in project config
+        if ($this->resaveFields) {
+            foreach ($this->fields as $fieldData) {
+                $this->stdout("Re-saving field “{$fieldData['handle']}”.");
+
+                $field = $fieldService->getFieldById($fieldData['id']);
+
+                if (!$field) {
+                    continue;
+                }
+
+                if (!$this->saveFieldForMigration($fieldService, $field)) {
+                    throw new Exception(Json::encode($field->getErrors()));
+                }
+
+                $this->stdout("    > Field “{$fieldData['handle']}” migration finalised." . PHP_EOL, Console::FG_GREEN);
+            }
+
+            // `saveField()` only writes `fields.*` project config for global fields. If a migration
+            // converted a field stored elsewhere in project config, update that field definition in place.
+            $this->syncMigratedFieldsToProjectConfig($fieldService);
+        }
+
+        if ($this->count) {
+            $this->stdout('Finished migration, processed ' . $this->count . '/' . count($this->fields) . ' fields.' . PHP_EOL, Console::FG_GREEN);
+        } else {
+            $this->stdout('No fields available to migrate.' . PHP_EOL, Console::FG_GREEN);
+        }
+
+        return true;
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function saveFieldForMigration(Fields $fieldService, mixed $field): bool
+    {
+        try {
+            // Preserve normal validation so field-level issues are still reported.
+            return $fieldService->saveField($field);
+        } catch (\Throwable $e) {
+            // Some field validation paths rely on web sessions and will always fail in console requests.
+            // Fall back to a non-validating save only for this known, unavoidable console edge case.
+            if (
+                Craft::$app instanceof \craft\console\Application &&
+                str_contains($e->getMessage(), 'Session does not exist in a console request')
+            ) {
+                $fieldHandle = $field->handle ?? 'unknown';
+                $this->stdout("    > Field “{$fieldHandle}” triggered session-bound validation in console. Retrying without validation." . PHP_EOL, Console::FG_YELLOW);
+
+                return $fieldService->saveField($field, false);
+            }
+
+            throw $e;
+        }
     }
 
     protected function validateMigratedLinkTypeSettings(HyperField $newField, string $fieldHandle): bool

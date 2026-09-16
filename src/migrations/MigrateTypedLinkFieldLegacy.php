@@ -12,11 +12,16 @@ class MigrateTypedLinkFieldLegacy extends PluginMigration
 
     public function safeUp(): bool
     {
+        if ($this->dryRun) {
+            $this->stdout('Dry-run: legacy Typed Link settings update skipped; settings were not changed.' . PHP_EOL);
+
+            return true;
+        }
+
         TypedLinkLegacyController::updateAllSettings();
 
         $this->stdout('Typed Link fields (legacy) have been updated.' . PHP_EOL, Console::FG_GREEN);
 
         return true;
     }
-
 }

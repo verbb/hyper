@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed third-party migration dry-runs changing field settings and project config.
 - Fixed upgrades losing relation lookups for uncached links, duplicate targets, and repeated field placements.
 - Fixed upgrades and relation rebuilding failing on trashed content or permanently deleted link targets.
 - Fixed content migration and relation updates not rolling back together when synchronization fails.
