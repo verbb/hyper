@@ -957,6 +957,16 @@ abstract class Link extends Element implements LinkInterface
 
         // Validation for only when saving Hyper fields and their settings
         $rules[] = [['label', 'handle'], 'required', 'on' => [self::SCENARIO_SETTINGS]];
+        $rules[] = [['layoutConfig'], function(string $attribute): void {
+            // Validate the submission, not the previous layout resolved by its stored UID.
+            $layout = Hyper::$plugin->getService()->createFieldLayout($this->getSettingsConfigForDb());
+
+            if ($layout && !$layout->validate()) {
+                foreach ($layout->getErrorSummary(true) as $error) {
+                    $this->addError($attribute, $error);
+                }
+            }
+        }, 'on' => [self::SCENARIO_SETTINGS]];
 
         $fieldLayout = $this->getFieldLayout();
 

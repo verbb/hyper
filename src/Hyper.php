@@ -168,6 +168,8 @@ class Hyper extends Plugin
     {
         $projectConfig = Craft::$app->getProjectConfig();
 
+        Event::on(Fields::class, Fields::EVENT_BEFORE_APPLY_FIELD_SAVE, [$this->getService(), 'handleBeforeApplyFieldSave']);
+
         $projectConfig
             ->onAdd(ProjectConfig::PATH_FIELDS . '.{uid}', [$this->getService(), 'handleChangedField'])
             ->onUpdate(ProjectConfig::PATH_FIELDS . '.{uid}', [$this->getService(), 'handleChangedField'])

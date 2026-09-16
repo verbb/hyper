@@ -570,28 +570,33 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             if (!$linkType->validate()) {
                 $hasErrors = true;
+
+                foreach ($linkType->getErrorSummary(true) as $error) {
+                    $this->addError('linkTypes', Craft::t('hyper', '{label}: {error}', [
+                        'label' => $linkType->label,
+                        'error' => $error,
+                    ]));
+                }
             }
         }
 
         if ($hasErrors) {
-            $this->addError('linkTypes', Craft::t('hyper', 'Correct the above errors.'));
-
             return false;
         }
 
-        // Shared-default fields do not own layouts — plugin defaults PC handlers persist those.
-        if (!$this->hasCustomLinkTypes()) {
-            return true;
-        }
+        return true;
+    }
 
-        // Any fields not in the global scope won't trigger a PC change event. Go manual.
-        if ($this->context !== 'global') {
+    public function afterSave(bool $isNew): void
+    {
+        parent::afterSave($isNew);
+
+        // Non-global fields have no project-config listener; persist only after the owner has saved.
+        if ($this->hasCustomLinkTypes() && $this->context !== 'global') {
             Hyper::$plugin->getService()->saveField(
                 array_map(static fn(LinkTypeDefinition $definition): array => $definition->toSettingsArray(), $this->getLinkTypeDefinitions())
             );
         }
-
-        return true;
     }
 
     public function afterElementSave(ElementInterface $element, bool $isNew): void

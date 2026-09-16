@@ -1,18 +1,21 @@
 <?php
 namespace verbb\hyper\services;
 
-use verbb\hyper\fields\HyperField;
 use verbb\hyper\Hyper;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\Plugin;
-use craft\models\FieldLayout;
 
 use Craft;
 use craft\base\Component;
 use craft\db\Table;
 use craft\elements\db\ElementQueryInterface;
+use craft\events\ApplyFieldSaveEvent;
 use craft\events\ConfigEvent;
 use craft\helpers\ArrayHelper;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
+use craft\models\FieldLayout;
+
+use yii\base\InvalidConfigException;
 
 class Service extends Component
 {
@@ -52,32 +55,55 @@ class Service extends Component
         $this->saveField($linkTypes, $event);
     }
 
+    public function handleBeforeApplyFieldSave(ApplyFieldSaveEvent $event): void
+    {
+        $data = $event->config;
+
+        if (($data['type'] ?? null) !== HyperField::class) {
+            return;
+        }
+
+        $settings = ProjectConfigHelper::unpackAssociativeArrays($data['settings'] ?? []);
+
+        if (($settings['linkTypeConfig'] ?? null) === LinkTypeConfigs::CUSTOM_HANDLE) {
+            // Craft writes the field row before Hyper's project-config listener runs.
+            $this->_createValidatedLayouts($settings['linkTypes'] ?? []);
+        }
+    }
+
+    public function createFieldLayout(array $linkType): ?FieldLayout
+    {
+        $layoutConfig = $linkType['layoutConfig'] ?? [];
+
+        if (!$layoutConfig) {
+            return null;
+        }
+
+        ArrayHelper::remove($layoutConfig, 'uid');
+
+        // Older project config can contain the pre-Craft 5.8 array representation.
+        if (isset($layoutConfig['cardThumbAlignment']) && is_array($layoutConfig['cardThumbAlignment'])) {
+            $layoutConfig['cardThumbAlignment'] = reset($layoutConfig['cardThumbAlignment']);
+        }
+
+        $layout = FieldLayout::createFromConfig($layoutConfig);
+        $layout->type = $linkType['type'];
+        $layout->uid = $linkType['layoutUid'] ?? null;
+
+        return $layout;
+    }
+
     public function saveField(array $linkTypes, ?ConfigEvent $event = null): void
     {
-        $fieldsService = Craft::$app->getFields();
+        $layouts = $this->_createValidatedLayouts($linkTypes);
 
-        // Ensure we update all field layouts, for each blocktype
-        foreach ($linkTypes as $linkType) {
-            $layoutUid = $linkType['layoutUid'] ?? '';
-            $layoutConfig = $linkType['layoutConfig'] ?? [];
-
-            if (!$layoutUid || !$layoutConfig) {
-                continue;
+        Craft::$app->getDb()->transaction(function() use ($layouts) {
+            foreach ($layouts as $layout) {
+                if (!Craft::$app->getFields()->saveLayout($layout)) {
+                    throw new InvalidConfigException(implode(' ', $layout->getErrorSummary(true)));
+                }
             }
-
-            // Ensure we remove `uid` from the `layoutConfig` - we don't want it
-            ArrayHelper::remove($layoutConfig, 'uid');
-
-            // Fix potential Craft 5.8+ issue
-            if (isset($layoutConfig['cardThumbAlignment']) && is_array($layoutConfig['cardThumbAlignment'])) {
-                $layoutConfig['cardThumbAlignment'] = reset($layoutConfig['cardThumbAlignment']);
-            }
-
-            $fieldLayout = FieldLayout::createFromConfig($layoutConfig);
-            $fieldLayout->type = $linkType['type'];
-            $fieldLayout->uid = $layoutUid;
-            $fieldsService->saveLayout($fieldLayout);
-        }
+        });
     }
 
     public function handleDeletedField(ConfigEvent $event): void
@@ -150,5 +176,34 @@ class Service extends Component
     public function getRelatedElementsQuery(array $params = []): ?ElementQueryInterface
     {
         return Hyper::$plugin->getLinkRelations()->getRelatedElementsQuery($params);
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _createValidatedLayouts(array $linkTypes): array
+    {
+        $layouts = [];
+
+        foreach ($linkTypes as $linkType) {
+            if (empty($linkType['layoutUid'])) {
+                continue;
+            }
+
+            $layout = $this->createFieldLayout($linkType);
+
+            if (!$layout) {
+                continue;
+            }
+
+            if (!$layout->validate()) {
+                throw new InvalidConfigException(implode(' ', $layout->getErrorSummary(true)));
+            }
+
+            $layouts[] = $layout;
+        }
+
+        return $layouts;
     }
 }
