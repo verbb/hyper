@@ -7,11 +7,17 @@ it('retains zero in authored and template-supplied HTML attributes', function() 
         'linkValue' => 'https://example.test',
         'linkTitle' => '0',
         'ariaLabel' => '0',
+        'classes' => '0',
         'customAttributes' => [
             ['attribute' => 'tabindex', 'value' => '0'],
             ['attribute' => 'data-count', 'value' => 0],
         ],
     ]);
+
+    expect((string)$link->getLink())->toContain('class="0"');
+
+    expect((string)$link->getLinkAttributes([], true))->toContain('class="0"');
+    expect((string)$link->getLink(['class' => ['other', '0']]))->toContain('class="0 other"');
 
     $attributes = $link->getLinkAttributes(['data-position' => 0, 'hidden' => false]);
     expect($attributes['title'] ?? null)->toBe('0');

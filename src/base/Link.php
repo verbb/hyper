@@ -892,7 +892,7 @@ abstract class Link extends Element implements LinkInterface
     {
         $attr = [];
 
-        if ($classes = $this->getClasses()) {
+        if (($classes = $this->getClasses()) !== null && $classes !== '') {
             $attr['class'] = $classes;
         }
 
