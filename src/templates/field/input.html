@@ -34,6 +34,7 @@
         <div
         class="hyper-input hyper-input--mode-{{ settings.viewMode ?? 'blocks' }}{{ links|length == 0 ? ' hyper-input--empty' : '' }}"
         data-hyper-input
+        data-hyper-input-context="{{ settings.inputContext ?? '' | e('html_attr') }}"
         data-hyper-input-config="{{ inputConfig | json_encode | e('html_attr') }}"
         data-view-mode="{{ settings.viewMode ?? 'blocks' }}"
         {% if settings.elementId %}data-hyper-element-id="{{ settings.elementId }}"{% endif %}

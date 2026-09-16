@@ -1,5 +1,6 @@
-import { mountEmbed } from './input/embed';
 import { registerHostSerialization } from './input/hostSerialization';
+import { mountEmbed } from './input/embed';
+import { createMatrixInput } from './input/matrix';
 
 import {
     ensureElementEditorSerializeHook,
@@ -47,6 +48,8 @@ export function registerHyperGlobals(): void {
             });
         },
     });
+
+    Craft.Hyper.MatrixInput = createMatrixInput;
 
     Craft.Hyper.Embed = Garnish.Base.extend({
         init(fieldId: string) {

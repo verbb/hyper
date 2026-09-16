@@ -12,6 +12,41 @@ use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\links\Url;
 use yii\web\ForbiddenHttpException;
 
+it('namespaces native Matrix constructor IDs and all input namespace settings', function () {
+    $method = new ReflectionMethod(HyperField::class, '_namespaceDeferredFieldPayload');
+    $result = $method->invoke(new HyperField(), '<script>new Craft.MatrixInput("hyperData-row-fields-blocks", [], "hyperData[row][fields][blocks]", {"namespace":"hyperData[row][fields]"}); $("#hyperData-row-control");</script>');
+    expect($result)->toContain('new Craft.Hyper.MatrixInput("fields-hyperData-row-fields-blocks"')
+        ->toContain('"fields[hyperData][row][fields][blocks]"')
+        ->toContain('"namespace":"fields[hyperData][row][fields]"')
+        ->toContain('$("#fields-hyperData-row-control")');
+});
+
+it('binds signed editor context to user field site and original owner', function () {
+    $field = F::hyperField();
+    $owner = F::plainEntry(F::entrySection($field));
+    $originalRequest = Craft::$app->getRequest();
+    $user = Craft::$app->getUser();
+    $originalIdentity = $user->getIdentity();
+    $identity = User::find()->admin()->one();
+    $request = new craft\web\Request(['isCpRequest' => true, 'isConsoleRequest' => false]);
+    Craft::$app->set('request', $request);
+    $user->setIdentity($identity);
+    try {
+        $token = CpInputContext::create($field, $owner);
+        $context = CpInputContext::validate($token, $field->id, $owner->siteId, null);
+        expect($context['ownerId'])->toBe($owner->id);
+        foreach ([[$field->id + 1, $owner->siteId, null], [$field->id, $owner->siteId + 1, null], [$field->id, $owner->siteId, $owner->id + 1]] as $args) {
+            expect(fn() => CpInputContext::validate($token, ...$args))->toThrow(ForbiddenHttpException::class);
+        }
+        expect(fn() => CpInputContext::validate($token . 'tampered', $field->id, $owner->siteId, null))->toThrow(ForbiddenHttpException::class);
+        $user->setIdentity(null);
+        expect(fn() => CpInputContext::validate($token, $field->id, $owner->siteId, null))->toThrow(ForbiddenHttpException::class);
+    } finally {
+        $user->setIdentity($originalIdentity);
+        Craft::$app->set('request', $originalRequest);
+    }
+});
+
 it('finalizes a temporary custom-field upload when its Hyper owner is saved', function () {
     $handle = F::handle('hyperTestFs');
     $fs = new craft\fs\Local(['name' => $handle, 'handle' => $handle, 'path' => sys_get_temp_dir() . '/' . $handle]);
@@ -48,4 +83,16 @@ it('finalizes a temporary custom-field upload when its Hyper owner is saved', fu
         @unlink($path);
         @rmdir(sys_get_temp_dir() . '/' . $handle);
     }
+});
+
+it('keeps canonical content unchanged until a saved Hyper draft is published', function () {
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    $owner = F::plainEntry(F::entrySection($field), 'Draft owner', [$field->handle => [['handle' => 'url', 'linkValue' => 'https://example.test/original']]]);
+    $draft = Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Acceptance draft');
+    $draft->setFieldValue($field->handle, [['handle' => 'url', 'linkValue' => 'https://example.test/draft']]);
+    expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('https://example.test/original');
+    $reload = Entry::find()->id($draft->id)->drafts(true)->status(null)->one();
+    $published = Craft::$app->drafts->applyDraft($reload);
+    expect(Entry::find()->id($published->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('https://example.test/draft');
 });

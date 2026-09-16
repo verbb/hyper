@@ -3,6 +3,7 @@ namespace verbb\hyper\controllers;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\helpers\Fields;
 use verbb\hyper\links\Embed;
 
@@ -92,29 +93,8 @@ class FieldsController extends Controller
 
     public function actionCreateMatrixEntry()
     {
-        $this->requireCpRequest();
-        $this->_requireOwnerElementAccess();
-
-        // Override `MatrixController::actionCreateEntry` to handle non-saved-element owners.
-        $fieldId = $this->request->getRequiredBodyParam('fieldId');
-        $entryTypeId = $this->request->getRequiredBodyParam('entryTypeId');
-        $siteId = $this->request->getRequiredBodyParam('siteId');
+        [$entry, $field] = $this->_matrixEntryFromRequest();
         $namespace = $this->request->getRequiredBodyParam('namespace');
-
-        $field = Craft::$app->getFields()->getFieldById($fieldId);
-        $entryType = Craft::$app->getEntries()->getEntryTypeById($entryTypeId);
-        $site = Craft::$app->getSites()->getSiteById($siteId, true);
-
-        $entry = Craft::createObject([
-            'class' => Entry::class,
-            'siteId' => $siteId,
-            'uid' => StringHelper::UUID(),
-            'typeId' => $entryType->id,
-            'fieldId' => $fieldId,
-            'slug' => ElementHelper::tempSlug(),
-        ]);
-
-        $entry->setScenario(Element::SCENARIO_ESSENTIALS);
 
         $view = $this->getView();
         $entries = [];
@@ -133,6 +113,45 @@ class FieldsController extends Controller
         ]);
     }
 
+    public function actionMatrixFieldLayout(): Response
+    {
+        [$entry] = $this->_matrixEntryFromRequest();
+        $view = $this->getView();
+        $namespace = $this->request->getRequiredBodyParam('namespace');
+        $form = $entry->getFieldLayout()->createForm($entry, false, [
+            'namespace' => $namespace,
+            'registerDeltas' => false,
+            'visibleElements' => $this->request->getBodyParam('visibleLayoutElements', []),
+            'staticElements' => $this->request->getBodyParam('staticLayoutElements', []),
+        ]);
+        $missingElements = [];
+        foreach ($form->tabs as $tab) {
+            if (!$tab->getUid()) {
+                continue;
+            }
+            $elements = [];
+            foreach ($tab->elements as [$layoutElement, $conditional, $html, $static]) {
+                if ($conditional) {
+                    $elements[] = ['uid' => $layoutElement->uid, 'html' => $html, 'static' => $static];
+                }
+            }
+            $missingElements[] = ['uid' => $tab->getUid(), 'id' => $tab->getId(), 'elements' => $elements];
+        }
+        $tabs = $form->getTabMenu();
+        $tabHtml = count($tabs) > 1 ? $view->namespaceInputs(fn() => $view->renderTemplate('_includes/tabs.twig', [
+            'tabs' => $tabs,
+            'selectedTab' => $this->request->getBodyParam('selectedTab'),
+        ]), $namespace) : null;
+
+        return $this->asJson([
+            'tabs' => $tabHtml,
+            'missingElements' => $missingElements,
+            'headHtml' => $view->getHeadHtml(),
+            'bodyHtml' => $view->getBodyHtml(),
+            'uiLabel' => $entry->getUiLabel(),
+        ]);
+    }
+
     public function actionCreateLinks(): Response
     {
         $this->requireCpRequest();
@@ -143,7 +162,7 @@ class FieldsController extends Controller
         $fieldId = $this->request->getRequiredBodyParam('fieldId');
         $handle = (string)$this->request->getRequiredBodyParam('handle');
         $mode = (string)$this->request->getBodyParam('mode', 'elements');
-        $siteId = (int)($this->request->getBodyParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
+        $siteId = (int)($this->request->getParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
 
         $field = Craft::$app->getFields()->getFieldById((int)$fieldId);
 
@@ -275,6 +294,7 @@ class FieldsController extends Controller
 
         // Update the content on the link, passed from the field UI
         $linkType->setAttributes($data, false);
+        CpInputContext::assertVisibleSelections($linkType);
 
         // Advanced-tab relation fields (e.g. Entries) resolve site from the Link element /
         // current site. Stamp the owner entry's site so pickers are not stuck on the primary site.
@@ -355,6 +375,10 @@ class FieldsController extends Controller
         return $this->asSuccess(null, ['data' => $data, 'preview' => $preview]);
     }
 
+
+    // Private Methods
+    // =========================================================================
+
     private function _resolveEmbedLinkType(mixed $fieldId, string $linkTypeHandle): ?Embed
     {
         if (!$fieldId || $linkTypeHandle === '') {
@@ -376,33 +400,103 @@ class FieldsController extends Controller
         return null;
     }
 
-    /**
-     * When the CP posts an owner elementId, require canSave on that element.
-     * New/unsaved owners (no id yet) keep CP-login + CSRF only — same as native fields.
-     */
-    private function _requireOwnerElementAccess(): void
+    /** Validate the rendered field context before resolving any author-supplied content. */
+    private function _matrixEntryFromRequest(): array
     {
-        $elementId = $this->request->getParam('elementId')
-            ?? $this->request->getBodyParam('elementId');
+        $this->requireCpRequest();
+        $this->requirePostRequest();
+        $hyperFieldId = (int)$this->request->getRequiredBodyParam('hyperFieldId');
+        $this->_requireOwnerElementAccess($hyperFieldId);
 
-        if ($elementId === null || $elementId === '' || (int)$elementId <= 0) {
+        // Override `MatrixController::actionCreateEntry` to handle non-saved-element owners.
+        $fieldId = $this->request->getRequiredBodyParam('fieldId');
+        $entryTypeId = $this->request->getRequiredBodyParam('entryTypeId');
+        $siteId = $this->request->getRequiredBodyParam('siteId');
+
+        $field = Craft::$app->getFields()->getFieldById($fieldId);
+        $hyperField = Craft::$app->getFields()->getFieldById($hyperFieldId);
+        $allowed = false;
+
+        if ($hyperField instanceof HyperField) {
+            foreach ($hyperField->getLinkTypes() as $linkType) {
+                if ($linkType->enabled && $linkType->getFieldLayout()?->getFieldById($fieldId) instanceof \craft\fields\Matrix) {
+                    $allowed = true;
+                }
+            }
+        }
+
+        if (!$allowed || !$field instanceof \craft\fields\Matrix) {
+            throw new ForbiddenHttpException('Matrix field is not part of this Hyper input.');
+        }
+
+        $entryType = Craft::$app->getEntries()->getEntryTypeById($entryTypeId);
+
+        if (!$entryType || !in_array((int)$entryTypeId, array_map(static fn($type) => (int)$type->id, $field->getEntryTypes()), true)) {
+            throw new ForbiddenHttpException('Entry type is not allowed by this Matrix field.');
+        }
+
+        $entry = Craft::createObject([
+            'class' => Entry::class,
+            'siteId' => $siteId,
+            'uid' => StringHelper::UUID(),
+            'typeId' => $entryType->id,
+            'fieldId' => $fieldId,
+            'slug' => ElementHelper::tempSlug(),
+        ]);
+
+        $entry->setScenario(Element::SCENARIO_ESSENTIALS);
+
+        // JSON-owned blocks have no database ID to duplicate. Hydrate only their
+        // field values into a fresh entry; identity/type/ownership stay server-owned.
+        $entryData = $this->request->getBodyParam('entryData');
+        if (is_array($entryData) && is_array($entryData['fields'] ?? null)) {
+            $handles = array_map(static fn($customField) => $customField->handle, $entry->getFieldLayout()->getCustomFields());
+            $entry->setFieldValues(array_intersect_key($entryData['fields'], array_flip($handles)));
+            CpInputContext::assertVisibleSelections($entry);
+        }
+
+        return [$entry, $field];
+    }
+
+    private function _requireOwnerElementAccess(?int $contextFieldId = null): void
+    {
+        // Craft prefers query parameters, while POST actions consume body parameters.
+        // Never authorize one context and then hydrate content using a different one.
+        foreach (['fieldId', 'hyperFieldId', 'siteId', 'elementId', 'inputContext'] as $name) {
+            $queryValue = $this->request->getQueryParam($name);
+            $bodyValue = $this->request->getBodyParam($name);
+
+            if (($queryValue !== null && !is_scalar($queryValue))
+                || ($bodyValue !== null && !is_scalar($bodyValue))
+                || ($queryValue !== null && $bodyValue !== null && (string)$queryValue !== (string)$bodyValue)) {
+                throw new ForbiddenHttpException('Invalid or conflicting Hyper input context.');
+            }
+        }
+
+        $user = Craft::$app->getUser()->getIdentity();
+        $siteId = (int)($this->request->getParam('siteId') ?: Craft::$app->getSites()->getCurrentSite()->id);
+        $elementId = (int)$this->request->getParam('elementId') ?: null;
+        $fieldId = $contextFieldId ?? (int)$this->request->getParam('fieldId');
+        $token = (string)$this->request->getParam('inputContext', '');
+        $site = Craft::$app->getSites()->getSiteById($siteId);
+
+        if (!$user || !$site || (!$user->admin && Craft::$app->getIsMultiSite() && !$user->can("editSite:$site->uid"))) {
+            throw new ForbiddenHttpException('User is not authorized to edit this site.');
+        }
+
+        if (!$user->admin || $token !== '') {
+            $context = CpInputContext::validate($token, $fieldId, $siteId, $elementId);
+            // Omitting the request owner must never remove the signed owner's permission check.
+            $elementId = $context['ownerId'];
+        }
+
+        if (!$elementId) {
             return;
         }
 
-        $siteId = (int)(
-            $this->request->getParam('siteId')
-            ?? $this->request->getBodyParam('siteId')
-            ?: Craft::$app->getSites()->getCurrentSite()->id
-        );
+        $element = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
 
-        /** @var ElementInterface|null $element */
-        $element = Craft::$app->getElements()->getElementById((int)$elementId, null, $siteId);
-
-        if (!$element) {
-            throw new ForbiddenHttpException('Element not found.');
-        }
-
-        if (!Craft::$app->getElements()->canSave($element)) {
+        if (!$element || !Craft::$app->getElements()->canSave($element)) {
             throw new ForbiddenHttpException('User is not authorized to edit this element.');
         }
     }

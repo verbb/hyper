@@ -7,24 +7,28 @@ use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\base\LinkTypeSettings;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
-use verbb\hyper\links as linkTypes;
+use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\helpers\Plugin;
 use verbb\hyper\helpers\StringHelper;
+use verbb\hyper\links as linkTypes;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
 use verbb\hyper\models\LinkTypeDefinition;
 use verbb\hyper\services\LinkFieldLifecycle;
-use verbb\hyper\services\LinkTypeConfigs;
 use verbb\hyper\services\Links;
+use verbb\hyper\services\LinkTypeConfigs;
 
 use Craft;
+use craft\base\EagerLoadingFieldInterface;
 use craft\base\Element;
 use craft\base\ElementInterface;
-use craft\base\EagerLoadingFieldInterface;
 use craft\base\Field;
 use craft\base\MergeableFieldInterface;
+use craft\base\PreviewableFieldInterface;
+use craft\base\ThumbableFieldInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
+use craft\fields\Matrix;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Cp;
@@ -35,8 +39,6 @@ use craft\helpers\ProjectConfig;
 use craft\models\FieldLayout;
 use craft\validators\ArrayValidator;
 use craft\web\View;
-use craft\base\PreviewableFieldInterface;
-use craft\base\ThumbableFieldInterface;
 
 use yii\db\Schema;
 
@@ -47,15 +49,6 @@ use GraphQL\Type\Definition\Type;
 
 class HyperField extends Field implements ThumbableFieldInterface, MergeableFieldInterface, PreviewableFieldInterface, EagerLoadingFieldInterface
 {
-    // Constants
-    // =========================================================================
-
-    public const VIEW_MODE_BLOCKS = 'blocks';
-    public const VIEW_MODE_CARDS = 'cards';
-    public const EDITOR_MODE_EXPANDED = self::VIEW_MODE_BLOCKS;
-    public const EDITOR_MODE_CARDS = self::VIEW_MODE_CARDS;
-
-
     // Static Methods
     // =========================================================================
 
@@ -89,6 +82,61 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
         return self::normalizeViewMode($mode);
     }
+
+    private static function _preserveScalarLinkValues(array $values): array
+    {
+        foreach ($values as $key => $linkValues) {
+            if (!is_array($linkValues)) {
+                continue;
+            }
+
+            $type = $linkValues['type'] ?? null;
+
+            if (!in_array($type, [linkTypes\Phone::class, linkTypes\Email::class], true)) {
+                continue;
+            }
+
+            if (!array_key_exists('linkValue', $linkValues)) {
+                continue;
+            }
+
+            $linkValue = $linkValues['linkValue'];
+
+            if ($linkValue !== null && $linkValue !== '' && is_scalar($linkValue)) {
+                $values[$key]['linkValue'] = (string)$linkValue;
+            }
+        }
+
+        return $values;
+    }
+
+    private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
+    {
+        $glued_string = '';
+
+        // Recursively iterates array and adds key/value to glued string
+        array_walk_recursive($array, function($value, $key) use ($glue, $include_keys, &$glued_string) {
+            $include_keys && $glued_string .= $key . $glue;
+            $glued_string .= $value . $glue;
+        });
+
+        // Removes last $glue from string
+        $glue !== '' && $glued_string = substr($glued_string, 0, -strlen($glue));
+
+        // Trim ALL whitespace
+        $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
+
+        return (string)$glued_string;
+    }
+
+
+    // Constants
+    // =========================================================================
+
+    public const VIEW_MODE_BLOCKS = 'blocks';
+    public const VIEW_MODE_CARDS = 'cards';
+    public const EDITOR_MODE_EXPANDED = self::VIEW_MODE_BLOCKS;
+    public const EDITOR_MODE_CARDS = self::VIEW_MODE_CARDS;
 
 
     // Properties
@@ -885,6 +933,144 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $this->_linkTypeFields = null;
     }
 
+    public function getBulkLinkBlocks(string $handle, array $seeds, ?ElementInterface $element = null): array
+    {
+        return $this->getHydratedLinkBlocks($handle, $seeds, $element, requireBulkSupport: true);
+    }
+
+    /**
+     * Server-render fully populated link blocks from content seeds (bulk add + clipboard paste).
+     * When $requireBulkSupport is false, any enabled type can hydrate (paste path).
+     */
+    public function getHydratedLinkBlocks(
+        string $handle,
+        array $seeds,
+        ?ElementInterface $element = null,
+        bool $requireBulkSupport = true,
+    ): array {
+        $prototype = $this->getLinkTypeByHandle($handle);
+
+        if (!$prototype || !$prototype->enabled) {
+            return [];
+        }
+
+        if ($requireBulkSupport && !$prototype::supportsBulkCreation()) {
+            return [];
+        }
+
+        $view = Craft::$app->getView();
+        $oldNamespace = $view->getNamespace();
+
+        $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
+        $view->setIsDeltaRegistrationActive(false);
+
+        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->_getCacheKey('placeholderKey'), function() {
+            return StringHelper::randomString(10);
+        });
+
+        $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        $tabLabels = $prototype->getTabLabels() ?? [];
+        $newWindowInLayout = (bool)($prototype->getFieldLayout()?->isFieldIncluded('newWindow'));
+        $showHeaderNewWindow = $this->newWindow && !$newWindowInLayout;
+
+        $blocks = [];
+
+        foreach ($seeds as $seed) {
+            if (!is_array($seed)) {
+                continue;
+            }
+
+            $seed['linkTypeHandle'] = $handle;
+            $instance = LinkInstance::fromSerialized($seed, $this);
+
+            if ($instance->newWindow === null) {
+                $instance->newWindow = $this->defaultNewWindow;
+            }
+
+            $link = Hyper::$plugin->getLinks()->createLinkFromInstance($this, $instance);
+
+            if (!$link) {
+                continue;
+            }
+
+            $link->isNew = true;
+            $link->id = rand();
+            // A selected destination can use another site; layout fields still
+            // belong to the owner, including when hydrating a pasted block.
+            $link->siteId = $ownerSiteId;
+            $link->ownerSiteId = $ownerSiteId;
+            CpInputContext::assertVisibleSelections($link);
+
+            $view->startJsBuffer();
+            $view->startScriptBuffer();
+
+            $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
+
+            $html = $this->_getBlockHtml($view, $link);
+
+            $js = $view->clearJsBuffer(false);
+            $scripts = $view->clearScriptBuffer();
+            $deferredJs = $this->_composeDeferredJs($js, $scripts, $placeholderKey);
+
+            $blocks[] = [
+                'handle' => $handle,
+                'typeHandle' => $prototype->handle,
+                'label' => Craft::t('hyper', (string)$prototype->label),
+                'tabCount' => count($tabLabels) ?: $prototype->getTabCount(),
+                'tabLabels' => $tabLabels,
+                'showHeaderNewWindow' => $showHeaderNewWindow,
+                'newWindow' => (bool)($link->newWindow ?? $this->defaultNewWindow),
+                'html' => $this->_parseBlockPlaceholder($html, '__LINK_ID__', $placeholderKey),
+                'js' => $this->_namespaceDeferredFieldPayload(
+                    $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
+                ),
+                'serialized' => $link->getSerializedValues(),
+                'input' => $link->getInputConfig(),
+            ];
+        }
+
+        $view->setNamespace($oldNamespace);
+        $view->setIsDeltaRegistrationActive($isDeltaRegistrationActive);
+
+        return $blocks;
+    }
+
+    public function getBulkElementSelectHtml(string $handle, ?int $limit = null): string
+    {
+        $linkType = $this->getLinkTypeByHandle($handle);
+
+        if (!($linkType instanceof ElementLink) || !$linkType->enabled || !$linkType::supportsBulkCreation()) {
+            return '';
+        }
+
+        // Same URI/status constraint the per-link picker applies.
+        $criteria = ['status' => null];
+
+        if (!$linkType->allowElementsWithoutUri && $linkType::supportsUriSelectorCriteria()) {
+            $criteria['uri'] = ':notempty:';
+        }
+
+        return Cp::elementSelectHtml([
+            // Unique id so re-opening / switching types never collides with a prior mount.
+            'id' => 'hyper-bulk-' . StringHelper::randomString(10),
+            'name' => 'bulkElements',
+            'elementType' => $linkType::elementType(),
+            'limit' => $limit,
+            'sources' => $linkType->getAvailableSources(),
+            'showSiteMenu' => $linkType->showSiteMenu,
+            'storageKey' => 'hyper.bulk.' . $this->handle . '.' . $handle,
+            'selectionLabel' => $linkType->selectionLabel ?: $linkType::defaultSelectionLabel(),
+            'criteria' => $criteria,
+            'condition' => $linkType->getSelectionCondition(),
+        ]);
+    }
+
+    public function getLinkTypeSettingsForHtml(): array
+    {
+        return $this->_getLinkTypeSettings();
+    }
+
 
     // Protected Methods
     // =========================================================================
@@ -930,6 +1116,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'siteId' => $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id,
             // Owner element id for FieldsController canSave checks (when already saved).
             'elementId' => $element instanceof LinkInterface ? null : $element?->id,
+            'inputContext' => CpInputContext::create($this, $element),
             'defaultLinkType' => $this->defaultLinkType,
             'defaultNewWindow' => $this->defaultNewWindow,
             'newWindow' => $this->newWindow,
@@ -1179,138 +1366,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $linkTypeInfo;
     }
 
-    public function getBulkLinkBlocks(string $handle, array $seeds, ?ElementInterface $element = null): array
-    {
-        return $this->getHydratedLinkBlocks($handle, $seeds, $element, requireBulkSupport: true);
-    }
-
-    /**
-     * Server-render fully populated link blocks from content seeds (bulk add + clipboard paste).
-     * When $requireBulkSupport is false, any enabled type can hydrate (paste path).
-     */
-    public function getHydratedLinkBlocks(
-        string $handle,
-        array $seeds,
-        ?ElementInterface $element = null,
-        bool $requireBulkSupport = true,
-    ): array {
-        $prototype = $this->getLinkTypeByHandle($handle);
-
-        if (!$prototype || !$prototype->enabled) {
-            return [];
-        }
-
-        if ($requireBulkSupport && !$prototype::supportsBulkCreation()) {
-            return [];
-        }
-
-        $view = Craft::$app->getView();
-        $oldNamespace = $view->getNamespace();
-
-        $isDeltaRegistrationActive = $view->getIsDeltaRegistrationActive();
-        $view->setIsDeltaRegistrationActive(false);
-
-        $placeholderKey = Hyper::$plugin->getCache()->getOrSet($this->_getCacheKey('placeholderKey'), function() {
-            return StringHelper::randomString(10);
-        });
-
-        $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-
-        $tabLabels = $prototype->getTabLabels() ?? [];
-        $newWindowInLayout = (bool)($prototype->getFieldLayout()?->isFieldIncluded('newWindow'));
-        $showHeaderNewWindow = $this->newWindow && !$newWindowInLayout;
-
-        $blocks = [];
-
-        foreach ($seeds as $seed) {
-            if (!is_array($seed)) {
-                continue;
-            }
-
-            $seed['linkTypeHandle'] = $handle;
-            $instance = LinkInstance::fromSerialized($seed, $this);
-
-            if ($instance->newWindow === null) {
-                $instance->newWindow = $this->defaultNewWindow;
-            }
-
-            $link = Hyper::$plugin->getLinks()->createLinkFromInstance($this, $instance);
-
-            if (!$link) {
-                continue;
-            }
-
-            $link->isNew = true;
-            $link->id = rand();
-            // A selected destination can use another site; layout fields still
-            // belong to the owner, including when hydrating a pasted block.
-            $link->siteId = $ownerSiteId;
-            $link->ownerSiteId = $ownerSiteId;
-
-            $view->startJsBuffer();
-            $view->startScriptBuffer();
-
-            $view->setNamespace('hyperData[__HYPER_BLOCK_' . $placeholderKey . '__]');
-
-            $html = $this->_getBlockHtml($view, $link);
-
-            $js = $view->clearJsBuffer(false);
-            $scripts = $view->clearScriptBuffer();
-            $deferredJs = $this->_composeDeferredJs($js, $scripts, $placeholderKey);
-
-            $blocks[] = [
-                'handle' => $handle,
-                'typeHandle' => $prototype->handle,
-                'label' => Craft::t('hyper', (string)$prototype->label),
-                'tabCount' => count($tabLabels) ?: $prototype->getTabCount(),
-                'tabLabels' => $tabLabels,
-                'showHeaderNewWindow' => $showHeaderNewWindow,
-                'newWindow' => (bool)($link->newWindow ?? $this->defaultNewWindow),
-                'html' => $this->_parseBlockPlaceholder($html, '__LINK_ID__', $placeholderKey),
-                'js' => $this->_namespaceDeferredFieldPayload(
-                    $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
-                ),
-                'serialized' => $link->getSerializedValues(),
-                'input' => $link->getInputConfig(),
-            ];
-        }
-
-        $view->setNamespace($oldNamespace);
-        $view->setIsDeltaRegistrationActive($isDeltaRegistrationActive);
-
-        return $blocks;
-    }
-
-    public function getBulkElementSelectHtml(string $handle, ?int $limit = null): string
-    {
-        $linkType = $this->getLinkTypeByHandle($handle);
-
-        if (!($linkType instanceof ElementLink) || !$linkType->enabled || !$linkType::supportsBulkCreation()) {
-            return '';
-        }
-
-        // Same URI/status constraint the per-link picker applies.
-        $criteria = ['status' => null];
-
-        if (!$linkType->allowElementsWithoutUri && $linkType::supportsUriSelectorCriteria()) {
-            $criteria['uri'] = ':notempty:';
-        }
-
-        return Cp::elementSelectHtml([
-            // Unique id so re-opening / switching types never collides with a prior mount.
-            'id' => 'hyper-bulk-' . StringHelper::randomString(10),
-            'name' => 'bulkElements',
-            'elementType' => $linkType::elementType(),
-            'limit' => $limit,
-            'sources' => $linkType->getAvailableSources(),
-            'showSiteMenu' => $linkType->showSiteMenu,
-            'storageKey' => 'hyper.bulk.' . $this->handle . '.' . $handle,
-            'selectionLabel' => $linkType->selectionLabel ?: $linkType::defaultSelectionLabel(),
-            'criteria' => $criteria,
-            'condition' => $linkType->getSelectionCondition(),
-        ]);
-    }
-
     private function _getLinksForInput(LinkCollection $links, string $placeholderKey, ?ElementInterface $element = null): array
     {
         $preppedValues = [];
@@ -1400,19 +1455,22 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $payload,
         ) ?? $payload;
 
-        // jQuery/DOM selectors emitted by {% js %} blocks.
-        $payload = preg_replace(
-            '/#([\'"])(hyperData-[^\'"]+)\1/',
-            '#$1' . $normalized . '-$2$1',
+        // Constructors also take bare IDs (MatrixInput) and quoted #selectors.
+        // All HTML IDs received the fields prefix, so these strings must match.
+        $payload = preg_replace_callback(
+            '/([\'"])(#?)(hyperData-[^\'"]+)\\1/',
+            static fn($m) => $m[1] . $m[2] . $normalized . '-' . $m[3] . $m[1],
             $payload,
         ) ?? $payload;
 
-        // Input names in JSON settings objects.
+        // Native Matrix uses namespace/baseInputName, not just a property named name.
         $payload = preg_replace(
-            '/"name"\s*:\s*"hyperData(\[[^\]]+\](?:\[[^\]]+\])*)"/',
-            '"name":"' . $namespace . '[hyperData]$1"',
+            '/"hyperData(\\[[^" ]+)"/',
+            '"' . $namespace . '[hyperData]$1"',
             $payload,
         ) ?? $payload;
+
+        $payload = str_replace('new Craft.MatrixInput(', 'new Craft.Hyper.MatrixInput(', $payload);
 
         return $payload;
     }
@@ -1447,13 +1505,24 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 $linkValueField->link = $link;
             }
 
-            // Full Craft form — all layout tabs as sibling panes (Vizy/Neo/Matrix style).
-            // Inactive panes start with `.hidden`; header tabs toggle visibility in the CP.
-            $form = $fieldLayout->createForm($link);
+            // Card/index Matrix editors require persisted nested owners. A link is a JSON
+            // value, so render its Matrix fields inline without changing saved field settings.
+            $matrixModes = [];
+            foreach ($fieldLayout->getCustomFields() as $customField) {
+                if ($customField instanceof Matrix) {
+                    $matrixModes[] = [$customField, $customField->viewMode];
+                    $customField->viewMode = Matrix::VIEW_MODE_BLOCKS;
+                }
+            }
 
-            // Note: we can't just wrap FieldLayoutForm::render() in a callable passed to namespaceInputs() here,
-            // because the form HTML is for JavaScript; not returned by inputHtml().
-            return $view->namespaceInputs($form->render());
+            try {
+                $form = $fieldLayout->createForm($link);
+                return $view->namespaceInputs($form->render());
+            } finally {
+                foreach ($matrixModes as [$customField, $viewMode]) {
+                    $customField->viewMode = $viewMode;
+                }
+            }
         } catch (Throwable $e) {
             $error = Craft::t('hyper', 'Unable to render field - {message} {file}:{line}', [
                 'message' => $e->getMessage(),
@@ -1465,11 +1534,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             return Html::tag('div', $error, ['class' => 'error']);
         }
-    }
-
-    public function getLinkTypeSettingsForHtml(): array
-    {
-        return $this->_getLinkTypeSettings();
     }
 
     private function _getLinkTypeSettings(): array
@@ -1649,52 +1713,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         return $layoutConfig;
-    }
-
-    private static function _preserveScalarLinkValues(array $values): array
-    {
-        foreach ($values as $key => $linkValues) {
-            if (!is_array($linkValues)) {
-                continue;
-            }
-
-            $type = $linkValues['type'] ?? null;
-
-            if (!in_array($type, [linkTypes\Phone::class, linkTypes\Email::class], true)) {
-                continue;
-            }
-
-            if (!array_key_exists('linkValue', $linkValues)) {
-                continue;
-            }
-
-            $linkValue = $linkValues['linkValue'];
-
-            if ($linkValue !== null && $linkValue !== '' && is_scalar($linkValue)) {
-                $values[$key]['linkValue'] = (string)$linkValue;
-            }
-        }
-
-        return $values;
-    }
-
-    private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
-    {
-        $glued_string = '';
-
-        // Recursively iterates array and adds key/value to glued string
-        array_walk_recursive($array, function($value, $key) use ($glue, $include_keys, &$glued_string) {
-            $include_keys && $glued_string .= $key . $glue;
-            $glued_string .= $value . $glue;
-        });
-
-        // Removes last $glue from string
-        $glue !== '' && $glued_string = substr($glued_string, 0, -strlen($glue));
-
-        // Trim ALL whitespace
-        $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
-
-        return (string)$glued_string;
     }
 
     private function _getCacheKey(string $key): string

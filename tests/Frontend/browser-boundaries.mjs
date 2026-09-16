@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';export * from '${source}serialize';export * from '${source}clipboard';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -168,6 +168,20 @@ try {
         unregister();form.remove();return {calls,pauseLevel:editor.pauseLevel,serialized};
     });
     assert.deepEqual(initialization,{calls:['parent','late child'],pauseLevel:0,serialized:'fresh'});
+    const matrixSnapshot = await page.evaluate(() => {
+        const host=document.createElement('div');host.dataset.hyperInput='';
+        host.innerHTML=`<div id="matrix-entry" data-base-input-name="hyperData[1000000000][fields][matrix][entries][uid:entry]">
+            <input name="fields[hyperData][1000000000][fields][matrix][entries][uid:entry][type]" value="block">
+            <input data-hyper-store name="fields[hyperData][1000000000][fields][matrix][entries][uid:entry][fields][nested]" value="canonical">
+            <div data-hyper-input><input name="fields[hyperData][1000000000][fields][matrix][entries][uid:entry][fields][hyperData][1000000000][linkValue]" value="authoring"></div>
+        </div>`;document.body.append(host);
+        const post=Garnish.getPostData,expand=Craft.expandPostArray;
+        Garnish.getPostData=node=>Object.fromEntries([...node.querySelectorAll('input[name]')].map(n=>[n.name,n.value]));
+        Craft.expandPostArray=flat=>{const tree={};for(const [name,value] of Object.entries(flat)){const keys=name.match(/[^\[\]]+/g);let node=tree;keys.forEach((key,i)=>{if(i===keys.length-1)node[key]=value;else node=node[key]||={};});}return tree;};
+        const result=Audit.matrixEntryData(host.firstElementChild);
+        Garnish.getPostData=post;Craft.expandPostArray=expand;host.remove();return result;
+    });
+    assert.deepEqual(matrixSnapshot,{type:'block',fields:{nested:'canonical'}});
     const parentSerialization=await page.evaluate(()=>{
         const host=document.createElement('div');
         host.innerHTML='<input name="native" value="keep"><input data-hyper-store name="links" value="canonical"><div data-hyper-input><div data-hyper-portal><input name="hyperData[1000000000][linkValue]" value="authoring"><input name="hyperData[1000000000][assets][]" value="42"></div></div>';
@@ -202,5 +216,5 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "fields", "nested", "init", "parent", "clipboard", "removal"]}));
+    console.log(JSON.stringify({ok:true,scenarios:['direct Craft save and autosave','immediate URL','response race','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}

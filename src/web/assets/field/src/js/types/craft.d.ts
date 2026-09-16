@@ -57,6 +57,7 @@ interface CraftHyperNamespace {
     startAutoMountObserver(): void;
     ElementSelect?: new (...args: unknown[]) => unknown;
     Embed?: new (...args: unknown[]) => unknown;
+    MatrixInput?: (...args: unknown[]) => unknown;
 }
 
 interface CraftGlobal {

@@ -1,9 +1,8 @@
 <?php
 namespace verbb\hyper;
 
-use verbb\hyper\base\PluginTrait;
 use verbb\hyper\base\LinkInterface;
-use verbb\hyper\fields\HyperField;
+use verbb\hyper\base\PluginTrait;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
@@ -13,6 +12,7 @@ use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\NewWindowField;
 use verbb\hyper\fieldlayoutelements\UrlSuffixField;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\integrations\feedme\fields\Hyper as FeedMeHyperField;
 use verbb\hyper\links\Embed;
@@ -52,17 +52,17 @@ use craft\feedme\services\Fields as FeedMeFields;
 
 class Hyper extends Plugin
 {
+    // Traits
+    // =========================================================================
+
+    use PluginTrait;
+
+
     // Properties
     // =========================================================================
 
     public bool $hasCpSettings = true;
     public string $schemaVersion = '1.5.0';
-
-
-    // Traits
-    // =========================================================================
-
-    use PluginTrait;
 
 
     // Public Methods
@@ -193,7 +193,9 @@ class Hyper extends Plugin
 
                 // Only override things if this is coming from a Hyper field
                 if (is_subclass_of($ownerElementType, LinkInterface::class)) {
-                    Craft::$app->runAction('hyper/fields/create-matrix-entry')->send();
+                    // The replacement action owns this response; do not run the native action too.
+                    $response = Craft::$app->runAction('hyper/fields/create-matrix-entry');
+                    Craft::$app->end(0, $response);
                 }
             }
         });
@@ -284,5 +286,4 @@ class Hyper extends Plugin
             $event->types[] = GqlLinkInterface::class;
         });
     }
-
 }

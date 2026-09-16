@@ -81,3 +81,85 @@ it('requires an enabled Embed type for preview requests', function() {
     $response = CpActionRequest::run('preview-embed', $f['users']['editor'], $body + ['linkTypeHandle' => 'embed']);
     expect($response->data['message'])->toBe('URL domain not allowed.');
 });
+
+it('rejects conflicting query and body authorization contexts', function(string $parameter) {
+    $f = $this->cpFixture;
+    $body = signedCpBody($f);
+    $query = [$parameter => $body[$parameter]];
+    $body[$parameter] = $parameter === 'fieldId' ? F::hyperField(['linkTypes' => [Url::class]])->id : $f['otherSite']->id;
+    expect(fn() => CpActionRequest::run('create-links', $f['users']['editor'], $body, query: $query))
+        ->toThrow(ForbiddenHttpException::class);
+})->with(['fieldId', 'siteId']);
+
+it('accepts a permitted editor and rejects invalid contexts through the public action lifecycle', function() {
+    $f = $this->cpFixture;
+    $body = signedCpBody($f);
+    $allowed = CpActionRequest::run('input-settings-save', $f['users']['editor'], $body);
+    expect($allowed->statusCode)->toBe(200);
+    expect($allowed->data['values'])->toBe($body['values']);
+    $duplicates = array_map('strval', array_intersect_key($body, array_flip(['fieldId', 'siteId', 'elementId', 'inputContext'])));
+    expect(CpActionRequest::run('input-settings-save', $f['users']['editor'], $body, query: $duplicates)->statusCode)->toBe(200);
+    foreach (['fieldId', 'hyperFieldId', 'siteId', 'elementId', 'inputContext'] as $key) {
+        expect(fn() => CpActionRequest::run('input-settings-save', $f['users']['editor'], $body, query: [$key => ['invalid']]))->toThrow(ForbiddenHttpException::class);
+    }
+
+    $cases = [
+        [$f['users']['editor'], array_replace($body, ['inputContext' => 'tampered'])],
+        [$f['users']['editor'], signedCpBody($f, context: ['expires' => time() - 1])],
+        [$f['users']['otherEditor'], $body],
+        [$f['users']['noSite'], signedCpBody($f, 'noSite')],
+        [$f['users']['noOwner'], signedCpBody($f, 'noOwner')],
+        [$f['users']['editor'], array_replace($body, ['elementId' => $f['otherOwner']->id])],
+        [$f['users']['editor'], array_replace(signedCpBody($f, context: ['ownerId' => $f['otherOwner']->id]), ['elementId' => null])],
+        [$f['users']['editor'], array_replace($body, ['siteId' => $f['otherSite']->id])],
+    ];
+    foreach ($cases as [$user, $payload]) {
+        // No response is returned when access is denied, so posted/private content cannot leak.
+        expect(fn() => CpActionRequest::run('input-settings-save', $user, $payload))->toThrow(ForbiddenHttpException::class);
+    }
+    expect(fn() => CpActionRequest::run('input-settings-save', $f['users']['editor'], $body, false))->toThrow(\yii\web\BadRequestHttpException::class);
+});
+
+it('requires a valid owner context on every public input endpoint', function(string $action) {
+    $f = $this->cpFixture;
+    $body = signedCpBody($f, 'noOwner') + ['hyperFieldId' => $f['field']->id];
+    expect(fn() => CpActionRequest::run($action, $f['users']['noOwner'], $body))
+        ->toThrow(ForbiddenHttpException::class, 'User is not authorized to edit this element.');
+})->with(['create-links', 'bulk-element-select', 'input-settings', 'input-settings-save', 'preview-embed', 'create-matrix-entry', 'matrix-field-layout']);
+
+it('rejects inaccessible main and custom-field selections while rendering permitted clipboard content', function() {
+    $f = $this->cpFixture;
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+    $body = signedCpBody($f);
+    $user = $f['users']['editor'];
+    expect($f['owner']->canView($user))->toBeTrue();
+    expect($f['otherOwner']->canView($user))->toBeFalse();
+    try {
+        foreach (['entry', 'url'] as $type) {
+            $seed = fn($id) => $type === 'entry'
+                ? ['linkValue' => [$id]]
+                : ['linkValue' => 'https://example.test/clipboard', 'fields' => [$related->handle => [$id]]];
+            $allowed = CpActionRequest::run('create-links', $user, array_replace($body, [
+                'handle' => $type, 'mode' => 'seed', 'seeds' => [$seed($f['owner']->id)],
+            ]));
+            expect($allowed->statusCode)->toBe(200);
+            expect($allowed->data['blocks'])->toHaveCount(1);
+            expect(fn() => CpActionRequest::run('create-links', $user, array_replace($body, [
+                'handle' => $type, 'mode' => 'seed', 'seeds' => [$seed($f['otherOwner']->id)],
+            ])))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+
+            expect(fn() => CpActionRequest::run('input-settings', $user, array_replace($body, [
+                'data' => ['handle' => $type] + $seed($f['otherOwner']->id),
+            ])))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+        }
+    } finally {
+        Craft::$app->fields->deleteField($related);
+    }
+});
