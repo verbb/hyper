@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed conditional native fields preventing publication while hidden.
 - Fixed settings pages without an explicit title failing to load.
 - Fixed copying Matrix entries inside links on Craft 5.9.
 - Fixed raw content updates skipping or rejecting custom fields in links with legacy type identities.

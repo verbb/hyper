@@ -961,30 +961,22 @@ abstract class Link extends Element implements LinkInterface
         $fieldLayout = $this->getFieldLayout();
 
         if ($this->isFieldRequired && (!$fieldLayout || $fieldLayout->isFieldIncluded('linkValue'))) {
-            $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE]];
+            $rules[] = [['linkValue'], 'required', 'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                'when' => fn(self $model): bool => $model->_isNativeFieldVisible('linkValue')];
         }
 
         if ($fieldLayout) {
             foreach ($fieldLayout->getTabs() as $tab) {
                 foreach ($tab->getElements() as $layoutElement) {
                     if ($layoutElement instanceof BaseNativeField && $layoutElement->required) {
-                        $when = null;
-
-                        if ($layoutElement->attribute === 'linkText') {
-                            $when = fn(self $model): bool => $model->hasLinkValue();
-                        }
-
-                        $rule = [
+                        $attribute = $layoutElement->attribute;
+                        $rules[] = [
                             [$layoutElement->attribute],
                             'required',
                             'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                            'when' => fn(self $model): bool => $model->_isNativeFieldVisible($attribute)
+                                && ($attribute !== 'linkText' || $model->hasLinkValue()),
                         ];
-
-                        if ($when) {
-                            $rule['when'] = $when;
-                        }
-
-                        $rules[] = $rule;
                     }
 
                     // Character limit from Link Text (and other text natives) FLD settings.
@@ -998,6 +990,7 @@ abstract class Link extends Element implements LinkInterface
                             'string',
                             'max' => (int)$layoutElement->maxlength,
                             'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                            'when' => fn(self $model): bool => $model->_isNativeFieldVisible($layoutElement->attribute),
                         ];
                     }
                 }
@@ -1010,6 +1003,24 @@ abstract class Link extends Element implements LinkInterface
 
     // Private Methods
     // =========================================================================
+
+    private function _isNativeFieldVisible(string $attribute): bool
+    {
+        $layout = $this->getFieldLayout();
+
+        if (!$layout) {
+            return true;
+        }
+
+        // Validators are cached, while tab and field conditions can change with each edit.
+        foreach ($layout->getVisibleElementsByType(BaseNativeField::class, $this) as $element) {
+            if ($element->attribute() === $attribute) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private function _mergeAttributes(array $attributes1, array $attributes2, array $attributes3 = []): array
     {
