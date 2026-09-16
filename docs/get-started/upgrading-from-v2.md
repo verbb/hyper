@@ -125,7 +125,7 @@ The upgrade rebuilds `hyper_links` from saved field content without resaving tha
 
 Links whose targets have been permanently deleted retain their stored data but do not produce relation rows. Drafts, revisions and trashed owners retain their content and are excluded from the relation index. Existing beta installations also receive the rebuild when updating. Fresh installs do not create the legacy cache tables, and Hyper no longer appears under Utilities → Clear Caches.
 
-### Field UI &Amp; the Empty State
+### Field UI & the Empty State {#field-ui-amp-the-empty-state}
 
 The CP field no longer pre-renders a blank link for **single-link** fields. In v2 a single-link field always showed one editable link block, even before you'd entered anything. In v3 an empty field shows a clear **empty state** with an “Add link” action — you add the link explicitly, the same way multi-link fields already worked.
 
