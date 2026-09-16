@@ -44,7 +44,9 @@ class MigrateEntrifyCategories extends PluginContentMigration
                 continue;
             }
 
-            $elementId = (int)($row['linkValue'] ?? 0);
+            // Hyper 2 stored element selections as singleton arrays.
+            $value = $row['linkValue'] ?? null;
+            $elementId = (int)(is_array($value) ? ($value[0] ?? 0) : $value);
 
             if (!$elementId) {
                 $links[] = $row;
@@ -56,7 +58,7 @@ class MigrateEntrifyCategories extends PluginContentMigration
             $row['handle'] = $entryHandle;
             $row['type'] = linkTypes\Entry::class;
             $row['linkValue'] = $elementId;
-            unset($row['fields']); // layout UIDs may differ between Category/Entry types
+            // Preserve authored custom data even when the destination layout omits it.
 
             $links[] = $row;
             $changed = true;
