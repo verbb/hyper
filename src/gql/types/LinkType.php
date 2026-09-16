@@ -30,6 +30,7 @@ class LinkType extends ObjectType
         // Element property access prefers custom fields; native GraphQL values must retain their getters.
         return match ($resolveInfo->fieldName) {
             'link' => $source->getLink(),
+            'linkText' => $source->getLinkText(),
             'linkUrl' => $source->getLinkUrl(),
             'text' => $source->getText(),
             'title' => $source->getTitle(),
