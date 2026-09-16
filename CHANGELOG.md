@@ -28,6 +28,8 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed saving Hyper fields inside Vizy blocks failing when rebuilding relations.
+- Fixed third-party content migrations interpreting source values as Hyper content before conversion.
 - Fixed third-party migration dry-runs changing field settings and project config.
 - Fixed upgrades losing relation lookups for uncached links, duplicate targets, and repeated field placements.
 - Fixed upgrades and relation rebuilding failing on trashed content or permanently deleted link targets.

@@ -2,6 +2,8 @@
 namespace verbb\hyper\migrations;
 
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\content\ElementContentStore;
+use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\events\ModifyMigrationLinkEvent;
 use verbb\hyper\fieldlayoutelements\AriaLabelField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
@@ -24,10 +26,61 @@ use craft\models\FieldLayoutTab;
 use yii\console\Controller;
 use yii\helpers\Markdown;
 
-use verbb\vizy\Vizy;
 
 class PluginMigration extends Migration
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function getDefaultFieldLayout(LinkInterface $linkType, bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false): FieldLayout
+    {
+        $fieldLayout = new FieldLayout([
+            'type' => $linkType::class,
+        ]);
+
+        // Populate the field layout
+        $tab1 = new FieldLayoutTab(['name' => 'Content']);
+        $tab1->setLayout($fieldLayout);
+
+        $linkField = Craft::createObject([
+            'class' => LinkField::class,
+            'width' => 50,
+        ]);
+
+        $linkTextField = $includeText ? Craft::createObject([
+            'class' => LinkTextField::class,
+            'width' => 50,
+        ]) : null;
+
+        $tab1->setElements(array_filter([$linkField, $linkTextField]));
+
+        $tab2 = new FieldLayoutTab(['name' => 'Advanced']);
+        $tab2->setLayout($fieldLayout);
+
+        $linkTitleField = $enableTitle ? Craft::createObject([
+            'class' => LinkTitleField::class,
+        ]) : null;
+
+        $classesField = Craft::createObject([
+            'class' => ClassesField::class,
+        ]);
+
+        $customAttributesField = Craft::createObject([
+            'class' => CustomAttributesField::class,
+        ]);
+
+        $ariaLabelField = $enableAriaLabel ? Craft::createObject([
+            'class' => AriaLabelField::class,
+        ]) : null;
+
+        $tab2->setElements(array_filter([$linkTitleField, $classesField, $customAttributesField, $ariaLabelField]));
+
+        $fieldLayout->setTabs([$tab1, $tab2]);
+
+        return $fieldLayout;
+    }
+
+
     // Constants
     // =========================================================================
 
@@ -89,54 +142,6 @@ class PluginMigration extends Migration
         return $event->newClass;
     }
 
-    public static function getDefaultFieldLayout(LinkInterface $linkType, bool $includeText = true, bool $enableTitle = true, bool $enableAriaLabel = false): FieldLayout
-    {
-        $fieldLayout = new FieldLayout([
-            'type' => $linkType::class,
-        ]);
-
-        // Populate the field layout
-        $tab1 = new FieldLayoutTab(['name' => 'Content']);
-        $tab1->setLayout($fieldLayout);
-
-        $linkField = Craft::createObject([
-            'class' => LinkField::class,
-            'width' => 50,
-        ]);
-
-        $linkTextField = $includeText ? Craft::createObject([
-            'class' => LinkTextField::class,
-            'width' => 50,
-        ]) : null;
-
-        $tab1->setElements(array_filter([$linkField, $linkTextField]));
-
-        $tab2 = new FieldLayoutTab(['name' => 'Advanced']);
-        $tab2->setLayout($fieldLayout);
-
-        $linkTitleField = $enableTitle ? Craft::createObject([
-            'class' => LinkTitleField::class,
-        ]) : null;
-
-        $classesField = Craft::createObject([
-            'class' => ClassesField::class,
-        ]);
-
-        $customAttributesField = Craft::createObject([
-            'class' => CustomAttributesField::class,
-        ]);
-
-        $ariaLabelField = $enableAriaLabel ? Craft::createObject([
-            'class' => AriaLabelField::class,
-        ]) : null;
-        
-        $tab2->setElements(array_filter([$linkTitleField, $classesField, $customAttributesField, $ariaLabelField]));
-
-        $fieldLayout->setTabs([$tab1, $tab2]);
-
-        return $fieldLayout;
-    }
-
     public function prepLinkTypes(HyperField $field): void
     {
         $linkTypes = [];
@@ -154,51 +159,37 @@ class PluginMigration extends Migration
             return;
         }
 
-        // Dry-run must not invoke Vizy’s committing content mutation (Astra H3-A14).
-        if ($this->dryRun) {
-            $this->stdout('Skipping Vizy content mutation during dry-run.' . PHP_EOL);
-            $this->getMigrationResult()?->addLine(
-                Line::info('Vizy content skipped (dry-run).')
-            );
-
-            return;
-        }
-
         $field ??= Craft::$app->getFields()->getFieldById($fieldData['id'] ?? 0);
 
         if (!$field instanceof HyperField) {
-            $field = new HyperField();
+            return;
         }
 
-        Vizy::$plugin->getContent()->modifyFieldContent($fieldData['uid'], $fieldData['handle'], function($handle, $data) use ($field) {
-            // Flatten to find deeply-nested paths (Matrix → Vizy → fields.{handle})
-            foreach (ArrayHelper::flatten($data) as $flatKey => $flatContent) {
-                $searchKey = 'fields.' . $handle;
-
-                if (!str_ends_with((string)$flatKey, $searchKey)) {
-                    continue;
-                }
-
-                if (is_string($flatContent)) {
-                    // Decode JSON without HTML entity decoding
-                    $decoded = json_decode($flatContent, true);
-                    $flatContent = is_array($decoded) ? $decoded : (Json::decodeIfJson($flatContent) ?: []);
-                }
-
-                if (!is_array($flatContent)) {
-                    $flatContent = [];
-                }
-
-                $converted = $this->convertModel($field, $flatContent);
-
-                if (is_array($converted)) {
-                    ArrayHelper::setValue($data, $flatKey, $converted);
-                    $this->getMigrationResult()?->incrementStat('vizyBlocksMigrated');
-                }
+        // Flattening only visits leaves and misses array-valued fields. Use Hyper's
+        // nested content references, which preserve both arrays and encoded strings.
+        // Vizy nodes do not have durable element owners, so do not sync their index.
+        $store = new ElementContentStore($this->db);
+        $store->eachFieldValue($field, function($ref) use ($field) {
+            if ($ref->hasDurableOwner) {
+                return false;
             }
 
-            return $data;
-        }, $this->db);
+            $raw = ElementContentStore::decodeStored($ref->value);
+            if (!is_array($raw)) {
+                return false;
+            }
+
+            $converted = $this->convertModel($field, $raw);
+            if (!is_array($converted)) {
+                return false;
+            }
+
+            if (!$this->dryRun) {
+                $ref->value = $converted;
+                $this->getMigrationResult()?->incrementStat('vizyBlocksMigrated');
+            }
+            return true;
+        }, new ModifyOptions(dryRun: $this->dryRun, syncRelations: false, db: $this->db));
     }
 
     public function isPluginInstalledAndEnabled(string $plugin): bool

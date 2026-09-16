@@ -1,12 +1,13 @@
 <?php
 namespace verbb\hyper\migrations;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\content\Change;
 use verbb\hyper\content\ElementContentStore;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\fields\HyperField;
-use verbb\hyper\Hyper;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\models\LinkCollection;
 
@@ -65,7 +66,7 @@ class PluginContentMigration extends PluginMigration
                     $this->stdout("    > Nested/context field (`{$context}`) — migrating owner content.", Console::FG_YELLOW);
                 }
 
-                Hyper::$plugin->getContent()->modify($field, function(LinkCollection $collection, $ref) use ($field) {
+                Hyper::$plugin->getContent()->modifyRaw($field, function(mixed $stored, $ref) use ($field) {
                     // Convert from the raw stored payload (Linkit / flipbox / Craft Link / oEmbed shapes).
                     // Do not use serializeValues() first — that only works after Hyper hydration.
                     $raw = ElementContentStore::decodeStored($ref->value) ?? [];
@@ -80,7 +81,7 @@ class PluginContentMigration extends PluginMigration
                     }
 
                     if ($raw === []) {
-                        return $collection;
+                        return Change::unchanged();
                     }
 
                     $this->contentSiteId = $ref->siteId ?: null;
@@ -88,7 +89,7 @@ class PluginContentMigration extends PluginMigration
                     $this->contentSiteId = null;
 
                     if ($converted === null) {
-                        return $collection;
+                        return Change::unchanged();
                     }
 
                     if ($converted === false) {
@@ -100,21 +101,22 @@ class PluginContentMigration extends PluginMigration
                             Console::FG_RED,
                         );
 
-                        return $collection;
+                        return Change::unchanged();
                     }
 
                     if (is_array($converted)) {
                         $this->stdout('    > Migrated content for element #' . $ref->elementId, Console::FG_GREEN);
                         $this->getMigrationResult()?->incrementStat('elementsMigrated');
 
-                        return new LinkCollection($field, $converted);
+                        return Change::replace((new LinkCollection($field, $converted))->serializeValues());
                     }
 
-                    return $collection;
+                    return Change::unchanged();
                 }, new ModifyOptions(
                     dryRun: $this->dryRun,
                     syncRelations: $this->syncRelations,
                     db: $this->db,
+                    persistTransformedValues: true,
                 ));
             }
 
@@ -130,14 +132,14 @@ class PluginContentMigration extends PluginMigration
         }
     }
 
+
+    // Protected Methods
+    // =========================================================================
+
     protected function describeConvertFailure(HyperField $field, array $raw): string
     {
         return '';
     }
-
-
-    // Protected Methods
-    // =========================================================================
 
     protected function serializeMigratedLink(LinkInterface $link): array
     {

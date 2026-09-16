@@ -80,3 +80,25 @@ it('visits all repeated values for dry runs and reconciles every persisted targe
     Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(elementIds: [$owner->id]));
     expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
 });
+
+it('migrates both aliased placements and leaves converted values unchanged on repeat', function() {
+    [$field, $owner, $a, $b] = repeatedHyperFixture();
+    $uids = (new ElementContentStore())->findLayoutUids($field);
+    $where = ['elementId' => $owner->id, 'siteId' => $owner->siteId];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new \yii\db\JsonExpression([
+        $uids[0] => ['type' => 'entry', 'value' => '{entry:' . $b->id . ':url}'],
+        $uids[1] => ['type' => 'entry', 'value' => '{entry:' . $a->id . ':url}'],
+    ])], $where)->execute();
+    $migration = new MigrateCraftLinkContent();
+    $migration->fields = [(new Query())->from('{{%fields}}')->where(['id' => $field->id])->one()];
+    $migration->processFieldContent();
+    $read = fn() => (new Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+    $first = $read();
+    $owner = Entry::find()->id($owner->id)->siteId($owner->siteId)->one();
+    expect($owner->getFieldValue($field->handle)->getLinks()[0]->getElement()?->id)->toBe($b->id);
+    expect($owner->getFieldValue('secondHyper')->getLinks()[0]->getElement()?->id)->toBe($a->id);
+    expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
+    $migration->processFieldContent();
+    expect($read())->toBe($first);
+    expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
+});
