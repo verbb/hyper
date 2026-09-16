@@ -296,8 +296,12 @@ class Embed extends Link
 
     public function getLinkTitle(): ?string
     {
-        // Use the description for the link title - only if that field is enabled
+        // Provider metadata is a fallback for the enabled author-facing title field.
         if ($this->getFieldLayout()->isFieldIncluded('linkTitle')) {
+            if ($this->linkTitle !== null && $this->linkTitle !== '') {
+                return $this->linkTitle;
+            }
+
             return $this->linkValue['description'] ?? null;
         }
 
