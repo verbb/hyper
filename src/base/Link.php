@@ -900,11 +900,11 @@ abstract class Link extends Element implements LinkInterface
             $attr['href'] = $href;
         }
 
-        if ($title = $this->getLinkTitle()) {
+        if (($title = $this->getLinkTitle()) !== null && $title !== '') {
             $attr['title'] = $title;
         }
 
-        if ($ariaLabel = $this->getAriaLabel()) {
+        if (($ariaLabel = $this->getAriaLabel()) !== null && $ariaLabel !== '') {
             $attr['aria-label'] = $ariaLabel;
         }
 
@@ -916,7 +916,7 @@ abstract class Link extends Element implements LinkInterface
         // Merge attributes in a specific order to allow template-provided attributes to override everything.
         // The order should be built-in (above), Custom Attribute field settings, and template-provided attributes.
         $attributes = $this->_mergeAttributes($attr, $this->getCustomAttributes(), $attributes);
-        $attributes = array_filter($attributes);
+        $attributes = array_filter($attributes, static fn(mixed $value): bool => $value !== null && $value !== false && $value !== '' && $value !== []);
 
         if ($asString) {
             return Template::raw(Html::renderTagAttributes($attributes));
