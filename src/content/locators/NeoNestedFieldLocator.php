@@ -18,7 +18,7 @@ class NeoNestedFieldLocator extends FieldsMapNestedFieldLocator
     // Protected Methods
     // =========================================================================
 
-    protected function _getNestedLayouts(FieldInterface $hostField): iterable
+    protected function getNestedLayouts(FieldInterface $hostField): iterable
     {
         if (!$hostField instanceof \benf\neo\Field) {
             return;

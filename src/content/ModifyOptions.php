@@ -15,6 +15,9 @@ final class ModifyOptions
         public ?array $elementIds = null,
         public ?string $contentContains = null,
         public ?Connection $db = null,
+        // Migrations must persist explicit replacement collections even when legacy
+        // raw data normalizes to the same value (for example an empty URL object).
+        public bool $persistTransformedValues = false,
     ) {
     }
 }

@@ -1,13 +1,14 @@
 <?php
 namespace verbb\hyper\services;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\content\adapters\HyperFieldAdapter;
 use verbb\hyper\content\ContentRef;
 use verbb\hyper\content\ElementContentStore;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\content\ModifyResult;
+use verbb\hyper\content\RawContentMethods;
 use verbb\hyper\fields\HyperField;
-use verbb\hyper\Hyper;
 use verbb\hyper\links\Site as SiteLink;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
@@ -17,13 +18,49 @@ use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\events\DeleteSiteEvent;
+use craft\helpers\ElementHelper;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
+use RuntimeException;
+
 class Content extends Component
 {
+    // Traits
+    // =========================================================================
+
+    use RawContentMethods;
+
+
     // Public Methods
     // =========================================================================
+
+    public function modifyRaw(HyperField $field, callable $transform, ?ModifyOptions $options = null): ModifyResult
+    {
+        $options ??= new ModifyOptions();
+        $db = $options->db ?? Craft::$app->getDb();
+        if ($options->syncRelations && $db !== Craft::$app->getDb()) {
+            throw new RuntimeException('Relation synchronization requires the Craft database connection.');
+        }
+        return $db->transaction(function() use ($field, $transform, $options, $db): ModifyResult {
+            $result = (new ElementContentStore($db))->eachFieldValue($field, function(ContentRef $ref) use ($transform): bool {
+                $change = $transform($ref->value, $ref);
+                if (!is_array($change) || !in_array($change['action'] ?? null, ['unchanged', 'replace'], true)
+                    || ($change['action'] === 'replace' && !array_key_exists('value', $change))) {
+                    throw new RuntimeException('modifyRaw requires Change::unchanged() or Change::replace($value); use replace(null) to clear.');
+                }
+                if ($change['action'] === 'unchanged' || $ref->value === $change['value']) {
+                    return false;
+                }
+                $ref->value = $change['value'];
+                return true;
+            }, $options);
+            if (!$options->dryRun && $options->syncRelations && $result->modified > 0) {
+                $this->reconcileRelations($field, $options);
+            }
+            return $result;
+        });
+    }
 
     public function modify(
         HyperField $field,
@@ -75,6 +112,10 @@ class Content extends Component
     public function reconcileRelations(HyperField $field, ?ModifyOptions $options = null): int
     {
         $options ??= new ModifyOptions();
+        if (!$options->dryRun && $options->db && $options->db !== Craft::$app->getDb()) {
+            throw new RuntimeException('Relation synchronization requires the Craft database connection.');
+        }
+
         $adapter = new HyperFieldAdapter($field);
         $store = new ElementContentStore($options->db);
         $synced = 0;
@@ -86,14 +127,28 @@ class Content extends Component
                 return false;
             }
 
+            if (!$ref->hasDurableOwner) {
+                return false;
+            }
+
             if ($options->dryRun) {
-                $synced++;
+                $owner = $this->_resolveRelationOwner($ref);
+
+                if (!$owner) {
+                    throw new RuntimeException('Unable to resolve Hyper relation owner.');
+                }
+
+                if (!$owner->trashed && !$owner->isProvisionalDraft && !ElementHelper::isDraftOrRevision($owner)
+                    && $owner->getFieldLayout()?->getFieldById($field->id)) {
+                    $synced++;
+                }
 
                 return false;
             }
 
-            $this->_syncRelations($field, $ref, $collection);
-            $synced++;
+            if ($this->_syncRelations($field, $ref, $collection)) {
+                $synced++;
+            }
 
             return false;
         }, $options);
@@ -298,15 +353,29 @@ class Content extends Component
         return [$linkTypes, $changed];
     }
 
-    private function _syncRelations(HyperField $field, ContentRef $ref, LinkCollection $collection): void
+    private function _syncRelations(HyperField $field, ContentRef $ref, LinkCollection $collection): bool
     {
+        if (!$ref->hasDurableOwner) {
+            return false;
+        }
         $owner = $this->_resolveRelationOwner($ref);
 
         if (!$owner) {
-            return;
+            throw new RuntimeException('Unable to resolve Hyper relation owner.');
         }
 
-        Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($field, $owner, $collection);
+        // JSON-only nested nodes (notably Vizy) cannot share a parent owner's index key.
+        if ($owner->trashed || $owner->isProvisionalDraft || ElementHelper::isDraftOrRevision($owner)
+            || !$owner->getFieldLayout()?->getFieldById($field->id)) {
+            return false;
+        }
+
+        // Content writes have completed; rebuild all occurrences from the persisted owner.
+        if (!Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($field, $owner)) {
+            throw new RuntimeException('Unable to synchronize Hyper relations.');
+        }
+
+        return true;
     }
 
     private function _resolveRelationOwner(ContentRef $ref): ?ElementInterface
@@ -321,15 +390,15 @@ class Content extends Component
 
         // Craft signature: getElementById($id, $elementType = null, $siteId = null).
         if ($siteId) {
-            $owner = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
+            // Content scans include recoverable trash. Resolve it explicitly so
+            // reconciliation can skip its index without treating it as lost data.
+            $owner = Craft::$app->getElements()->getElementById($elementId, null, $siteId, ['trashed' => null]);
 
-            if ($owner) {
-                return $owner;
-            }
+            return $owner;
         }
 
         // Fall back without site constraint so standalone modify() callers still sync.
-        return Craft::$app->getElements()->getElementById($elementId);
+        return Craft::$app->getElements()->getElementById($elementId, null, null, ['trashed' => null]);
     }
 
     private function _serializedValuesEqual(mixed $left, mixed $right): bool

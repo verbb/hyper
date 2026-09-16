@@ -14,6 +14,7 @@ final class ContentRef
         public readonly string $jsonPath,
         public mixed &$value,
         public array &$parentContent,
+        public readonly bool $hasDurableOwner = true,
     ) {
     }
 }

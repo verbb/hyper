@@ -1,13 +1,15 @@
 <?php
 namespace verbb\hyper\content\locators;
 
+use verbb\hyper\fields\HyperField;
+
 use Craft;
 use craft\base\FieldInterface;
 use craft\models\FieldLayout;
 
 class VizyNestedFieldLocator extends FieldsMapNestedFieldLocator
 {
-    // Public Methods
+    // Static Methods
     // =========================================================================
 
     public static function hostFieldClass(): string
@@ -16,10 +18,31 @@ class VizyNestedFieldLocator extends FieldsMapNestedFieldLocator
     }
 
 
+    // Public Methods
+    // =========================================================================
+
+    public function findNestedFieldHandles(FieldInterface $hostField, HyperField $targetField): array
+    {
+        $keys = parent::findNestedFieldHandles($hostField, $targetField);
+        foreach ($this->getNestedLayouts($hostField) as $layout) {
+            if (!$layout) {
+                continue;
+            }
+            foreach ($layout->getCustomFields() as $field) {
+                if ($field->uid === $targetField->uid) {
+                    $keys[] = $field->uid;
+                    $keys[] = $field->layoutElement?->uid;
+                }
+            }
+        }
+        return array_values(array_unique(array_filter($keys)));
+    }
+
+
     // Protected Methods
     // =========================================================================
 
-    protected function _getNestedLayouts(FieldInterface $hostField): iterable
+    protected function getNestedLayouts(FieldInterface $hostField): iterable
     {
         if (!class_exists(\verbb\vizy\fields\VizyField::class) || !$hostField instanceof \verbb\vizy\fields\VizyField) {
             return;
@@ -42,13 +65,13 @@ class VizyNestedFieldLocator extends FieldsMapNestedFieldLocator
         }
     }
 
-    protected function _shouldRecurseIntoChild(mixed $key, array $child): bool
+    protected function shouldRecurseIntoChild(mixed $key, array $child): bool
     {
         if ($key === 'data' || $key === 'blocks') {
             return true;
         }
 
-        return parent::_shouldRecurseIntoChild($key, $child);
+        return parent::shouldRecurseIntoChild($key, $child);
     }
 
 

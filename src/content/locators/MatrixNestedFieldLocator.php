@@ -19,7 +19,7 @@ class MatrixNestedFieldLocator extends FieldsMapNestedFieldLocator
     // Protected Methods
     // =========================================================================
 
-    protected function _getNestedLayouts(FieldInterface $hostField): iterable
+    protected function getNestedLayouts(FieldInterface $hostField): iterable
     {
         if (!$hostField instanceof Matrix) {
             return;

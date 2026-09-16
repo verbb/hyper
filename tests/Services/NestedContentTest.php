@@ -59,10 +59,18 @@ it('locates hyper values inside vizy block JSON', function() {
 });
 
 it('finds nested matrix placements for a hyper field', function() {
-    $field = HyperFixtureFactory::hyperField();
-    $finder = new NestedFieldPlacementFinder();
+    $fixture = HyperFixtureFactory::matrixFieldWithHyper();
+    $section = HyperFixtureFactory::entrySectionWithField($fixture['matrix']);
+    $owner = HyperFixtureFactory::plainEntry($section);
+    $unrelated = HyperFixtureFactory::matrixFieldWithHyper();
+    HyperFixtureFactory::entrySectionWithField($unrelated['matrix']);
+    $placements = (new NestedFieldPlacementFinder())->findPlacements($fixture['hyperField']);
 
-    expect($finder->findPlacements($field))->toBeArray();
+    expect($placements)->toHaveCount(1);
+    expect($placements[0]->hostField->id)->toBe($fixture['matrix']->id);
+    expect($placements[0]->hostLayoutUid)->toBe($owner->getFieldLayout()->getFieldByHandle($fixture['matrix']->handle)->layoutElement->uid);
+    expect($placements[0]->targetFieldHandle)->toBe($fixture['hyperField']->handle);
+    expect($placements[0]->locator)->toBeInstanceOf(MatrixNestedFieldLocator::class);
 });
 
 it('modifies nested matrix hyper content end to end', function() {

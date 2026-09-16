@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Added a raw content API for custom fields inside links, including composition with Vizy’s content API. Third-party migrations now convert source values before Hyper normalisation.
 - CP warning chrome for unsupported / missing link types (data retained; type switch disabled; delete still allowed).
 - FieldsController authz: layout designer requires admin; create-links / paste / bulk / embed / input-settings require owner `canSave` when `elementId` is posted.
 - `hyper/content/sync-relations` console action to rebuild `hyper_links` from canonical owner JSON.
@@ -27,6 +28,9 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed content maintenance selecting all owners for an empty selection and applying content filters inconsistently.
+- Fixed content migrations changing unrelated JSON values or overwriting concurrent edits.
+- Fixed migrations and content maintenance skipping repeated placements of the same Hyper field.
 - Fixed repeated field placements overwriting each other's relation indexes when saved or reconciled.
 - Fixed category entrification losing legacy target IDs and custom link field data.
 - Fixed Typed Link migrations losing the required custom-text setting.

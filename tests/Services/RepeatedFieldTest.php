@@ -55,3 +55,28 @@ it('preserves both repeated occurrences of the same target', function() {
     expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
     expect(repeatedHyperTargets($field, $owner))->toBe([$a->id, $a->id]);
 });
+
+it('visits all repeated values for dry runs and reconciles every persisted target', function() {
+    [$field, $owner, $a, $b] = repeatedHyperFixture();
+    expect((new ElementContentStore())->findLayoutUids($field))->toHaveCount(2);
+    $read = fn() => (new Query())->select('content')->from('{{%elements_sites}}')
+        ->where(['elementId' => $owner->id, 'siteId' => $owner->siteId])->scalar();
+    $original = $read();
+    $transform = function($collection) use ($a, $b) {
+        $link = $collection->getLinks()[0];
+        $link->linkValue = [$link->linkValue[0] === $a->id ? $b->id : $a->id];
+        return $collection;
+    };
+    $dry = Hyper::$plugin->content->modify($field, $transform, new ModifyOptions(dryRun: true, elementIds: [$owner->id]));
+    expect($dry->wouldModify)->toBe(2);
+    expect($read())->toBe($original);
+    expect(repeatedHyperTargets($field, $owner))->toBe([$a->id, $b->id]);
+    $result = Hyper::$plugin->content->modify($field, $transform, new ModifyOptions(elementIds: [$owner->id]));
+    expect($result->modified)->toBe(2);
+    expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
+    Craft::$app->db->createCommand()->delete('{{%hyper_links}}', ['ownerId' => $owner->id])->execute();
+    Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(elementIds: [$owner->id]));
+    expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
+    Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(elementIds: [$owner->id]));
+    expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
+});

@@ -17,7 +17,7 @@ abstract class FieldsMapNestedFieldLocator implements NestedFieldLocator
     {
         $handles = [];
 
-        foreach ($this->_getNestedLayouts($hostField) as $layout) {
+        foreach ($this->getNestedLayouts($hostField) as $layout) {
             if (!$layout) {
                 continue;
             }
@@ -34,16 +34,16 @@ abstract class FieldsMapNestedFieldLocator implements NestedFieldLocator
 
     public function locateInHostValue(array &$hostValue, string $targetFieldHandle, string $pathPrefix): array
     {
-        return $this->_locateFieldsMap($hostValue, $targetFieldHandle, $pathPrefix);
+        return $this->locateFieldsMap($hostValue, $targetFieldHandle, $pathPrefix);
     }
 
 
     // Protected Methods
     // =========================================================================
 
-    abstract protected function _getNestedLayouts(FieldInterface $hostField): iterable;
+    abstract protected function getNestedLayouts(FieldInterface $hostField): iterable;
 
-    protected function _locateFieldsMap(array &$node, string $targetFieldHandle, string $pathPrefix): array
+    protected function locateFieldsMap(array &$node, string $targetFieldHandle, string $pathPrefix): array
     {
         $locations = [];
 
@@ -64,16 +64,16 @@ abstract class FieldsMapNestedFieldLocator implements NestedFieldLocator
                 );
             }
 
-            if ($this->_shouldRecurseIntoChild($key, $child)) {
+            if ($this->shouldRecurseIntoChild($key, $child)) {
                 $childPath = $pathPrefix === '' ? (string)$key : "$pathPrefix.$key";
-                $locations = array_merge($locations, $this->_locateFieldsMap($child, $targetFieldHandle, $childPath));
+                $locations = array_merge($locations, $this->locateFieldsMap($child, $targetFieldHandle, $childPath));
             }
         }
 
         return $locations;
     }
 
-    protected function _shouldRecurseIntoChild(mixed $key, array $child): bool
+    protected function shouldRecurseIntoChild(mixed $key, array $child): bool
     {
         if (isset($child['fields'])) {
             return false;

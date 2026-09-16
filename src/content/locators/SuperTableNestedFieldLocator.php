@@ -18,7 +18,7 @@ class SuperTableNestedFieldLocator extends FieldsMapNestedFieldLocator
     // Protected Methods
     // =========================================================================
 
-    protected function _getNestedLayouts(FieldInterface $hostField): iterable
+    protected function getNestedLayouts(FieldInterface $hostField): iterable
     {
         if (!$hostField instanceof \verbb\supertable\fields\SuperTableField) {
             return;
