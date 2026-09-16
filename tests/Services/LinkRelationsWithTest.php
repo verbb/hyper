@@ -149,7 +149,11 @@ it('registers linked element with paths during element query prepare', function(
         ->section($ownerSection->handle)
         ->with([$hyperField->handle . '.linkedElements.' . $relatedField->handle]);
 
-    Hyper::$plugin->getLinkedElementEagerLoader()->parseWithPaths($query);
+    $owners = $query->all();
+    expect($owners)->toHaveCount(1);
+    $resolved = $owners[0]->getFieldValue($hyperField->handle)->first()->getElement();
+    expect($resolved->id)->toBe($target->id);
+    expect($resolved->getFieldValue($relatedField->handle)->one()?->id)->toBe($relatedEntry->id);
 
     expect(Hyper::$plugin->getLinkRelations()->getLinkedElementWithForField($hyperField->id))
         ->toBe([$relatedField->handle]);

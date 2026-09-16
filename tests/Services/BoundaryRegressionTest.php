@@ -9,6 +9,38 @@ use verbb\hyper\models\LinkCollection;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\records\LinkRelation;
 use yii\base\Event;
+it('bounds self links and cycles while priming later owners', function () {
+    $r = Hyper::$plugin->linkRelations;
+    $r->enableRequestPriming = false;
+    $f = F::hyperField();
+    $s = F::entrySection($f);
+    $a = F::plainEntry($s, 'A');
+    $b = F::plainEntry($s, 'B');
+    $c = F::plainEntry($s, 'C');
+    foreach ([[$a, $b], [$b, $a], [$c, $c]] as [$owner, $target]) {
+        $owner->setFieldValue($f->handle, [['handle' => 'entry', 'linkValue' => [$target->id]]]);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    }
+    $r->resetRequestState();
+    $r->enableRequestPriming = true;
+    $visits = 0;
+    $guard = function () use (&$visits) {
+        if (++$visits > 20) {
+            throw new RuntimeException('Unbounded priming');
+        }
+    };
+    Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENT, $guard);
+    try {
+        Entry::find()->id($a->id)->one();
+        expect($r->getPrimedElement($b->id, $b->siteId)?->id)->toBe($b->id);
+        Entry::find()->id($c->id)->one();
+        expect($r->getPrimedElement($c->id, $c->siteId)?->id)->toBe($c->id);
+        expect($visits)->toBeLessThanOrEqual(4);
+    } finally {
+        Event::off(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENT, $guard);
+    }
+});
+
 it('validates author destinations but preserves trusted template overrides', function () {
     $f = F::hyperField(['linkTypes' => [Url::class]]);
     $l = Hyper::$plugin->links->createLinkFromSerialized($f, ['handle' => 'url', 'linkValue' => 'https://example.test', 'linkText' => 'Safe']);

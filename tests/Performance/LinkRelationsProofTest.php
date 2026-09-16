@@ -63,7 +63,7 @@ it('batch-hydrates linked elements with fewer queries than per-link getElement',
 
     $v3Profile = QueryProfiler::profile(function() use ($section, $field, $ownerDescriptors, $relations): int {
         $entries = Entry::find()->section($section->handle)->all();
-        $relations->primeElementsForOwners($ownerDescriptors);
+        // Exercise automatic batching once, as a real owner query does.
 
         $linked = 0;
 

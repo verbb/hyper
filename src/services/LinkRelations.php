@@ -34,6 +34,8 @@ class LinkRelations extends Component
     private array $_pendingOwners = [];
     private array $_linkedElementWith = [];
     private bool $_priming = false;
+    private bool $_loadingTargets = false;
+    private array $_primedOwners = [];
 
 
     // Public Methods
@@ -95,6 +97,7 @@ class LinkRelations extends Component
             }
 
             $transaction->commit();
+            unset($this->_primedOwners[$element->id . ':' . $element->siteId]);
         } catch (Throwable $e) {
             $transaction->rollBack();
 
@@ -134,14 +137,20 @@ class LinkRelations extends Component
 
     public function registerOwner(int $ownerId, int $ownerSiteId): void
     {
-        if (!$this->enableRequestPriming) {
+        if (!$this->enableRequestPriming || $this->_loadingTargets) {
             return;
         }
         if (!$ownerId || !$ownerSiteId) {
             return;
         }
 
-        $this->_pendingOwners[$ownerId . ':' . $ownerSiteId] = [
+        $key = $ownerId . ':' . $ownerSiteId;
+
+        if (isset($this->_primedOwners[$key])) {
+            return;
+        }
+
+        $this->_pendingOwners[$key] = [
             'ownerId' => $ownerId,
             'ownerSiteId' => $ownerSiteId,
         ];
@@ -149,7 +158,8 @@ class LinkRelations extends Component
 
     public function registerElementForPriming(?ElementInterface $element): void
     {
-        if (!$element?->id || !$element->siteId) {
+        // Hydrating a target must not recursively traverse its own link graph.
+        if (!$this->enableRequestPriming || $this->_loadingTargets || !$element?->id || !$element->siteId) {
             return;
         }
 
@@ -178,9 +188,10 @@ class LinkRelations extends Component
 
         try {
             while ($this->_pendingOwners) {
-                $batch = array_values($this->_pendingOwners);
+                $batch = $this->_pendingOwners;
                 $this->_pendingOwners = [];
-                $this->primeElementsForOwners($batch);
+                $this->primeElementsForOwners(array_values($batch));
+                $this->_primedOwners += $batch;
             }
         } finally {
             $this->_priming = false;
@@ -190,6 +201,7 @@ class LinkRelations extends Component
     public function resetRequestState(): void
     {
         $this->_pendingOwners = [];
+        $this->_primedOwners = [];
         $this->_priming = false;
         $this->_hydratedElements = [];
         $this->_linkedElementWith = [];
@@ -212,10 +224,10 @@ class LinkRelations extends Component
         if ($withPath !== '' && !in_array($withPath, $paths, true)) {
             $this->_linkedElementWith[$fieldId][] = $withPath;
 
-            // Newly registered target with-paths should refresh already-seen owners.
-            if (!$this->_priming && $this->_hydratedElements) {
-                $this->primePendingOwners();
-            }
+            // New eager-load requirements invalidate completed owner batches. The next
+            // population boundary drains these together with the incoming query's owners.
+            $this->_pendingOwners += $this->_primedOwners;
+            $this->_primedOwners = [];
         }
     }
 
@@ -288,9 +300,15 @@ class LinkRelations extends Component
                 $query->with($withPaths);
             }
 
-            foreach ($query->all() as $element) {
-                // Site-specific keys only — no ID-only locale fallback (Astra H3-A04).
-                $this->_hydratedElements[$this->_elementCacheKey($element->id, $element->siteId)] = $element;
+            $loadingTargets = $this->_loadingTargets;
+            $this->_loadingTargets = true;
+
+            try {
+                foreach ($query->all() as $element) {
+                    $this->_hydratedElements[$this->_elementCacheKey($element->id, $element->siteId)] = $element;
+                }
+            } finally {
+                $this->_loadingTargets = $loadingTargets;
             }
         }
     }
@@ -306,6 +324,8 @@ class LinkRelations extends Component
 
     public function clearPrimedElements(): void
     {
+        $this->_pendingOwners += $this->_primedOwners;
+        $this->_primedOwners = [];
         $this->_hydratedElements = [];
     }
 

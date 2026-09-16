@@ -26,6 +26,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed recursive linked-element priming for self-links and cycles, including later owner batches.
 - Fixed unavailable link types causing GraphQL errors or rendering retained URL suffixes as destinations.
 - Fixed multisite structure changes restoring deliberately cleared translated link text or custom fields, including label-only links.
 - Fixed category and other localized element links retaining the source site during propagation.
