@@ -62,7 +62,7 @@ class Hyper extends Field implements FieldInterface
 
 
                     $blockIndex = 0;
-                    $nodePathSegments = array_reverse($nodePathSegments);
+                    // The first indexed segment identifies the link; deeper indexes belong to its custom fields.
                     foreach ($nodePathSegments as $segment) {
                         if(is_numeric($segment)) {
                             $blockIndex = $segment;
@@ -107,7 +107,7 @@ class Hyper extends Field implements FieldInterface
         // otherwise, we get the field class processing all blocks in one go - not what we want.
         foreach ($complexFields as $key => $complexInfo) {
             $parts = explode('.', $key);
-            $subFieldHandle = $parts[1];
+            $subFieldHandle = $multipleLinks ? $parts[1] : $parts[0];
 
             $subFieldInfo = Hash::get($complexInfo, 'info');
             $nodePaths = Hash::get($complexInfo, 'data');
@@ -166,7 +166,7 @@ class Hyper extends Field implements FieldInterface
         if($multipleLinks) {
             $results = Hash::expand($preppedData);
         }else {
-            $results = [$preppedData];
+            $results = [Hash::expand($preppedData)];
         }
 
         $fullResults = [];
