@@ -13,6 +13,7 @@ use verbb\hyper\helpers\StringHelper;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
 use verbb\hyper\models\LinkTypeDefinition;
+use verbb\hyper\services\LinkFieldLifecycle;
 use verbb\hyper\services\LinkTypeConfigs;
 use verbb\hyper\services\Links;
 
@@ -550,6 +551,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $value = $element->getFieldValue($this->handle);
 
         if ($value instanceof LinkCollection) {
+            LinkFieldLifecycle::finalizeUploads($value, $element);
             Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($this, $element, $value);
             Hyper::$plugin->getMultisiteLinks()->propagateLinkStructure($this, $element, $value);
         }
