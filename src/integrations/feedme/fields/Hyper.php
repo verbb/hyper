@@ -47,6 +47,8 @@ class Hyper extends Field implements FieldInterface
             return null;
         }
 
+        $linkPath = $this->_getLinkPath($fields);
+
         foreach ($this->feedData as $nodePath => $value) {
             // Get the field mapping info for this node in the feed
             $fieldInfo = $this->_getFieldMappingInfoForNodePath($nodePath, $fields);
@@ -62,11 +64,22 @@ class Hyper extends Field implements FieldInterface
 
 
                     $blockIndex = 0;
-                    // The first indexed segment identifies the link; deeper indexes belong to its custom fields.
+                    $path = [];
+                    // Parent importers retain their indexes. Stop at this link's
+                    // mapped parent, before any arrays in its custom fields.
                     foreach ($nodePathSegments as $segment) {
                         if(is_numeric($segment)) {
                             $blockIndex = $segment;
-                            break;
+
+                            if (!$linkPath) {
+                                break;
+                            }
+                        } else {
+                            $path[] = $segment;
+
+                            if ($path !== array_slice($linkPath, 0, count($path))) {
+                                break;
+                            }
                         }
                     }
 
@@ -220,6 +233,22 @@ class Hyper extends Field implements FieldInterface
 
     // Private Methods
     // =========================================================================
+
+    private function _getLinkPath(array $fields): array
+    {
+        foreach (['linkValue', 'linkText', 'type', ...array_keys($fields)] as $handle) {
+            $node = $fields[$handle]['node'] ?? null;
+
+            if (is_string($node) && $node !== '' && $node !== 'usedefault') {
+                $path = explode('/', $node);
+                array_pop($path);
+
+                return $path;
+            }
+        }
+
+        return [];
+    }
 
     private function _getFieldMappingInfoForNodePath($nodePath, $fields): ?array
     {

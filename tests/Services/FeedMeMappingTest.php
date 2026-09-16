@@ -197,3 +197,40 @@ it('imports default custom values through the registered Feed Me mapper', functi
     }
 })->with(['single' => false, 'multiple' => true])->with(['Default caption', '0']);
 
+it('keeps each link when Feed Me imports multiple links inside Matrix entries', function() {
+    $inner = F::hyperField(['multipleLinks' => true, 'linkTypes' => [\verbb\hyper\links\Url::class]]);
+    $fixture = F::matrixFieldWithHyper($inner);
+    $owner = F::plainEntry(F::entrySectionWithField($fixture['matrix']), 'Nested import owner');
+    $mapper = FeedMe::$plugin->fields->getRegisteredField(\craft\fields\Matrix::class);
+    $mapper->field = $fixture['matrix'];
+    $mapper->element = $owner;
+    $mapper->feed = ['id' => null, 'setEmptyValues' => true];
+    $mapper->fieldInfo = ['blocks' => [$fixture['blockEntryType']->handle => ['fields' => [$inner->handle => [
+        'field' => HyperField::class,
+        'fields' => [
+            'type' => ['node' => 'usedefault', 'default' => 'url'],
+            'linkValue' => ['node' => 'blocks/links/url'],
+            'linkText' => ['node' => 'blocks/links/text'],
+        ],
+    ]]]]];
+    $expected = [];
+    $mapper->feedData = [];
+    foreach ([0, 1] as $block) {
+        foreach ([0, 1] as $link) {
+            $url = "https://example.test/$block/$link";
+            $text = "Block $block link $link";
+            $mapper->feedData["blocks/$block/links/$link/url"] = $url;
+            $mapper->feedData["blocks/$block/links/$link/text"] = $text;
+            $expected[$block][] = [$url, $text];
+        }
+    }
+    $parsed = $mapper->parseField();
+    $owner->setFieldValue($fixture['matrix']->handle, ['entries' => $parsed, 'sortOrder' => array_keys($parsed)]);
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    $owner = Entry::find()->id($owner->id)->one();
+    $actual = [];
+    foreach ($owner->getFieldValue($fixture['matrix']->handle)->all() as $block) {
+        $actual[] = array_map(fn($link) => [$link->getUrl(), $link->getLinkText()], $block->getFieldValue($inner->handle)->getLinks());
+    }
+    expect($actual)->toBe($expected);
+});

@@ -37,6 +37,7 @@
 - Fixed linked-element batching unnecessarily loading unused Matrix and Neo content.
 - Fixed uploads inside nested Hyper and Vizy fields remaining in temporary storage after saving.
 - Fixed Feed Me imports dropping default values for custom fields inside links.
+- Fixed Feed Me imports losing links inside Matrix entries.
 - Fixed content API callbacks resolving implicit-site links in the current site instead of the content’s site.
 - Fixed Embed links ignoring authored link titles.
 - Fixed Site and Embed links ignoring configured Link Text defaults.
