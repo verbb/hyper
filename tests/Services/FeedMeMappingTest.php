@@ -113,3 +113,28 @@ it('keeps nested table rows attached to their imported link', function(bool $mul
         Craft::$app->fields->deleteField($table);
     }
 })->with(['single' => false, 'multiple' => true]);
+
+it('preserves zero values when an imported link uses a default type', function(string $class, string $type, string $attribute, bool $multiple, mixed $zero) {
+    $field = F::hyperField(['linkTypes' => [$class], 'multipleLinks' => $multiple]);
+    $owner = F::plainEntry(F::entrySection($field), 'Zero import');
+    $mapper = FeedMe::$plugin->fields->getRegisteredField(HyperField::class);
+    $mapper->field = $field;
+    $mapper->element = $owner;
+    $mapper->feed = ['id' => null, 'setEmptyValues' => true];
+    $mapper->fieldInfo = ['fields' => [
+        'type' => ['node' => 'usedefault', 'default' => $type],
+        $attribute => ['node' => 'links/value'],
+    ]];
+    $mapper->feedData = ['links/0/value' => $zero];
+
+    $imported = $mapper->parseField();
+    expect($imported)->toHaveCount(1);
+    $owner->setFieldValue($field->handle, $imported);
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    $link = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->first();
+    expect($link)->not->toBeNull();
+    expect($attribute === 'linkValue' ? $link->getUrl() : $link->getText())->toBe($attribute === 'linkValue' ? 'tel:0' : '0');
+})->with([
+    'phone' => [\verbb\hyper\links\Phone::class, 'tel', 'linkValue'],
+    'passive label' => [\verbb\hyper\links\Passive::class, 'passive', 'linkText'],
+])->with(['single' => false, 'multiple' => true])->with(['string zero' => '0', 'integer zero' => 0]);

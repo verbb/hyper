@@ -125,6 +125,7 @@ class Hyper extends Field implements FieldInterface
 
         // check if all values in fieldData are empty strings
         $allEmpty = true;
+        $hasValue = static fn(mixed $value): bool => $value !== null && $value !== false && $value !== '' && $value !== [];
 
         $customFieldHandles = Hash::extract($this->field->getLinkTypeFields(), '{n}.handle');
 
@@ -148,7 +149,7 @@ class Hyper extends Field implements FieldInterface
                 $preppedData[$blockPrefix . $subFieldHandle] = $value;
             }
 
-            if ((is_string($value) && !empty($value)) || (is_array($value) && !empty(array_filter($value)))) {
+            if ((is_scalar($value) && $hasValue($value)) || (is_array($value) && array_filter($value, $hasValue))) {
                 $allEmpty = false;
             }
         }
