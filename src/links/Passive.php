@@ -67,7 +67,9 @@ class Passive extends Link
 
     public function getText(?string $defaultText = null): ?string
     {
-        return $this->getLinkText() ?: $defaultText ?: null;
+        $text = $this->getLinkText();
+
+        return $text !== null && $text !== '' ? $text : ($defaultText !== '' ? $defaultText : null);
     }
 
     public function getUrl(): ?string

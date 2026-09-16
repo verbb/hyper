@@ -111,8 +111,10 @@ class LinkInstance extends Model
             return true;
         }
 
-        if ($this->linkText || $this->linkTitle || $this->ariaLabel || $this->classes || $this->urlSuffix) {
-            return true;
+        foreach ([$this->linkText, $this->linkTitle, $this->ariaLabel, $this->classes, $this->urlSuffix] as $value) {
+            if ($value !== null && $value !== '') {
+                return true;
+            }
         }
 
         if ($this->customAttributes) {

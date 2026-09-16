@@ -383,7 +383,11 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return '';
         }
 
-        $label = $first->getText() ?: $first->getUrl() ?: Craft::t('hyper', 'Link');
+        $label = $first->getText();
+
+        if ($label === null || $label === '') {
+            $label = $first->getUrl() ?? Craft::t('hyper', 'Link');
+        }
         $html = Html::encode((string)$label);
 
         // Multi-link Matrix/card preview: show first label plus remaining count.

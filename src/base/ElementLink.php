@@ -390,12 +390,12 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getLinkText(): ?string
     {
-        if ($this->linkText) {
+        if ($this->linkText !== null && $this->linkText !== '') {
             return $this->linkText;
         }
 
         // Layout default (e.g. "Learn More") wins over element title when set.
-        if ($default = $this->getLinkTextLayoutDefault()) {
+        if (($default = $this->getLinkTextLayoutDefault()) !== null) {
             return $default;
         }
 

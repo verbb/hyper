@@ -287,7 +287,7 @@ class Embed extends Link
 
     public function getLinkText(): ?string
     {
-        if ($this->linkText) {
+        if ($this->linkText !== null && $this->linkText !== '') {
             return $this->linkText;
         }
 

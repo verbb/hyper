@@ -643,7 +643,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getLinkText(): ?string
     {
-        if ($this->linkText) {
+        if ($this->linkText !== null && $this->linkText !== '') {
             return $this->linkText;
         }
 
@@ -796,7 +796,9 @@ abstract class Link extends Element implements LinkInterface
             $defaultText = $defaultText === Craft::t('hyper', 'e.g. Read more') ? Craft::t('hyper', 'Read more') : $defaultText;
         }
 
-        return $this->getLinkText() ?: $defaultText ?: null;
+        $text = $this->getLinkText();
+
+        return $text !== null && $text !== '' ? $text : ($defaultText !== '' ? $defaultText : null);
     }
 
     public function getTarget(): ?string
