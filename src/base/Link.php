@@ -975,7 +975,7 @@ abstract class Link extends Element implements LinkInterface
                             'required',
                             'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
                             'when' => fn(self $model): bool => $model->_isNativeFieldVisible($attribute)
-                                && ($attribute !== 'linkText' || $model->hasLinkValue()),
+                                && ($attribute !== 'linkText' || !$model->isEmpty()),
                         ];
                     }
 
