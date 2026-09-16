@@ -144,7 +144,7 @@ class PluginContentMigration extends PluginMigration
     protected function serializeMigratedLink(LinkInterface $link): array
     {
         if ($link instanceof ElementLink && $this->contentSiteId) {
-            $link->linkSiteId = $this->contentSiteId;
+            $link->linkSiteId ??= $this->contentSiteId;
         }
 
         $this->castScalarLinkValue($link);

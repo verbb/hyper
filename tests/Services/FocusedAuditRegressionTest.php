@@ -70,3 +70,25 @@ it('uses the owner site for cached links regardless of earlier mixed-site querie
         Craft::$app->sites->setCurrentSite($previousSite);
     }
 });
+
+it('preserves migrated destination sites through rendering and relation indexing', function(string $kind, bool $explicit) {
+    [$ownerSite, $targetSite] = F::ensureSites(2);
+    $field = F::hyperField(['linkTypes' => [EntryLink::class]]);
+    $section = F::translatableEntrySection($field, 2);
+    $targets = F::localizedEntryPair($section, $ownerSite, $targetSite, 'Destination');
+    $owner = F::plainEntry($section, 'Owner', [], $ownerSite);
+    $migration = $kind === 'native' ? new MigrateCraftLinkContent() : new MigrateTypedLinkContent();
+    (new ReflectionProperty($migration, 'contentSiteId'))->setValue($migration, $ownerSite->id);
+    $input = $kind === 'native'
+        ? ['type' => 'entry', 'value' => '{entry:' . $targets['primary']->id . ($explicit ? '@' . $targetSite->id : '') . ':url}']
+        : ['type' => 'entry', 'linkedId' => $targets['primary']->id, 'linkedSiteId' => $explicit ? $targetSite->id : null];
+    $converted = $migration->convertModel($field, $input);
+    $expectedSite = $explicit ? $targetSite : $ownerSite;
+    expect($converted[0]['linkSiteId'])->toBe($expectedSite->id);
+    $collection = new LinkCollection($field, $converted, $owner);
+    expect($collection->getLinks()[0]->getElement()?->siteId)->toBe($expectedSite->id);
+    expect($collection->getLinks()[0]->getUrl())->toBe(($explicit ? $targets['secondary'] : $targets['primary'])->getUrl());
+    Hyper::$plugin->linkRelations->syncFromLinkCollection($field, $owner, $collection);
+    $row = (new Query())->from('{{%hyper_links}}')->where(['ownerId' => $owner->id, 'ownerSiteId' => $ownerSite->id, 'fieldId' => $field->id])->one();
+    expect((int)$row['targetSiteId'])->toBe($expectedSite->id);
+})->with([['native', true], ['native', false], ['typed', true], ['typed', false]]);

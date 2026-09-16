@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed native Craft Link and Typed Link migrations replacing explicit destination sites with the content owner's site.
 - Fixed native Craft Link migrations duplicating email and phone URL schemes.
 - Fixed Typed Link migrations double-encoding content, creating links for empty values, and overwriting converted links or later edits on repeated runs.
 - Fixed saving Hyper fields inside Vizy blocks failing when rebuilding relations.
