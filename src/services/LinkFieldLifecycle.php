@@ -2,6 +2,7 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
@@ -38,6 +39,18 @@ class LinkFieldLifecycle
                 foreach ($element->getFieldValue($field->handle)->all() as $nested) {
                     self::_finalizeElementUploads($nested, $owner);
                 }
+            } elseif ($field instanceof HyperField) {
+                $nested = $element->getFieldValue($field->handle);
+
+                if ($nested instanceof LinkCollectionInterface) {
+                    self::finalizeUploads($nested, $owner);
+                }
+            } elseif (class_exists(\verbb\vizy\fields\VizyField::class) && $field instanceof \verbb\vizy\fields\VizyField) {
+                $nodes = $element->getFieldValue($field->handle);
+
+                if ($nodes instanceof \verbb\vizy\models\NodeCollection) {
+                    self::_finalizeVizyUploads($nodes->getNodes(), $element, $owner);
+                }
             } elseif ($field instanceof Assets) {
                 $selected = $element->getFieldValue($field->handle)->all();
                 $temporary = array_filter($selected, static fn($asset) => $asset->volumeId === null);
@@ -69,4 +82,26 @@ class LinkFieldLifecycle
             }
         }
     }
+
+    private static function _finalizeVizyUploads(array $nodes, ElementInterface $element, ElementInterface $owner): void
+    {
+        foreach ($nodes as $node) {
+            if ($node instanceof \verbb\vizy\nodes\VizyBlock) {
+                $block = $node->getBlockElement($element);
+
+                // Vizy reads stored layout UIDs through the node; its synthetic
+                // element can still have only handle-keyed values.
+                foreach ($block->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+                    if ($field instanceof Assets || $field instanceof Matrix || $field instanceof HyperField || $field instanceof \verbb\vizy\fields\VizyField) {
+                        $block->setFieldValue($field->handle, $node->getFieldValue($field->handle));
+                    }
+                }
+
+                self::_finalizeElementUploads($block, $owner);
+            }
+
+            self::_finalizeVizyUploads($node->getContent(), $element, $owner);
+        }
+    }
+
 }
