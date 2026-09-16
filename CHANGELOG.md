@@ -11,6 +11,7 @@
 - `HyperField::getHydratedLinkBlocks()` shared by bulk add and clipboard paste (`mode=seed`).
 
 ### Changed
+- Updated locked frontend dependencies.
 - Improved relation-index save performance for fields containing many links.
 - GraphQL link type names use the original field handle instead of a layout alias. Update fragments that use alias-derived type names; query field aliases are unchanged.
 - Link destinations now use literal values; existing environment-variable and alias references must be updated before upgrading.
