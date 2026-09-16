@@ -1,5 +1,3 @@
-import { debounce } from 'lodash-es';
-
 import { createSpinner } from '../ui/Spinner';
 
 type FieldLayoutDesignerOptions = {
@@ -42,13 +40,11 @@ export class FieldLayoutDesigner {
 
     private observer: MutationObserver | null = null;
 
-    private syncDebounced: ReturnType<typeof debounce> | null = null;
+    private workingValue: string | null = null;
 
     private loaded = false;
 
     private loading = false;
-
-    private mounted = false;
 
     private pendingScrollRestore: ScrollPosition | null = null;
 
@@ -89,10 +85,11 @@ export class FieldLayoutDesigner {
         // participates in CP form serialize / confirm-unload).
         const target = this.contentEl.querySelector('input[data-config-input]');
 
-        if (!(target instanceof HTMLInputElement)) {
+        if (!(target instanceof HTMLInputElement) || target.value === this.workingValue) {
             return;
         }
 
+        this.workingValue = target.value;
         this.options.value = target.value;
         this.options.onChange(target.value);
     }
@@ -103,7 +100,7 @@ export class FieldLayoutDesigner {
      * Craft's fuller FLD JSON shape, which would false-dirty confirm-unload.
      */
     flushPending(): void {
-        this.syncDebounced?.flush();
+        this.syncValue();
     }
 
     private showLoading(): void {
@@ -326,24 +323,14 @@ export class FieldLayoutDesigner {
 
     private watchForChanges(): void {
         this.observer?.disconnect();
-        this.syncDebounced?.cancel();
+        const target = this.contentEl.querySelector('input[data-config-input]');
 
-        // First observer tick is Craft FLD mounting itself — skip so we don't
-        // push its working JSON onto layoutConfig until the author edits.
-        const syncValue = debounce(() => {
-            if (!this.mounted) {
-                this.mounted = true;
-                return;
-            }
+        // Craft expands the saved JSON when mounting. Keep that pristine shape out
+        // of the submitted value, but sync actual edits before the next Save click.
+        this.workingValue = target instanceof HTMLInputElement ? target.value : null;
+        const syncValue = () => this.syncValue();
 
-            this.syncValue();
-        }, 250);
-
-        this.syncDebounced = syncValue;
-
-        this.observer = new MutationObserver(() => {
-            syncValue();
-        });
+        this.observer = new MutationObserver(syncValue);
 
         this.observer.observe(this.contentEl, {
             childList: true,
@@ -351,8 +338,6 @@ export class FieldLayoutDesigner {
             subtree: true,
             characterData: true,
         });
-
-        const target = this.contentEl.querySelector('input[data-config-input]');
 
         if (target instanceof HTMLInputElement) {
             $(target).on('change.hyperFld', syncValue);

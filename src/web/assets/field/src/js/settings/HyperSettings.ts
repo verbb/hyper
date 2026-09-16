@@ -181,7 +181,7 @@ export class HyperSettings {
         }
 
         if (this.selectedHandle && this.selectedHandle !== handle) {
-            // Only flush author edits still in the debounce window — never rewrite
+            // Sync author edits before hiding the designer — never rewrite
             // a pristine layoutConfig from the FLD working input.
             this.designers.get(this.selectedHandle)?.flushPending();
         }

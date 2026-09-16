@@ -220,3 +220,5 @@ try {
 } finally {await browser.close();}
 
 await import('./input-lifecycle.mjs');
+
+await import('./settings-layout.mjs');

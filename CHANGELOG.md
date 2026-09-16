@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed field layout edits being lost when saving immediately.
 - Fixed the Classes field dropping a value of `0` when rendering links.
 - Fixed the changelog and release feed pointing to older Hyper versions.
 - Fixed the Craft Link migration menu disappearing before content conversion was complete.
