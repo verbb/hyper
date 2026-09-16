@@ -41,7 +41,7 @@ class LinkRelations extends Component
     // Public Methods
     // =========================================================================
 
-    public function syncFromLinkCollection(HyperField $field, ElementInterface $element, LinkCollectionInterface $collection): bool
+    public function syncFromLinkCollection(HyperField $field, ElementInterface $element, ?LinkCollectionInterface $collection = null): bool
     {
         if ($element->isProvisionalDraft || ElementHelper::isDraftOrRevision($element)) {
             return true;
@@ -53,7 +53,8 @@ class LinkRelations extends Component
 
         $rows = [];
 
-        foreach ($collection->getLinks() as $sortOrder => $link) {
+        // The index belongs to the underlying field, so replace all its occurrences together.
+        foreach ($this->_getOwnerLinks($field, $element, $collection) as $sortOrder => $link) {
             if (!$link instanceof LinkInterface) {
                 continue;
             }
@@ -479,6 +480,37 @@ class LinkRelations extends Component
 
     // Private Methods
     // =========================================================================
+
+    private function _getOwnerLinks(HyperField $field, ElementInterface $owner, ?LinkCollectionInterface $replacement): array
+    {
+        $links = [];
+        $matched = false;
+
+        foreach ($owner->getFieldLayout()?->getCustomFields() ?? [] as $occurrence) {
+            if (!$occurrence instanceof HyperField || (int)$occurrence->id !== (int)$field->id) {
+                continue;
+            }
+
+            $isReplacement = $field->layoutElement
+                ? $occurrence->layoutElement?->uid === $field->layoutElement->uid
+                : $occurrence->handle === $field->handle;
+            $value = $replacement !== null && $isReplacement
+                ? $replacement
+                : $owner->getFieldValue($occurrence->handle);
+            $matched = $matched || $isReplacement;
+
+            if ($value instanceof LinkCollectionInterface) {
+                $links = [...$links, ...$value->getLinks()];
+            }
+        }
+
+        // Keep programmatic collections usable when the field has no layout occurrence.
+        if (!$matched && $replacement !== null) {
+            $links = [...$links, ...$replacement->getLinks()];
+        }
+
+        return $links;
+    }
 
     private function _registerNestedOwnersFromField(ElementInterface $element, FieldInterface $field): void
     {

@@ -26,6 +26,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed repeated field placements overwriting each other's relation indexes when saved or reconciled.
 - Fixed category entrification losing legacy target IDs and custom link field data.
 - Fixed Typed Link migrations losing the required custom-text setting.
 - Fixed Feed Me imports losing single-link custom fields and mixing nested field rows between links.

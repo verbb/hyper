@@ -38,19 +38,15 @@ class ElementContentStore
         $uids = [];
 
         foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
-            try {
-                $fieldLayoutField = $layout->getField(fn(BaseField $layoutField) => (
-                    $layoutField instanceof CustomField && $layoutField->getFieldUid() === $field->uid
-                ));
-
-                if ($fieldLayoutField) {
+            // One field can have several independently stored occurrences in a layout.
+            foreach ($layout->getCustomFieldElements() as $fieldLayoutField) {
+                if ($fieldLayoutField->getFieldUid() === $field->uid) {
                     $uids[] = $fieldLayoutField->uid;
                 }
-            } catch (InvalidArgumentException) {
             }
         }
 
-        return $uids;
+        return array_values(array_unique($uids));
     }
 
     public static function decodeStored(mixed $stored): mixed
