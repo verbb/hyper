@@ -26,6 +26,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed renaming the Default link type config handle removing its default status and deletion protection.
 - Fixed configured link types being lost when ordering positions were duplicated.
 - Fixed different fields sharing a layout alias reusing each other's GraphQL custom-field definitions.
 - Fixed configured fixed URLs being overridden by submitted or imported link content.

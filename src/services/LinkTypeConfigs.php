@@ -330,6 +330,15 @@ class LinkTypeConfigs extends Component
             return false;
         }
 
+        // Read persisted identity: callers may edit the cached model in place.
+        $savedHandle = Craft::$app->getProjectConfig()->get(self::PROJECT_CONFIG_PATH . '.' . ($uid ?: $config->uid) . '.handle');
+
+        if ($savedHandle === self::DEFAULT_HANDLE && $config->handle !== self::DEFAULT_HANDLE) {
+            $config->addError('handle', Craft::t('hyper', 'The Default link type config handle cannot be changed.'));
+
+            return false;
+        }
+
         // `custom` is reserved for field-owned link type settings.
         if ($config->handle === self::CUSTOM_HANDLE) {
             $config->addError('handle', Craft::t('hyper', 'Handle “{handle}” is reserved.', [

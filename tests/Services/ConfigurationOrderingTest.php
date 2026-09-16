@@ -30,3 +30,22 @@ it('retains and stably orders every configured link type', function(string $scop
     ['field', ['3', '1'], ['email', 'url']],
     ['shared', ['3', '1'], ['email', 'url']],
 ]);
+
+it('keeps the seeded Default config protected when its handle is edited', function() {
+    $service = Hyper::$plugin->linkTypeConfigs;
+    $original = clone $service->getDefaultConfig();
+    $edited = clone $original;
+    $edited->handle = F::handle('renamedDefault');
+    try {
+        expect($service->saveConfig($edited))->toBeFalse();
+        expect($edited->getErrors('handle'))->not->toBeEmpty();
+        expect($service->getDefaultConfig()->uid)->toBe($original->uid);
+        expect($service->getConfigByUid($original->uid)->canDelete())->toBeFalse();
+        $renamed = clone $original;
+        $renamed->name = 'Renamed default label';
+        expect($service->saveConfig($renamed))->toBeTrue();
+        expect($service->getConfigByUid($original->uid)->name)->toBe('Renamed default label');
+    } finally {
+        $service->saveConfig($original);
+    }
+});

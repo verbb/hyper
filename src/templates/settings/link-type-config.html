@@ -42,6 +42,7 @@
     name: 'handle',
     class: 'code',
     value: config.handle,
+    readonly: config.handle == 'default',
     required: true,
     errors: config.getErrors('handle'),
 }) }}
