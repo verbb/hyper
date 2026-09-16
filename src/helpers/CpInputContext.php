@@ -9,6 +9,7 @@ use verbb\hyper\models\LinkCollectionInterface;
 use Craft;
 use craft\base\ElementInterface;
 use craft\fields\BaseRelationField;
+use craft\fields\ContentBlock;
 use craft\fields\Matrix;
 use craft\helpers\Json;
 
@@ -53,15 +54,27 @@ class CpInputContext
         // Posted clipboard content can contain relation fields as well as the main link.
         // Rendering a native chip does not itself enforce canView on its supplied element.
         foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
-            if ($field instanceof BaseRelationField || $field instanceof Matrix) {
+            $nestedQuery = $field instanceof Matrix || (class_exists(\benf\neo\Field::class) && $field instanceof \benf\neo\Field);
+
+            if ($field instanceof BaseRelationField || $nestedQuery) {
                 foreach ($element->getFieldValue($field->handle)->all() as $selected) {
-                    if (!$field instanceof Matrix || $selected->id) {
+                    if (!$nestedQuery || $selected->id) {
                         self::_assertVisible($selected);
                     }
 
-                    if ($field instanceof Matrix) {
+                    if ($nestedQuery) {
                         self::assertVisibleSelections($selected);
                     }
+                }
+            } elseif ($field instanceof ContentBlock) {
+                $block = $element->getFieldValue($field->handle);
+
+                if ($block instanceof ElementInterface) {
+                    if ($block->id) {
+                        self::_assertVisible($block);
+                    }
+
+                    self::assertVisibleSelections($block);
                 }
             } elseif ($field instanceof HyperField) {
                 $links = $element->getFieldValue($field->handle);
