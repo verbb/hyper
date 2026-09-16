@@ -187,3 +187,57 @@ it('invalidates committed raw writes independently across database connections',
         $writer->close();
     }
 })->with(['first commits' => [true], 'first rolls back' => [false]]);
+
+
+it('raw traversal resolves legacy identities like hydration without rewriting them', function() {
+    $f = hyperRawFixture();
+    $first = $f['field']->getLinkTypeByHandle('url');
+    $alternate = clone $first;
+    $alternate->handle = 'alternateUrl';
+    $alternate->setFieldLayout(new FieldLayout(['type' => $alternate::class]));
+    $f['field']->setLinkTypes([$first, $alternate]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+    $api = Hyper::$plugin->getContent();
+    $map = $api->captureFieldLocations($f['target']->uid);
+    $placement = $f['owner']->getFieldLayout()->getFieldByHandle($f['field']->handle)->layoutElement->uid;
+    $where = ['elementId' => $f['owner']->id, 'siteId' => $f['owner']->siteId];
+    foreach ([
+        ['handle' => 'default-verbb-hyper-links-url'],
+        ['linkTypeHandle' => 'default-verbb-hyper-links-url'],
+        ['type' => verbb\hyper\links\Url::class],
+        ['type' => 'url'],
+        ['handle' => 'url', 'type' => verbb\hyper\links\Url::class],
+        ['linkTypeHandle' => 'url', 'handle' => 'alternateUrl'],
+    ] as $identity) {
+        $value = $f['value'];
+        unset($value[0]['uid'], $value[0]['linkTypeHandle']);
+        $value[0] = $identity + $value[0];
+        $hydrated = $f['field']->normalizeValue($value)->first();
+        expect($hydrated->handle)->toBe('url');
+        expect($hydrated->getFieldValue($f['target']->handle))->toBe('old');
+        $out = $api->transformValue($value, $f['field']->uid, $map, fn() => Change::replace('updated'));
+        expect($out['matched'])->toBe(2)->and($out['changed'])->toBe(2);
+        $expected = $value;
+        $expected[0]['fields'][$f['a']->uid] = 'updated';
+        $expected[0]['fields'][$f['b']->uid] = 'updated';
+        expect($out['value'])->toBe($expected);
+        Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new yii\db\JsonExpression([$placement => $value])], $where)->execute();
+        $before = ($f['read'])();
+        $options = ['elementIds' => [$f['owner']->id], 'dryRun' => true];
+        expect($api->modifyFieldValues($map, fn() => Change::replace('updated'), $options)['wouldModify'])->toBe(2);
+        expect(($f['read'])())->toBe($before);
+        $transaction = Craft::$app->db->beginTransaction();
+        try {
+            $options['dryRun'] = false;
+            expect($api->modifyFieldValues($map, fn() => Change::replace('updated'), $options)['modified'])->toBe(1);
+            expect(Json::decode(($f['read'])())[$placement])->toEqual($expected);
+        } finally {
+            $transaction->rollBack();
+        }
+        expect(($f['read'])())->toBe($before);
+    }
+    $value[0]['handle'] = 'alternateUrl';
+    unset($value[0]['linkTypeHandle']);
+    expect($f['field']->normalizeValue($value)->first()->handle)->toBe('alternateUrl');
+    expect($api->transformValue($value, $f['field']->uid, $map, fn() => Change::remove())['matched'])->toBe(0);
+});

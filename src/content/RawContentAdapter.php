@@ -5,6 +5,7 @@ use verbb\hyper\fields\HyperField;
 
 use craft\base\FieldInterface;
 use craft\helpers\Json;
+use craft\helpers\StringHelper;
 
 use RuntimeException;
 
@@ -23,6 +24,7 @@ final class RawContentAdapter
     {
         $types = [];
         $aliases = [];
+        $handleAliases = [];
         foreach ($field->getLinkTypes() as $type) {
             $placements = [];
             $layout = $type->getFieldLayout();
@@ -30,10 +32,12 @@ final class RawContentAdapter
                 $placements[$placement->uid] = ['placementUid' => $placement->uid, 'fieldUid' => $placement->getFieldUid(), 'layoutUid' => $layout->uid];
             }
             $types[$type->handle] = $placements;
-            $aliases[$type::class] = $type->handle;
-            $aliases[$type::typeKey()] = $type->handle;
+            // Hydration resolves class and legacy identities to the first configured type.
+            $aliases[$type::class] ??= $type->handle;
+            $aliases[$type::typeKey()] ??= $type->handle;
+            $handleAliases['default-' . StringHelper::toKebabCase($type::class)] ??= $type->handle;
         }
-        return ['types' => $types, 'aliases' => $aliases];
+        return ['types' => $types, 'aliases' => $aliases, 'handleAliases' => $handleAliases];
     }
 
     public function transform(mixed $value, array $schema, callable $visit): mixed
@@ -59,6 +63,9 @@ final class RawContentAdapter
             }
             $uid = $row['uid'] ?? null;
             $type = $row['linkTypeHandle'] ?? $row['handle'] ?? ($schema['aliases'][$row['type'] ?? ''] ?? null);
+            if (is_string($type) && !isset($schema['types'][$type])) {
+                $type = $schema['handleAliases'][$type] ?? $type;
+            }
             if (($uid !== null && (!is_string($uid) || $uid === '' || isset($seen[$uid]))) || !is_string($type) || !isset($schema['types'][$type])) {
                 throw new RuntimeException('Missing or ambiguous captured Hyper link identity.');
             }

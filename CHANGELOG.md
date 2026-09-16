@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed raw content updates skipping or rejecting custom fields in links with legacy type identities.
 - Fixed Embed previews not appearing after fetching a URL.
 - Fixed an information disclosure vulnerability.
 - Fixed GraphQL dropping Content Block values inside links.
