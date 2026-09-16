@@ -23,6 +23,7 @@ try {
     await page.locator('input[name="password"]').fill(identity.password);
     await page.locator('button[type="submit"],input[type="submit"]').first().click();
     await page.waitForURL(u=>!u.search.includes('admin/login'),{timeout:60000});
+    await page.waitForLoadState('networkidle');
     const editorUrl=`${base}/index.php?p=admin/entries/${f.matrix.section}/${f.matrix.ownerId}`;
     await page.goto(editorUrl);
     await page.waitForFunction(()=>window.jQuery && $('.matrix').first().data('matrix')?.elementEditor);
@@ -31,10 +32,13 @@ try {
     await page.getByRole('button',{name:'New entry',exact:false}).first().click();
     const inputs=page.locator('.matrixblock [data-hyper-input] input[name$="[linkValue]"]');
     const nested=page.locator('.matrixblock [data-hyper-input].hyper-input--ready').first();
-    await nested.locator('[data-hyper-add-trigger]').click();
+    await nested.waitFor();
+    const addMenu = nested.locator('[data-hyper-add-trigger]');
+    if (await addMenu.count()) await addMenu.click();
     await nested.locator('[data-hyper-add-type="url"]').click();
     const urls=['alpha','beta','gamma'].map(s=>`https://example.test/${browserName}/${role}/${s}`);
     await inputs.first().fill(urls[0]);
+    await page.waitForFunction(()=>!!$('.matrix').first().data('matrix').$entriesContainer.children().last().data('entry'));
     await page.evaluate(()=>$('.matrix').first().data('matrix').$entriesContainer.children().last().data('entry').duplicate());
     await page.waitForFunction(()=>$('.matrix').first().data('matrix').$entriesContainer.children().length===2);
     await inputs.nth(1).waitFor();
