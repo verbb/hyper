@@ -9,6 +9,60 @@ use verbb\hyper\Hyper;
 use verbb\hyper\links\Entry as EntryLink;
 use verbb\hyper\links\Url;
 
+it('localizes category links during owner propagation and structure updates', function(bool $multiple) {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField([
+        'multipleLinks' => $multiple,
+        'translationMethod' => Field::TRANSLATION_METHOD_SITE,
+        'linkTypes' => [\verbb\hyper\links\Category::class],
+    ]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $group = new \craft\models\CategoryGroup([
+        'name' => 'Hyper category localization', 'handle' => HyperFixtureFactory::handle('hyperTestCategoryGroup'),
+    ]);
+    $group->setSiteSettings(array_map(fn($site) => new \craft\models\CategoryGroup_SiteSettings([
+        'siteId' => $site->id, 'hasUrls' => true, 'uriFormat' => 'test-categories/{slug}', 'template' => '_hyper-test/entry',
+    ]), Craft::$app->sites->getAllSites()));
+    expect(Craft::$app->categories->saveGroup($group))->toBeTrue();
+    try {
+        $category = new \craft\elements\Category([
+            'groupId' => $group->id, 'siteId' => $primary->id, 'title' => 'Category',
+            'slug' => HyperFixtureFactory::handle('test-category'),
+        ]);
+        expect(Craft::$app->elements->saveElement($category))->toBeTrue();
+        $payload = ['handle' => 'category', 'linkValue' => [$category->id], 'linkSiteId' => $primary->id];
+        $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [$field->handle => [$payload]], $primary);
+        $check = function(int $count) use ($owner, $field, $category, $secondary) {
+            Hyper::$plugin->linkRelations->resetRequestState();
+            $localized = Entry::find()->id($owner->id)->siteId($secondary->id)->one();
+            $links = $localized->getFieldValue($field->handle)->getLinks();
+            $target = \craft\elements\Category::find()->id($category->id)->siteId($secondary->id)->one();
+            expect($target)->not->toBeNull();
+            expect($links)->toHaveCount($count);
+            foreach ($links as $link) {
+                expect($link->linkSiteId)->toBe($secondary->id);
+                expect($link->getElement()?->siteId)->toBe($secondary->id);
+                expect($link->getUrl())->toBe($target->getUrl());
+            }
+            $sites = (new \craft\db\Query())->select('targetSiteId')->from('{{%hyper_links}}')
+                ->where(['ownerId' => $owner->id, 'ownerSiteId' => $secondary->id, 'fieldId' => $field->id])->column();
+            expect(array_map('intval', $sites))->toBe(array_fill(0, $count, $secondary->id));
+        };
+        $check(1);
+        if ($multiple) {
+            $owner = Entry::find()->id($owner->id)->siteId($primary->id)->one();
+            $links = $owner->getFieldValue($field->handle);
+            $owner->setFieldValue($field->handle, $links->withLinks([
+                ...$links->getLinks(), Hyper::$plugin->links->createLinkFromSerialized($field, $payload),
+            ]));
+            expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+            $check(2);
+        }
+    } finally {
+        Craft::$app->categories->deleteGroup($group);
+    }
+})->with([false, true]);
+
 it('propagates multi-link structure to sibling sites while preserving translated link text', function() {
     $sites = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([

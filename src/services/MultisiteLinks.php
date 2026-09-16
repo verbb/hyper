@@ -126,7 +126,7 @@ class MultisiteLinks extends Component
             $payload = $link->getSerializedValues();
 
             if ($link instanceof ElementLink) {
-                $payload = $this->localizeElementLinkPayload($payload, $sourceSiteId, $targetSiteId);
+                $payload = $this->localizeElementLinkPayload($payload, $link, $targetSiteId);
             }
 
             $payloads[] = $payload;
@@ -269,7 +269,7 @@ class MultisiteLinks extends Component
             }
 
             if ($sourceLink instanceof ElementLink) {
-                $payload = $this->localizeElementLinkPayload($payload, $sourceSiteId, $targetSiteId);
+                $payload = $this->localizeElementLinkPayload($payload, $sourceLink, $targetSiteId);
             }
 
             $payloads[] = $payload;
@@ -278,8 +278,14 @@ class MultisiteLinks extends Component
         return $field->normalizeValue($payloads, $targetElement);
     }
 
-    public function localizeElementLinkPayload(array $payload, int $sourceSiteId, int $targetSiteId): array
+    public function localizeElementLinkPayload(array $payload, ElementLink $link, int $targetSiteId): array
     {
+        $elementType = $link::elementType();
+
+        if (!$elementType::isLocalized()) {
+            return $payload;
+        }
+
         $linkValue = $payload['linkValue'] ?? null;
 
         if (is_array($linkValue)) {
@@ -293,15 +299,12 @@ class MultisiteLinks extends Component
         }
 
         $element = $this->resolveElement(
-            EntryLink::elementType(),
+            $elementType,
             $referenceId,
             $targetSiteId,
-            Entry::STATUS_LIVE,
-            static function(ElementQueryInterface $query, mixed $status): void {
-                if ($status === Element::STATUS_ENABLED || $status === Entry::STATUS_LIVE) {
-                    $query->status(Entry::STATUS_LIVE);
-                }
-            },
+            Element::STATUS_ENABLED,
+            // Keep each type's normal lookup rules, including live status for entries.
+            fn(ElementQueryInterface $query, mixed $status) => $link->modifyElementQuery($query, $status),
         );
 
         if ($element) {
