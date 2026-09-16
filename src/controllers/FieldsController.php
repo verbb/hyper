@@ -326,19 +326,17 @@ class FieldsController extends Controller
         // Allowlist / scheme gate before any network I/O (Astra H3-A03).
         $embedLink = $this->_resolveEmbedLinkType($fieldId, $linkTypeHandle);
 
-        if ($embedLink) {
-            if (!$embedLink->isEmbedUrlAllowed($url)) {
-                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
-            }
-        } else {
-            $settings = Hyper::$plugin->getSettings();
-
-            if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($url)) {
-                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
-            }
+        // A rendered field token does not authorize a generic metadata fetch.
+        // Resolve an enabled type before applying that type's configured policy.
+        if (!$embedLink) {
+            throw new NotFoundHttpException('Embed link type not found.');
         }
 
-        $data = Embed::fetchEmbedData($url);
+        if (!$embedLink->isEmbedUrlAllowed($url)) {
+            return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
+        }
+
+        $data = Embed::fetchEmbedData($url, $embedLink->getEffectiveAllowedDomains());
 
         if (isset($data['error'])) {
             return $this->asFailure($data['error']);
@@ -347,23 +345,8 @@ class FieldsController extends Controller
         // Reject metadata whose final URL left the allowlist (open redirects).
         $finalUrl = is_string($data['url'] ?? null) ? (string)$data['url'] : $url;
 
-        if ($embedLink) {
-            if (!$embedLink->isEmbedUrlAllowed($finalUrl)) {
-                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
-            }
-        } else {
-            $settings = Hyper::$plugin->getSettings();
-
-            if ($settings->embedAllowedDomains && !$settings->doesUrlMatchDomain($finalUrl)) {
-                return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
-            }
-        }
-
-        // Final URL must also stay on a public host (defense in depth vs oEmbed lying).
-        $finalHost = parse_url($finalUrl, PHP_URL_HOST);
-
-        if (is_string($finalHost) && $finalHost !== '' && !\verbb\hyper\helpers\UrlSafety::isPublicFetchHost($finalHost)) {
-            return $this->asFailure(Craft::t('hyper', 'Embed URL host is not allowed.'));
+        if (!$embedLink->isEmbedUrlAllowed($finalUrl)) {
+            return $this->asFailure(Craft::t('hyper', 'URL domain not allowed.'));
         }
 
         $html = $data['code'] ?? '';
@@ -385,7 +368,7 @@ class FieldsController extends Controller
         }
 
         foreach ($field->getLinkTypes() as $linkType) {
-            if ($linkType->handle === $linkTypeHandle && $linkType instanceof Embed) {
+            if ($linkType->handle === $linkTypeHandle && $linkType instanceof Embed && $linkType->enabled) {
                 return $linkType;
             }
         }
