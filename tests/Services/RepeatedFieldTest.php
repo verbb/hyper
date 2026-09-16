@@ -102,3 +102,34 @@ it('migrates both aliased placements and leaves converted values unchanged on re
     expect($read())->toBe($first);
     expect(repeatedHyperTargets($field, $owner))->toBe([$b->id, $a->id]);
 });
+
+it('indexes preserved and newly converted placements in table-backed Typed Link migrations', function() {
+    [$field, $owner, $a, $b] = repeatedHyperFixture();
+    $db = Craft::$app->db;
+    expect($db->tableExists('{{%lenz_linkfield}}'))->toBeFalse();
+    $db->createCommand()->createTable('{{%lenz_linkfield}}', [
+        'fieldId' => 'integer', 'elementId' => 'integer', 'siteId' => 'integer',
+        'type' => 'string', 'linkedId' => 'integer', 'linkedSiteId' => 'integer',
+    ])->execute();
+    try {
+        $where = ['elementId' => $owner->id, 'siteId' => $owner->siteId];
+        $read = fn() => (new Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+        $content = json_decode($read(), true);
+        $uid = $owner->getFieldLayout()->getFieldByHandle('secondHyper')->layoutElement->uid;
+        $content[$uid] = ['type' => 'entry', 'linkedId' => $b->id];
+        $db->createCommand()->update('{{%elements_sites}}', ['content' => new \yii\db\JsonExpression($content)], $where)->execute();
+        $db->createCommand()->insert('{{%lenz_linkfield}}', [
+            ...$where, 'fieldId' => $field->id, 'type' => 'entry', 'linkedId' => $b->id, 'linkedSiteId' => $owner->siteId,
+        ])->execute();
+        $migration = new \verbb\hyper\migrations\MigrateTypedLinkContent();
+        $migration->fields = [(new Query())->from('{{%fields}}')->where(['id' => $field->id])->one()];
+        $migration->processFieldContent();
+        expect(repeatedHyperTargets($field, $owner))->toBe([$a->id, $b->id]);
+        $first = $read();
+        $migration->processFieldContent();
+        expect($read())->toBe($first);
+        expect(repeatedHyperTargets($field, $owner))->toBe([$a->id, $b->id]);
+    } finally {
+        $db->createCommand()->dropTable('{{%lenz_linkfield}}')->execute();
+    }
+});

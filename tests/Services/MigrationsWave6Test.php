@@ -156,3 +156,10 @@ it('skips already-migrated Hyper collections for flipbox content (#253)', functi
 
     expect($converted)->toBeNull();
 });
+
+it('preserves an empty typed link field as an empty collection', function() {
+    $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
+    expect((new MigrateTypedLinkContent())->convertModel($field, [
+        'type' => 'url', 'linkedUrl' => null, 'linkedId' => null,
+    ]))->toBe([]);
+});

@@ -1,11 +1,10 @@
 <?php
 namespace verbb\hyper\migrations;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\fields\HyperField;
-use verbb\hyper\Hyper;
 use verbb\hyper\links as linkTypes;
-use verbb\hyper\models\LinkCollection;
 
 use Craft;
 use craft\db\Query;
@@ -34,7 +33,6 @@ class MigrateTypedLinkContent extends PluginContentMigration
         'user' => linkTypes\User::class,
         'craftCommerce-product' => linkTypes\Product::class,
     ];
-
     public string $oldFieldTypeClass = LinkField::class;
     public bool $resaveFields = false;
 
@@ -105,6 +103,11 @@ class MigrateTypedLinkContent extends PluginContentMigration
         $linkValue = $oldSettings['linkedUrl'] ?? $oldSettings['value'] ?? null;
         $linkedId = $oldSettings['linkedId'] ?? null;
         $linkedSiteId = $oldSettings['linkedSiteId'] ?? $oldSettings['siteId'] ?? null;
+
+        // Typed Link persists a default type even for an empty field.
+        if (($linkValue === null || $linkValue === '') && !$linkedId && ($oldType !== 'site' || !$linkedSiteId)) {
+            return [];
+        }
 
         // Vizy element links often store the element id in `value` as a string/int
         if ($linkedId === null && $linkValue !== null && $linkValue !== '' && is_numeric($linkValue)) {
@@ -255,17 +258,44 @@ class MigrateTypedLinkContent extends PluginContentMigration
 
             $newContent = $this->getElementContentForField($element, $field, $settings);
 
-            // Encode explicitly — avoid HTML entity side-effects
+            // The legacy table remains intact. Do not overwrite already converted values
+            // (or later author edits) and mint new link UIDs on subsequent runs.
+            $current = Json::decode((new Query())->select('content')->from('{{%elements_sites}}')
+                ->where(['elementId' => $elementId, 'siteId' => $siteId])->scalar() ?? '{}');
+            foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $layoutField) {
+                if ((int)$layoutField->id !== $fieldId) {
+                    continue;
+                }
+                $key = $layoutField->layoutElement->uid;
+                $existing = is_array($current) ? ($current[$key] ?? null) : null;
+                if (is_array($existing) && array_is_list($existing)
+                    && (!$existing || isset($existing[0]['linkTypeHandle']))) {
+                    $newContent[$key] = $existing;
+                }
+            }
+
+            if ($newContent === $current) {
+                continue;
+            }
+
+            // Pass a JSON expression so Craft's JSON column binding does not encode it twice.
             Db::update('{{%elements_sites}}', [
-                'content' => json_encode($newContent, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'content' => new \yii\db\JsonExpression($newContent),
             ], [
                 'elementId' => $elementId,
                 'siteId' => $siteId,
             ], [], true, $this->db);
 
             if ($this->syncRelations) {
-                $collection = new LinkCollection($field, $settings, $element);
-                Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($field, $element, $collection);
+                // Use the final stored values, including previously converted occurrences
+                // that were deliberately preserved instead of replaced by this source row.
+                foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $layoutField) {
+                    if ((int)$layoutField->id === $fieldId) {
+                        $element->setFieldValue($layoutField->handle, $newContent[$layoutField->layoutElement->uid] ?? null);
+                    }
+                }
+
+                Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($field, $element);
             }
 
             $this->stdout('    > Migrated content for element #' . $elementId, Console::FG_GREEN);

@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed Typed Link migrations double-encoding content, creating links for empty values, and overwriting converted links or later edits on repeated runs.
 - Fixed saving Hyper fields inside Vizy blocks failing when rebuilding relations.
 - Fixed third-party content migrations interpreting source values as Hyper content before conversion.
 - Fixed third-party migration dry-runs changing field settings and project config.
