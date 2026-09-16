@@ -4,6 +4,7 @@ namespace verbb\hyper\links;
 use verbb\hyper\base\Link;
 
 use Craft;
+use craft\errors\SiteNotFoundException;
 use craft\models\Site as SiteModel;
 
 class Site extends Link 
@@ -51,8 +52,12 @@ class Site extends Link
         } else {
             if (is_array($this->sites)) {
                 foreach ($this->sites as $siteUid) {
-                    if ($siteUid && $site = Craft::$app->getSites()->getSiteByUid($siteUid)) {
-                        $sites[] = $site;
+                    if ($siteUid) {
+                        try {
+                            $sites[] = Craft::$app->getSites()->getSiteByUid($siteUid);
+                        } catch (SiteNotFoundException) {
+                            // Stale settings can outlive a removed site.
+                        }
                     }
                 }
             }
@@ -105,7 +110,12 @@ class Site extends Link
             return null;
         }
 
-        return Craft::$app->getSites()->getSiteByUid($this->linkValue);
+        try {
+            return Craft::$app->getSites()->getSiteByUid($this->linkValue);
+        } catch (SiteNotFoundException) {
+            // Retain the saved reference while its destination is unavailable.
+            return null;
+        }
     }
 
 
