@@ -167,7 +167,7 @@ class LinkTypeConfigs extends Component
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
         $hydrated = [];
 
-        foreach ($config->linkTypes as $key => $linkTypeConfig) {
+        foreach (Links::sortLinkTypeSettings($config->linkTypes) as $linkTypeConfig) {
             if (!is_array($linkTypeConfig)) {
                 continue;
             }
@@ -176,7 +176,6 @@ class LinkTypeConfigs extends Component
                 continue;
             }
 
-            $sortOrder = ArrayHelper::remove($linkTypeConfig, 'sortOrder', $key);
             $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($linkTypeConfig);
 
             if (!$linkType->layoutConfig) {
@@ -187,7 +186,7 @@ class LinkTypeConfigs extends Component
                 $linkType->layoutUid = StringHelper::UUID();
             }
 
-            $hydrated[$sortOrder] = $linkType;
+            $hydrated[] = $linkType;
         }
 
         $this->_hydratedByHandle[$cacheKey] = $hydrated;
@@ -293,15 +292,10 @@ class LinkTypeConfigs extends Component
         // Normalize link type payloads before PC write.
         $normalized = [];
 
-        foreach ($config->linkTypes as $inputOrder => $linkType) {
-            $sortOrder = is_int($inputOrder) ? $inputOrder : count($normalized);
-
+        foreach (Links::sortLinkTypeSettings($config->linkTypes) as $linkType) {
             if ($linkType instanceof LinkInterface) {
                 $prototype = $linkType;
             } elseif (is_array($linkType)) {
-                // The configurator posts ordering metadata alongside model attributes.
-                // Consume it here so Yii never attempts to set it on the link type.
-                $sortOrder = (int)ArrayHelper::remove($linkType, 'sortOrder', $sortOrder);
                 $prototype = Hyper::$plugin->getLinks()->createSettingsPrototype($linkType);
             } else {
                 continue;
@@ -315,14 +309,11 @@ class LinkTypeConfigs extends Component
                 $prototype->layoutUid = StringHelper::UUID();
             }
 
-            $normalized[$sortOrder] = $prototype->getSettingsConfigForDb();
+            $normalized[] = $prototype->getSettingsConfigForDb();
         }
 
         if (!$normalized) {
             $normalized = $this->createStockSerializedLinkTypes();
-        } else {
-            ksort($normalized);
-            $normalized = array_values($normalized);
         }
 
         $config->linkTypes = $normalized;

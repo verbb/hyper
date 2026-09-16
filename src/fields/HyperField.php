@@ -782,18 +782,15 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
         $registeredLinkTypes = Hyper::$plugin->getLinks()->getAllLinkTypes();
 
-        foreach ($this->_serializedLinkTypes as $key => $config) {
+        foreach (Links::sortLinkTypeSettings($this->_serializedLinkTypes) as $config) {
             // Unregistered classes become MissingLink prototypes so settings still round-trip
             // instead of silently dropping the type (Astra H3-A07 settings half).
             if ($registeredLinkTypes && is_array($config) && !in_array($config['type'] ?? null, $registeredLinkTypes, true)) {
-                $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
                 $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($config);
-                $this->_linkTypes[$sortOrder] = $linkType;
+                $this->_linkTypes[] = $linkType;
                 continue;
             }
 
-            $sortOrder = ArrayHelper::remove($config, 'sortOrder', $key);
-            
             if ($config instanceof LinkInterface) {
                 $linkType = $config;
 
@@ -817,7 +814,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 $linkType->layoutUid = StringHelper::UUID();
             }
 
-            $this->_linkTypes[$sortOrder] = $linkType;
+            $this->_linkTypes[] = $linkType;
         }
 
         return $this->_linkTypes;

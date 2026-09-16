@@ -14,10 +14,36 @@ use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\errors\MissingComponentException;
 use craft\events\RegisterComponentTypesEvent;
+use craft\helpers\ArrayHelper;
 use craft\helpers\Component as ComponentHelper;
 
 class Links extends Component
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function sortLinkTypeSettings(array $configs): array
+    {
+        $ordered = [];
+
+        foreach ($configs as $key => $config) {
+            $order = is_int($key) ? $key : count($ordered);
+
+            if (is_array($config)) {
+                $order = (int)ArrayHelper::remove($config, 'sortOrder', $order);
+            }
+
+            $ordered[] = ['order' => $order, 'config' => $config];
+        }
+
+        // Ordering metadata is not identity: equal positions must retain both rows.
+        // PHP's stable sort keeps their input order when positions are tied.
+        usort($ordered, static fn(array $a, array $b): int => $a['order'] <=> $b['order']);
+
+        return array_column($ordered, 'config');
+    }
+
+
     // Constants
     // =========================================================================
 
