@@ -41,6 +41,7 @@ class PluginController extends Controller
 
     public function actionEditLinkTypeConfig(?string $uid = null, ?LinkTypeConfig $config = null): Response
     {
+        $this->requireAdmin();
         Plugin::registerFieldAssets();
 
         $configsService = Hyper::$plugin->getLinkTypeConfigs();
