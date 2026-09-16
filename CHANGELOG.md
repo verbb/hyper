@@ -29,6 +29,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed phone links rejecting `0` during validation.
 - Fixed raw content updates on separate database connections missing cache invalidation when sharing a migration coordinator.
 - Fixed moving or sorting a field tearing down its active Hyper inputs.
 - Fixed control-panel field operations accepting missing or conflicting owner contexts and inaccessible selections.

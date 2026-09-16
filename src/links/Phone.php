@@ -51,7 +51,7 @@ class Phone extends Link
             ],
         ]);
 
-        if (!$isValid) {
+        if ($isValid === false) {
             $this->addError($attribute, Craft::t('hyper', 'Please enter a valid phone number.'));
         }
     }
