@@ -66,7 +66,7 @@
 - Fixed upgrades and relation rebuilding failing on trashed content or permanently deleted link targets.
 - Fixed content migration and relation updates not rolling back together when synchronization fails.
 - Fixed explicit empty content replacements being treated as unchanged during maintenance.
-- Fixed content maintenance selecting all owners for an empty selection and applying content filters inconsistently.
+- Fixed content maintenance, including console commands, selecting all owners for an empty selection and applying content filters inconsistently.
 - Fixed content migrations changing unrelated JSON values or overwriting concurrent edits.
 - Fixed migrations and content maintenance skipping repeated placements of the same Hyper field.
 - Fixed repeated field placements overwriting each other's relation indexes when saved or reconciled.

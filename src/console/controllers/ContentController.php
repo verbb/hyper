@@ -87,7 +87,8 @@ class ContentController extends Controller
 
         $elementIds = null;
 
-        if ($this->elementIds) {
+        // Only an omitted filter selects all owners; explicit empty/zero input selects none.
+        if ($this->elementIds !== null) {
             $elementIds = array_values(array_filter(array_map(
                 static fn(string $id): int => (int)trim($id),
                 explode(',', $this->elementIds),
@@ -150,7 +151,8 @@ class ContentController extends Controller
 
         $elementIds = null;
 
-        if ($this->elementIds) {
+        // Only an omitted filter selects all owners; explicit empty/zero input selects none.
+        if ($this->elementIds !== null) {
             $elementIds = array_values(array_filter(array_map(
                 static fn(string $id): int => (int)trim($id),
                 explode(',', $this->elementIds),
