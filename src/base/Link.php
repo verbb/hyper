@@ -863,6 +863,12 @@ abstract class Link extends Element implements LinkInterface
                 }
             }
 
+            // A blank download filename still enables downloading. Keep its
+            // stored value textual so editable-table resaves preserve that intent.
+            if (strtolower($name) === 'download' && $attributeValue === '') {
+                $attributeValue = true;
+            }
+
             $attributes[$name] = $attributeValue;
         }
 

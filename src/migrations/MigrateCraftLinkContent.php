@@ -122,6 +122,20 @@ class MigrateCraftLinkContent extends PluginContentMigration
             $link->ariaLabel = (string)$oldSettings['ariaLabel'];
         }
 
+        foreach (['id', 'rel'] as $attribute) {
+            if (isset($oldSettings[$attribute])) {
+                $link->customAttributes[] = ['attribute' => $attribute, 'value' => (string)$oldSettings[$attribute]];
+            }
+        }
+
+        if ($oldSettings['download'] ?? false) {
+            $filename = $oldSettings['filename'] ?? null;
+            $link->customAttributes[] = [
+                'attribute' => 'download',
+                'value' => $filename !== null ? (string)$filename : '',
+            ];
+        }
+
         return $this->serializeMigratedLink($link);
     }
 

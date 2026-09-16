@@ -28,7 +28,7 @@ php craft hyper/migrate/craft-link --step=content --dry-run=1
 | SMS | URL (`sms:` values preserved) |
 | Product (when present) | Product |
 
-Label, URL suffix, title, classes, aria-label, and `_blank` target map onto Hyper’s native link fields when those advanced options were enabled on the Craft field.
+Label, URL suffix, title, classes, aria-label, and `_blank` target map onto Hyper’s native link fields when those advanced options were enabled on the Craft field. IDs and `rel` values become Custom Attributes. An enabled Download option becomes a `download` attribute, preserving the filename when one was supplied. Leave its Value empty to use the file’s original name.
 
 ## Notes
 

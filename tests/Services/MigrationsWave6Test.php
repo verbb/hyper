@@ -192,6 +192,7 @@ it('retains zero-valued metadata when converting native Craft links', function()
     $converted = $migrator->convertModel($field, [
         'type' => 'url', 'value' => 'https://example.test/path/',
         'label' => '0', 'urlSuffix' => '0', 'title' => '0', 'class' => '0', 'ariaLabel' => '0',
+        'id' => '0', 'rel' => '0', 'download' => true, 'filename' => '0',
     ]);
     $link = $field->normalizeValue($converted)->first();
 
@@ -200,4 +201,7 @@ it('retains zero-valued metadata when converting native Craft links', function()
     expect($link->getTitle())->toBe('0');
     expect($link->getClasses())->toBe('0');
     expect($link->getAriaLabel())->toBe('0');
+    expect($link->getLinkAttributes()['id'])->toBe('0');
+    expect($link->getLinkAttributes()['rel'])->toBe('0');
+    expect($link->getLinkAttributes()['download'])->toBe('0');
 });
