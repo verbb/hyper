@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed repeated or concurrent clipboard pastes duplicating link identities.
 - Fixed conditional custom fields and unavailable link content being lost when editing other link values.
 - Fixed pasted link custom fields using destination-site context or losing their input values.
 - Fixed nested Hyper inputs mixing authoring fields into parent content or saving stale child values.

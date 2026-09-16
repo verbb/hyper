@@ -17,6 +17,7 @@ import {
     buildClipboardPayload,
     readClipboard,
     resolvePasteHandle,
+    reserveClipboardPaste,
     writeClipboard,
 } from './clipboard';
 
@@ -58,6 +59,8 @@ export class HyperInput {
     private unregisterSubmitSync: (() => void) | null = null;
 
     private initialized = false;
+
+    private pasting = false;
 
     private clipboardChangeHandler: (() => void) | null = null;
 
@@ -427,6 +430,7 @@ export class HyperInput {
                 fieldId: this.settings.fieldId,
                 siteId: this.settings.siteId,
                 elementId: this.settings.elementId ?? undefined,
+                inputContext: this.settings.inputContext ?? undefined,
                 handle,
                 limit,
             },
@@ -455,6 +459,7 @@ export class HyperInput {
                     fieldId: this.settings.fieldId,
                     siteId: this.settings.siteId,
                     elementId: this.settings.elementId ?? undefined,
+                    inputContext: this.settings.inputContext ?? undefined,
                     handle,
                     mode,
                     ...params,
@@ -787,6 +792,7 @@ export class HyperInput {
     }
 
     private async pasteLink(): Promise<void> {
+        if (this.pasting) return;
         const clipboard = readClipboard();
 
         if (!clipboard) {
@@ -812,15 +818,19 @@ export class HyperInput {
 
         // Server-render populated widgets (same path as bulk add) — blank templates cannot
         // hydrate element cards / complex custom fields (Astra H3-A12).
+        this.pasting = true;
+        let reservation: Awaited<ReturnType<typeof reserveClipboardPaste>> | undefined;
         try {
+            reservation = await reserveClipboardPaste(clipboard);
             const response = await Craft.sendActionRequest('POST', 'hyper/fields/create-links', {
                 data: {
                     fieldId: this.settings.fieldId,
                     siteId: this.settings.siteId,
                     elementId: this.settings.elementId ?? undefined,
+                    inputContext: this.settings.inputContext ?? undefined,
                     handle,
                     mode: 'seed',
-                    seeds: [clipboard.link],
+                    seeds: [reservation.seed],
                 },
             });
 
@@ -828,9 +838,9 @@ export class HyperInput {
             const headHtml = response?.data?.headHtml as string | undefined;
             const bodyHtml = response?.data?.bodyHtml as string | undefined;
 
-            if (!blocks.length) {
-                Craft.cp.displayError(Craft.t('hyper', 'Couldn’t paste link.'));
-                return;
+            if (!blocks.length || !this.initialized || !this.container.isConnected
+                || (this.settings.multipleLinks && this.settings.maxLinks && this.blocks.length >= this.settings.maxLinks)) {
+                throw new Error('Paste destination is no longer available.');
             }
 
             if (headHtml) {
@@ -847,7 +857,10 @@ export class HyperInput {
 
             Craft.cp.displayNotice(Craft.t('hyper', 'Link pasted.'));
         } catch {
+            await reservation?.rollback();
             Craft.cp.displayError(Craft.t('hyper', 'Couldn’t paste link.'));
+        } finally {
+            this.pasting = false;
         }
     }
 

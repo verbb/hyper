@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';export * from '${source}serialize';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';export * from '${source}serialize';export * from '${source}clipboard';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -181,6 +181,19 @@ try {
     assert.deepEqual(parentSerialization.parent,{native:'keep',links:'canonical'});
     assert.equal(parentSerialization.own['hyperData[1000000000][linkValue]'],'authoring');
     assert.equal(parentSerialization.own['hyperData[1000000000][assets][0]'],'42');
+    const pasted=await page.evaluate(async()=>{
+        const original={uid:'source',linkTypeHandle:'url',linkValue:'https://example.test'};
+        let clip=Audit.buildClipboardPayload(original,'Url');Audit.writeClipboard(clip);
+        const copies=await Promise.all([Audit.reserveClipboardPaste(clip),Audit.reserveClipboardPaste(clip)]);
+        clip=Audit.buildClipboardPayload(original,'Url',{preserveUid:true});Audit.writeClipboard(clip);
+        const cuts=await Promise.all([Audit.reserveClipboardPaste(clip),Audit.reserveClipboardPaste(clip)]);
+        // An old failed reservation must not restore a move consumed by a later paste.
+        await cuts[0].rollback();
+        const third=await Audit.reserveClipboardPaste(clip);
+        return {copyUids:copies.map(x=>x.seed.uid),cutUids:[...cuts.map(x=>x.seed.uid),third.seed.uid]};
+    });
+    assert.equal(new Set(pasted.copyUids).size,2);assert(!pasted.copyUids.includes('source'));
+    assert.equal(new Set(pasted.cutUids).size,3);assert.equal(pasted.cutUids.filter(x=>x==='source').length,1);
     // Removal cancels the pending debounce; remount creates one request, no stale handler.
     const before=await page.evaluate(()=>{window.removed=document.querySelector('#embed');removed.remove();return pending.length;});
     await page.waitForTimeout(600);
@@ -189,5 +202,5 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "fields", "nested", "init", "parent", "removal"]}));
+    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "fields", "nested", "init", "parent", "clipboard", "removal"]}));
 } finally {await browser.close();}

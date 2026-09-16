@@ -19,6 +19,8 @@ export type HyperLinkClipboardPayload = {
     /** Content without CP-only keys (id, isNew, handle). */
     link: Record<string, unknown>;
     copiedAt: number;
+    operation?: 'copy' | 'cut';
+    pasteRevision?: string;
 };
 
 const CP_ONLY_KEYS = new Set(['id', 'isNew', 'html', 'js', 'type']);
@@ -66,6 +68,7 @@ export function buildClipboardPayload(
         uid,
         link: linkCopy,
         copiedAt: Date.now(),
+        operation: options.preserveUid ? 'cut' : 'copy',
     };
 }
 
@@ -130,4 +133,42 @@ export function resolvePasteHandle(
     const byClass = linkTypes.find((type) => type.type === clipboard.type);
 
     return byClass?.handle ?? null;
+}
+
+/** Mint on each insertion. Only a consumed cut reservation may retain an occurrence UID. */
+export function createPasteSeed(clipboard: HyperLinkClipboardPayload, preserveCut = false): Record<string, unknown> {
+    return {
+        ...structuredClone(clipboard.link),
+        uid: preserveCut && clipboard.operation === 'cut' && clipboard.uid
+            ? clipboard.uid
+            : (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Craft.randomString(16)),
+    };
+}
+
+const withClipboardLock = <T>(callback: (locked: boolean) => T): Promise<T> => (
+    navigator.locks
+        ? navigator.locks.request('hyper:clipboard-paste', () => callback(true))
+        : Promise.resolve(callback(false))
+);
+
+/** Reserve a move before network I/O so concurrent pastes cannot duplicate its identity. */
+export async function reserveClipboardPaste(expected: HyperLinkClipboardPayload) {
+    return withClipboardLock((locked) => {
+        const current = readClipboard();
+        if (!current || current.copiedAt !== expected.copiedAt || current.uid !== expected.uid) {
+            throw new Error('Clipboard changed before paste.');
+        }
+        const revision = Craft.randomString(24);
+        const seed = createPasteSeed(current, locked);
+        if (!writeClipboard({ ...current, operation: 'copy', pasteRevision: revision })) {
+            throw new Error('Unable to reserve clipboard.');
+        }
+        return {
+            seed,
+            rollback: () => withClipboardLock(() => {
+                // Restore a failed cut only if no later paste/copy has consumed this revision.
+                if (readClipboard()?.pasteRevision === revision) writeClipboard(current);
+            }),
+        };
+    });
 }
