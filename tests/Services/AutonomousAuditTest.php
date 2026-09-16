@@ -94,7 +94,7 @@ it('resolves eager-load paths through layout-specific Hyper and Matrix handles',
         'author',
     ]);
     Hyper::$plugin->linkedElementEagerLoader->parseWithPaths($query);
-    expect($query->with)->toBe(['author']);
+    expect($query->with)->toBe(['matrixAlias', 'author']);
     expect(Hyper::$plugin->linkRelations->getLinkedElementWithForField($direct->id))->toBe(['relatedEntry']);
     expect(Hyper::$plugin->linkRelations->getLinkedElementWithForField($inner->id))->toBe(['thumbnail']);
 });
@@ -119,7 +119,7 @@ it('registers shared Matrix aliases for every matching entry type', function() {
     Hyper::$plugin->linkRelations->resetRequestState();
     $query = Entry::find()->sectionId($section->id)->with([$matrix->handle . '.sharedLinks.linkedElements.thumbnail']);
     Hyper::$plugin->linkedElementEagerLoader->parseWithPaths($query);
-    expect($query->with)->toBe([]);
+    expect($query->with)->toBe([$matrix->handle]);
     foreach ([$first, $second] as $fixture) {
         expect(Hyper::$plugin->linkRelations->getLinkedElementWithForField($fixture['hyperField']->id))->toBe(['thumbnail']);
     }
