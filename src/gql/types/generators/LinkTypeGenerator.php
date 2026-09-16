@@ -6,6 +6,7 @@ use verbb\hyper\base\Link;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\gql\interfaces\LinkInterface;
 use verbb\hyper\gql\types\LinkType;
+use verbb\hyper\links\MissingLink;
 
 use Craft;
 use craft\errors\GqlException;
@@ -22,7 +23,10 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
 
     public static function generateTypes(mixed $context = null): array
     {
-        $gqlTypes = [];
+        // Opaque content may outlive its configured type. Register one schema-safe
+        // fallback even when no field currently contains an unavailable prototype.
+        $missingType = static::generateType(new MissingLink());
+        $gqlTypes = [$missingType->name => $missingType];
 
         foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
             foreach ($layout->getCustomFields() as $field) {
@@ -42,7 +46,9 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
 
     public static function generateType(mixed $context): mixed
     {
-        $typeName = Link::gqlTypeNameByContext($context);
+        $typeName = $context instanceof MissingLink
+            ? MissingLink::gqlTypeNameByContext($context)
+            : Link::gqlTypeNameByContext($context);
 
         return GqlEntityRegistry::getOrCreate($typeName, fn() => new LinkType([
             'name' => $typeName,

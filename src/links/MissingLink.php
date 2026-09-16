@@ -15,6 +15,11 @@ class MissingLink extends Link
         return Craft::t('hyper', 'Missing Link');
     }
 
+    public static function gqlTypeNameByContext(mixed $context): string
+    {
+        return 'HyperMissingLink';
+    }
+
 
     // Properties
     // =========================================================================
@@ -118,6 +123,12 @@ class MissingLink extends Link
 
     public function getLinkUrl(): ?string
     {
+        return null;
+    }
+
+    public function getUrl(): ?string
+    {
+        // A retained suffix cannot turn an unsupported destination into a live URL.
         return null;
     }
 }
