@@ -20,23 +20,31 @@ const COMPATIBLE_LINK_ATTRS = [
 
 // Portal link-type fields render under PHP namespace `hyperData[{linkId}]`, then Craft's
 // `namespaceInputs('fields')` pass wraps them as `fields[hyperData][{linkId}][...]`.
-const getHyperDataRoot = (content: Record<string, unknown>): Record<string, unknown> | undefined => {
+const getHyperDataRoot = (content: Record<string, unknown>, linkId: string): Record<string, unknown> | undefined => {
     const fields = content.fields;
 
     if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
         const hyperData = (fields as Record<string, unknown>).hyperData;
 
-        if (hyperData && typeof hyperData === 'object') {
+        if (hyperData && typeof hyperData === 'object' && Object.prototype.hasOwnProperty.call(hyperData, linkId)) {
             return hyperData as Record<string, unknown>;
         }
     }
 
     const hyperData = content.hyperData;
 
-    if (hyperData && typeof hyperData === 'object') {
+    if (hyperData && typeof hyperData === 'object' && Object.prototype.hasOwnProperty.call(hyperData, linkId)) {
         return hyperData as Record<string, unknown>;
     }
 
+    // Nested Matrix/Vizy inputs carry their own full namespace. Locate this row,
+    // rather than assuming the first hyperData bag belongs to the current field.
+    for (const child of Object.values(content)) {
+        if (child && typeof child === 'object') {
+            const found = getHyperDataRoot(child as Record<string, unknown>, linkId);
+            if (found) return found;
+        }
+    }
     return undefined;
 };
 
@@ -138,9 +146,22 @@ export function mergeLinkWithBlockContent(
     }
 
     const postData = Garnish.getPostData(portalEl);
+    const owner = blockEl.closest('[data-hyper-input]');
+    // A nested Hyper contributes its hidden store, never its authoring portal fields.
+    // Filter by DOM ownership before expansion so arbitrary user JSON stays untouched.
+    portalEl.querySelectorAll<HTMLElement>('[name]').forEach((input) => {
+        if (input.closest('[data-hyper-input]') === owner) return;
+        const name = input.getAttribute('name');
+        if (!name) return;
+        for (const key of Object.keys(postData)) {
+            if (key === name || (name.endsWith('[]') && key.startsWith(name.slice(0, -2) + '['))) {
+                delete postData[key];
+            }
+        }
+    });
     const content = Craft.expandPostArray(postData) as Record<string, unknown>;
     const linkId = String(link.id);
-    const hyperDataRoot = getHyperDataRoot(content);
+    const hyperDataRoot = getHyperDataRoot(content, linkId);
     const rawBlockContent = { ...(hyperDataRoot?.[linkId] as Record<string, unknown> | undefined ?? {}) };
 
     delete rawBlockContent.handle;
@@ -175,7 +196,7 @@ export function mergeLinksWithBlockContent(
 ): LinkInstance[] {
     const links: LinkInstance[] = [];
 
-    container.querySelectorAll('[data-hyper-link]').forEach((blockEl, index) => {
+    container.querySelectorAll(':scope > [data-hyper-link]').forEach((blockEl, index) => {
         if (!(blockEl instanceof HTMLElement)) {
             return;
         }

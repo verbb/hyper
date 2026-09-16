@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed nested Hyper inputs mixing authoring fields into parent content or saving stale child values.
 - Fixed early link edits being missed by save and autosave while field widgets were initializing.
 - Fixed nested field initialization being skipped when queued during the parent editor setup.
 - Fixed embed edits being lost before initialization or overwritten by stale preview requests.

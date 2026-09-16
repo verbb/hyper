@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -62,7 +62,7 @@ try {
         $(form).data('elementEditor', editor);
         $(form).data('initialSerializedValue', 'baseline');
         editor.lastSerializedValue = 'last-saved';
-        const unregister = Audit.registerHyperInputSync(() => {
+        const unregister = Audit.registerHyperInputSync(host, () => {
             flushes++;
             store.value = portal.value;
         });
@@ -109,6 +109,42 @@ try {
     // Submit synchronization sees programmatic/widget changes even without input events.
     await page.evaluate(()=>{document.querySelector('.visible').value='https://example.test/submit';Audit.syncEmbedWidgets();});
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/submit');
+    const nested = await page.evaluate(() => {
+        const host = document.createElement('section');
+        host.dataset.hyperInput = '';
+        host.innerHTML = `<div data-hyper-links><div data-hyper-link data-link-id="outer"><div data-hyper-portal>
+            <input name="fields[hyperData][outer][linkValue]" value="https://example.test/outer">
+            <input id="nested-store" name="fields[hyperData][outer][fields][nested]" value="stale">
+            <div data-hyper-input><div data-hyper-links><div data-hyper-link data-link-id="inner"><div data-hyper-portal>
+                <input name="fields[hyperData][outer][fields][hyperData][inner][linkValue]" value="child edit">
+            </div></div></div></div>
+        </div></div></div>`;
+        document.body.append(host);
+        const getPost = Garnish.getPostData, expand = Craft.expandPostArray;
+        Garnish.getPostData = node => Object.fromEntries([...node.querySelectorAll('input[name]')].map(n => [n.name,n.value]));
+        Craft.expandPostArray = flat => {
+            const tree = {};
+            for (const [name,value] of Object.entries(flat)) {
+                const keys = name.match(/[^\[\]]+/g);
+                let node = tree;
+                keys.forEach((key,i) => { if(i === keys.length-1) node[key]=value; else node=node[key] ||= {}; });
+            }
+            return tree;
+        };
+        const order=[];
+        const inner=host.querySelector('[data-hyper-input]');
+        const offOuter=Audit.registerHyperInputSync(host,()=>order.push(document.querySelector('#nested-store').value));
+        const offInner=Audit.registerHyperInputSync(inner,()=>{document.querySelector('#nested-store').value='fresh';});
+        Audit.syncAllHyperInputStores();
+        const values=Audit.mergeLinksWithBlockContent(host.querySelector('[data-hyper-links]'),[{id:'outer'}]);
+        const childValues=Audit.mergeLinksWithBlockContent(inner.querySelector('[data-hyper-links]'),[{id:'inner'}]);
+        offOuter();offInner();host.remove();Garnish.getPostData=getPost;Craft.expandPostArray=expand;
+        return {order,values,childValues};
+    });
+    assert.deepEqual(nested.order,['fresh']);
+    assert.equal(nested.values.length,1);
+    assert.equal(nested.childValues[0].linkValue,'child edit');
+    assert.deepEqual(nested.values[0].fields,{nested:'fresh'});
     const initialization = await page.evaluate(async () => {
         const form=document.createElement('form');const host=document.createElement('div');form.append(host);document.body.append(form);
         const store = document.createElement('input'); store.value = 'old'; form.append(store);
@@ -116,13 +152,26 @@ try {
         // Field scripts can run before Craft installs the editor on the form.
         Audit.ensureElementEditorSerializeHook(host);
         setTimeout(() => $(form).data('elementEditor',editor), 20);
-        const unregister = Audit.registerHyperInputSync(() => { store.value = 'fresh'; });
+        const unregister = Audit.registerHyperInputSync(host, () => { store.value = 'fresh'; });
         const calls=[];
         await Audit.enqueueHyperFieldInit(host,async()=>{calls.push('parent');setTimeout(()=>Audit.enqueueHyperFieldInit(host,()=>calls.push('late child')),20);});
         const serialized = editor.serializeForm();
         unregister();form.remove();return {calls,pauseLevel:editor.pauseLevel,serialized};
     });
     assert.deepEqual(initialization,{calls:['parent','late child'],pauseLevel:0,serialized:'fresh'});
+    const parentSerialization=await page.evaluate(()=>{
+        const host=document.createElement('div');
+        host.innerHTML='<input name="native" value="keep"><input data-hyper-store name="links" value="canonical"><div data-hyper-input><div data-hyper-portal><input name="hyperData[1000000000][linkValue]" value="authoring"><input name="hyperData[1000000000][assets][]" value="42"></div></div>';
+        document.body.append(host);
+        const original=Garnish.getPostData;
+        Garnish.getPostData=node=>Object.fromEntries([...node.querySelectorAll('input[name]')].map(n=>[n.name.replace(/\[\]$/, '[0]'),n.value]));
+        Audit.registerHostSerialization();
+        const parent=Garnish.getPostData(host),own=Garnish.getPostData(host.querySelector('[data-hyper-portal]'));
+        Garnish.getPostData=original;host.remove();return {parent,own};
+    });
+    assert.deepEqual(parentSerialization.parent,{native:'keep',links:'canonical'});
+    assert.equal(parentSerialization.own['hyperData[1000000000][linkValue]'],'authoring');
+    assert.equal(parentSerialization.own['hyperData[1000000000][assets][0]'],'42');
     // Removal cancels the pending debounce; remount creates one request, no stale handler.
     const before=await page.evaluate(()=>{window.removed=document.querySelector('#embed');removed.remove();return pending.length;});
     await page.waitForTimeout(600);
@@ -131,5 +180,5 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "init", "removal"]}));
+    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "nested", "init", "parent", "removal"]}));
 } finally {await browser.close();}

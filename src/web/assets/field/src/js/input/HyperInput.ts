@@ -101,7 +101,7 @@ export class HyperInput {
         // real author edits immediately so a fast copy/save cannot restore the SSR value.
         this.container.addEventListener('input', this.captureUserEdit, true);
         this.container.addEventListener('change', this.captureUserEdit, true);
-        this.unregisterSubmitSync = registerHyperInputSync(() => this.syncStore(true));
+        this.unregisterSubmitSync = registerHyperInputSync(this.container, () => this.syncStore(true));
         ensureElementEditorSerializeHook(fieldRoot);
 
         void enqueueHyperFieldInit(fieldRoot, async () => {
@@ -127,7 +127,7 @@ export class HyperInput {
     }
 
     private mountExistingBlocks(): void {
-        this.linksRoot?.querySelectorAll('[data-hyper-link]').forEach((el, index) => {
+        this.linksRoot?.querySelectorAll(':scope > [data-hyper-link]').forEach((el, index) => {
             if (el instanceof HTMLElement) {
                 this.mountBlock(el, index);
             }

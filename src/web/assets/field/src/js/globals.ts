@@ -1,4 +1,5 @@
 import { mountEmbed } from './input/embed';
+import { registerHostSerialization } from './input/hostSerialization';
 
 import {
     ensureElementEditorSerializeHook,
@@ -15,6 +16,7 @@ export function registerHyperGlobals(): void {
     }
 
     Craft.Hyper.__globalsRegistered = true;
+    registerHostSerialization();
     Craft.Hyper.syncInputStores = syncAllHyperInputStores;
 
     Craft.Hyper.ElementSelect = Garnish.Base.extend({
