@@ -65,3 +65,33 @@ it('seeds createDefaultContentLink from layout defaultValue', function() {
     expect($default)->not->toBeNull();
     expect($default->linkText)->toBe('Learn More');
 });
+
+it('uses configured labels before Site and Embed fallback labels', function(string $class, ?string $authored, string $default, string $expected) {
+    $link = new $class();
+    $layout = $class::getDefaultFieldLayout();
+    $layout->getField('linkText')->defaultValue = $default;
+    $link->setFieldLayout($layout);
+    $link->linkText = $authored;
+    $link->linkValue = $class === \verbb\hyper\links\Site::class
+        ? Craft::$app->sites->getPrimarySite()->uid
+        : ['url' => 'https://example.test/video', 'title' => 'Provider label'];
+
+    expect($link->getLinkText())->toBe($expected);
+})->with([\verbb\hyper\links\Site::class, \verbb\hyper\links\Embed::class])->with([
+    'null uses default' => [null, 'Configured label', 'Configured label'],
+    'empty uses default' => ['', 'Configured label', 'Configured label'],
+    'zero default' => [null, '0', '0'],
+    'authored wins' => ['Authored label', 'Configured label', 'Authored label'],
+    'authored zero wins' => ['0', 'Configured label', '0'],
+]);
+
+it('retains generated Site and Embed labels without a configured default', function(string $class) {
+    $link = new $class();
+    $link->setFieldLayout($class::getDefaultFieldLayout());
+    $site = Craft::$app->sites->getPrimarySite();
+    $link->linkValue = $class === \verbb\hyper\links\Site::class
+        ? $site->uid
+        : ['url' => 'https://example.test/video', 'title' => 'Provider label'];
+
+    expect($link->getLinkText())->toBe($class === \verbb\hyper\links\Site::class ? $site->name : 'Provider label');
+})->with([\verbb\hyper\links\Site::class, \verbb\hyper\links\Embed::class]);

@@ -287,8 +287,9 @@ class Embed extends Link
 
     public function getLinkText(): ?string
     {
-        if ($this->linkText !== null && $this->linkText !== '') {
-            return $this->linkText;
+        // Authored values and layout defaults precede destination metadata.
+        if (($text = parent::getLinkText()) !== null) {
+            return $text;
         }
 
         return $this->linkValue['title'] ?? null;

@@ -93,8 +93,9 @@ class Site extends Link
 
     public function getLinkText(): ?string
     {
-        if ($this->linkText !== null && $this->linkText !== '') {
-            return $this->linkText;
+        // Authored values and layout defaults precede destination metadata.
+        if (($text = parent::getLinkText()) !== null) {
+            return $text;
         }
         
         if ($site = $this->getLinkSite()) {

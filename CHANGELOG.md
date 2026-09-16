@@ -33,6 +33,7 @@
 
 ### Fixed
 - Fixed Embed links ignoring authored link titles.
+- Fixed Site and Embed links ignoring configured Link Text defaults.
 - Fixed field layout edits being lost when saving immediately.
 - Fixed the Classes field dropping a value of `0` when rendering links.
 - Fixed the changelog and release feed pointing to older Hyper versions.
