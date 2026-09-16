@@ -112,6 +112,7 @@ try {
         $remove($app . '/' . $name);
         mkdir($app . '/' . $name, 0775, true);
     }
+    mkdir($app . '/web/cpresources', 0775, true);
     foreach (glob($root . '/tests/_craft/config/*.php') as $source) {
         if (basename($source) !== 'db.php') {
             copy($source, $app . '/config/' . basename($source));

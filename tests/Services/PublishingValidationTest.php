@@ -13,9 +13,10 @@ it('enforces link validation on publication without overwriting saved content', 
     expect(Craft::$app->fields->saveField($field))->toBeTrue();
     $payload = fn(array $urls) => array_map(fn($url) => ['handle' => 'url', 'linkValue' => $url], $urls);
     $owner = F::plainEntry(F::entrySection($field), 'Published owner', [$field->handle => $payload(['https://example.test/original'])]);
+    $owner->setAuthorIds([User::find()->admin()->one()->id]);
     $owner->setFieldValue($field->handle, $payload($values));
     $owner->setScenario(Element::SCENARIO_LIVE);
-    expect(Craft::$app->elements->saveElement($owner))->toBe($valid);
+    expect(Craft::$app->elements->saveElement($owner))->toBe($valid, json_encode($owner->getErrors()));
     if (!$valid) {
         expect($owner->getErrors($field->handle . $errorKey))->not->toBeEmpty();
     }
