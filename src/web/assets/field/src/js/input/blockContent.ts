@@ -180,7 +180,9 @@ export function mergeLinkWithBlockContent(
     const next: LinkInstance = { ...link, ...blockContent } as LinkInstance;
 
     if ('fields' in blockContent) {
-        next.fields = (blockContent.fields ?? {}) as LinkInstance['fields'];
+        // Each posted field owns its full value (including empty arrays), but absent
+        // conditional/unmounted fields still belong to the model.
+        next.fields = { ...link.fields, ...(blockContent.fields ?? {}) as Record<string, unknown> };
     }
 
     if ('customAttributes' in blockContent) {

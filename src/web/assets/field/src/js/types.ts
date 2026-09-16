@@ -42,6 +42,7 @@ export type HyperSeededBlock = {
     /** HTML/JS still carry the __LINK_ID__ placeholder — the client mints a unique id. */
     html: string;
     js?: string;
+    input?: LinkInstance;
     serialized?: Record<string, unknown>;
 };
 
@@ -52,6 +53,7 @@ export type HyperInputSettings = {
     siteId?: number | null;
     /** Owner element id when saved — FieldsController canSave checks. */
     elementId?: number | null;
+    inputContext?: string | null;
     defaultLinkType: string;
     defaultNewWindow?: boolean;
     newWindow?: boolean;

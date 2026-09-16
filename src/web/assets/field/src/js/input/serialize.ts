@@ -100,6 +100,10 @@ export const serializeLinksForStore = (
     links: LinkInstance[],
     reference: LinkInstance[] | null = null,
 ): unknown[] => links.map((link, index) => {
+    if (link.unsupportedPayload && typeof link.unsupportedPayload === 'object') {
+        return { ...link.unsupportedPayload as Record<string, unknown>, ...(link.uid ? { uid: link.uid } : {}) };
+    }
+
     const stored: Record<string, unknown> = {};
     const linkTypeHandle = (link.linkTypeHandle ?? link.handle) as string | undefined;
 

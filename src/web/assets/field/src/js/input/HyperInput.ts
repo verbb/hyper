@@ -494,6 +494,7 @@ export class HyperInput {
     private seedFromServerBlock(block: HyperSeededBlock): Record<string, unknown> {
         return {
             ...(block.serialized ?? {}),
+            fields: block.input?.fields ?? block.serialized?.fields ?? {},
             newWindow: block.newWindow ?? this.settings.defaultNewWindow ?? false,
         };
     }

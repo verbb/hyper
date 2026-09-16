@@ -929,7 +929,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             // CP Advanced-tab relation pickers need the owner site.
             'siteId' => $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id,
             // Owner element id for FieldsController canSave checks (when already saved).
-            'elementId' => $element?->id,
+            'elementId' => $element instanceof LinkInterface ? null : $element?->id,
             'defaultLinkType' => $this->defaultLinkType,
             'defaultNewWindow' => $this->defaultNewWindow,
             'newWindow' => $this->newWindow,
@@ -966,7 +966,13 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             // Hidden store uses persist shape only; initialValue keeps link id for portal matching.
             $storeValue[] = $serialized;
-            $initialValue[] = array_merge(['id' => $linkId], $serialized);
+            $initial = array_merge(['id' => $linkId], $serialized);
+            // Portal inputs use field handles, while persistence uses layout UIDs.
+            $initial['fields'] = $linkData['fields'] ?? [];
+            if (isset($linkData['unsupportedPayload'])) {
+                $initial['unsupportedPayload'] = $linkData['unsupportedPayload'];
+            }
+            $initialValue[] = $initial;
 
             $linkType = $this->getLinkTypeByHandle($handle);
             $tabLabels = $linkType?->getTabLabels() ?? [];
@@ -1236,20 +1242,10 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             $link->isNew = true;
             $link->id = rand();
-            $link->siteId = $instance->linkSiteId ?: $ownerSiteId;
-
-            // Apply handle-keyed custom fields from paste/bulk seeds onto the layout.
-            if (!empty($instance->fields) && is_array($instance->fields)) {
-                foreach ($instance->fields as $fieldHandle => $value) {
-                    try {
-                        $link->setFieldValue($fieldHandle, $value);
-                    } catch (\Throwable) {
-                        // Ignore unknown destination handles.
-                    }
-                }
-
-                $link->fields = $instance->fields;
-            }
+            // A selected destination can use another site; layout fields still
+            // belong to the owner, including when hydrating a pasted block.
+            $link->siteId = $ownerSiteId;
+            $link->ownerSiteId = $ownerSiteId;
 
             $view->startJsBuffer();
             $view->startScriptBuffer();
@@ -1275,6 +1271,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                     $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
                 ),
                 'serialized' => $link->getSerializedValues(),
+                'input' => $link->getInputConfig(),
             ];
         }
 

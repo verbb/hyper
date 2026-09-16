@@ -70,3 +70,32 @@ it('resolves custom relation fields in the owning site after loading and copying
         expect($value->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($primary->id);
     }
 })->with([false, true]);
+
+it('keeps the owner and explicit destination sites distinct when rendering pasted blocks', function() {
+    [$primary, $secondary] = F::ensureSites(2);
+    $related = F::entriesField();
+    $entryLink = new EntryLink();
+    $layout = EntryLink::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($related)]);
+    $entryLink->setFieldLayout($layout);
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($entryLink)]);
+    $section = F::translatableEntrySection($field, 2);
+    $target = F::plainEntry($section, 'Destination', [], $primary);
+    $customTarget = F::plainEntry($section, 'Custom relation', [], $primary);
+    $owner = F::plainEntry($section, 'Owner', [], $secondary);
+    $response = \Tests\Support\CpActionRequest::run('create-links', \craft\elements\User::find()->admin()->one(), [
+        'fieldId' => $field->id, 'siteId' => $secondary->id, 'elementId' => $owner->id,
+        'handle' => 'entry', 'mode' => 'seed', 'seeds' => [[
+            'linkValue' => [$target->id], 'linkSiteId' => $primary->id,
+            'fields' => [$related->handle => [$customTarget->id]],
+        ]],
+    ]);
+    $html = $response->data['blocks'][0]['html'];
+    $dom = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
+    $sites = fn(int $id) => array_unique(array_map(fn($node) => (int)$node->nodeValue, iterator_to_array($xpath->query('//*[@data-id="' . $id . '"]/@data-site-id'))));
+    expect(array_values($sites($target->id)))->toBe([$primary->id], $html);
+    expect(array_values($sites($customTarget->id)))->toBe([$secondary->id], $html);
+});

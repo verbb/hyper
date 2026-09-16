@@ -28,6 +28,8 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed conditional custom fields and unavailable link content being lost when editing other link values.
+- Fixed pasted link custom fields using destination-site context or losing their input values.
 - Fixed nested Hyper inputs mixing authoring fields into parent content or saving stale child values.
 - Fixed early link edits being missed by save and autosave while field widgets were initializing.
 - Fixed nested field initialization being skipped when queued during the parent editor setup.

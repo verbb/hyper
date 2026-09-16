@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';export * from '${source}blockContent';export * from '${source}hostSerialization';export * from '${source}serialize';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -109,6 +109,15 @@ try {
     // Submit synchronization sees programmatic/widget changes even without input events.
     await page.evaluate(()=>{document.querySelector('.visible').value='https://example.test/submit';Audit.syncEmbedWidgets();});
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/submit');
+    const result=await page.evaluate(()=>{
+        const link={id:'row',fields:{main:'old',advanced:'retain',related:[1,2]}};
+        posted={fields:{main:'',related:[]}};
+        const merged=Audit.mergeLinkWithBlockContent(link,document.querySelector('#block'));
+        const opaque={linkTypeHandle:'gone',fields:{empty:[],zero:'00123'},extension:{null:null}};
+        return {merged,opaque:Audit.serializeLinksForStore([{id:'row',unsupportedPayload:opaque}])[0]};
+    });
+    assert.deepEqual(result.merged.fields,{main:'',advanced:'retain',related:[]});
+    assert.deepEqual(result.opaque,{linkTypeHandle:'gone',fields:{empty:[],zero:'00123'},extension:{null:null}});
     const nested = await page.evaluate(() => {
         const host = document.createElement('section');
         host.dataset.hyperInput = '';
@@ -180,5 +189,5 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "nested", "init", "parent", "removal"]}));
+    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "fields", "nested", "init", "parent", "removal"]}));
 } finally {await browser.close();}
