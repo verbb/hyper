@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- Fix cross-site entry links being cleared on the first save of a new Matrix entry. ([#274](https://github.com/verbb/hyper/issues/274))
 - Fix the Create backup option being ignored when migrating Link, Linkit and Typed Link fields.
 
 ## 2.3.12 - 2026-09-13

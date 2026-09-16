@@ -302,10 +302,10 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         // and when someone has already picked an element in another site's field and doesn't want it overridden.
         $shouldPropagate = $element->propagating && $element->propagateAll;
 
-        // But for Matrix fields, the Matrix blocks/entries themselves aren't propagated, so it's a different check.
+        // Matrix fields can duplicate entries across sites instead of propagating them. Only remap those
+        // cross-site copies; fresh entries and same-site drafts must retain the author's chosen link site.
         if ($element instanceof NestedElementInterface) {
-            // Ensure that the Entry is associated from a Matrix field, as all Entry elements are NestedElement's.
-            if ($element->getField()) {
+            if ($element->getField() && $element->duplicateOf && $element->duplicateOf->siteId !== $element->siteId) {
                 $shouldPropagate = $element->propagateAll;
             }
         }
