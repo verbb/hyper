@@ -773,7 +773,7 @@ abstract class Link extends Element implements LinkInterface
     public function getText(?string $defaultText = null): ?string
     {
         // If there's not a valid URL for this link, don't return text even if there is a value
-        if (!$this->getUrl()) {
+        if ($this->getUrl() === null) {
             return null;
         }
 
@@ -871,7 +871,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function getLink(array $attributes = []): ?Markup
     {
-        if (!$this->getUrl()) {
+        if ($this->getUrl() === null) {
             return null;
         }
 
@@ -896,7 +896,7 @@ abstract class Link extends Element implements LinkInterface
             $attr['class'] = $classes;
         }
 
-        if ($href = $this->getUrl()) {
+        if (($href = $this->getUrl()) !== null) {
             $attr['href'] = $href;
         }
 

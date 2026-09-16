@@ -36,6 +36,7 @@
 - Fixed native Craft Link migrations dropping zero-valued URL suffixes, titles, classes, and ARIA labels.
 - Fixed Feed Me discarding zero-valued link destinations and labels when using a default link type.
 - Fixed link rendering dropping zero-valued titles, ARIA labels, and attributes such as `tabindex`.
+- Fixed Custom links to the relative path `0` not rendering their label or anchor.
 - Fixed phone links rejecting `0` during validation.
 - Fixed raw content updates on separate database connections missing cache invalidation when sharing a migration coordinator.
 - Fixed moving or sorting a field tearing down its active Hyper inputs.
