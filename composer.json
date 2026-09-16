@@ -15,7 +15,7 @@
         "issues": "https://github.com/verbb/hyper/issues?state=open",
         "source": "https://github.com/verbb/hyper",
         "docs": "https://github.com/verbb/hyper",
-        "rss": "https://github.com/verbb/hyper/commits/v2.atom"
+        "rss": "https://github.com/verbb/hyper/commits/beta.atom"
     },
     "license": "proprietary",
     "authors": [
@@ -71,7 +71,7 @@
     "extra": {
         "name": "Hyper",
         "handle": "hyper",
-        "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/craft-5/CHANGELOG.md",
+        "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/beta/CHANGELOG.md",
         "class": "verbb\\hyper\\Hyper"
     }
 }

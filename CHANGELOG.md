@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed the changelog and release feed pointing to older Hyper versions.
 - Fixed the Craft Link migration menu disappearing before content conversion was complete.
 - Fixed native Craft Link migrations dropping zero-valued URL suffixes, titles, classes, and ARIA labels.
 - Fixed Feed Me discarding zero-valued link destinations and labels when using a default link type.
