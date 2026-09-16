@@ -3,13 +3,13 @@ namespace verbb\hyper\base;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\elements\conditions\LinkCondition;
-use verbb\hyper\fields\HyperField;
 use verbb\hyper\fieldlayoutelements\ClassesField;
 use verbb\hyper\fieldlayoutelements\CustomAttributesField;
 use verbb\hyper\fieldlayoutelements\LinkField;
 use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fieldlayoutelements\TextField;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\Html;
 use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\links\MissingLink;
@@ -30,12 +30,6 @@ use Twig\Markup;
 
 abstract class Link extends Element implements LinkInterface
 {
-    // Constants
-    // =========================================================================
-
-    public const SCENARIO_SETTINGS = 'settings';
-
-
     // Static Methods
     // =========================================================================
 
@@ -158,6 +152,36 @@ abstract class Link extends Element implements LinkInterface
         return $fieldLayout;
     }
 
+    public static function isInstanceEmpty(LinkInstance $instance): bool
+    {
+        return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
+    }
+
+    public static function resolveUrlFromInstance(LinkInstance $instance): ?string
+    {
+        if (!$instance->hasLinkValue()) {
+            return null;
+        }
+
+        $linkValue = $instance->linkValue;
+
+        if (is_array($linkValue)) {
+            $linkValue = $linkValue[0] ?? null;
+        }
+
+        if (!is_scalar($linkValue) && $linkValue !== null) {
+            return null;
+        }
+
+        return (string)$linkValue !== '' ? (string)$linkValue : null;
+    }
+
+
+    // Constants
+    // =========================================================================
+
+    public const SCENARIO_SETTINGS = 'settings';
+
 
     // Properties
     // =========================================================================
@@ -240,11 +264,6 @@ abstract class Link extends Element implements LinkInterface
         return static::isInstanceEmpty($this->toInstance());
     }
 
-    public static function isInstanceEmpty(LinkInstance $instance): bool
-    {
-        return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
-    }
-
     public function toInstance(): LinkInstance
     {
         $values = $this->getSerializedValues();
@@ -301,31 +320,10 @@ abstract class Link extends Element implements LinkInterface
         return $this->getScenario() === self::SCENARIO_SETTINGS;
     }
 
-    public static function resolveUrlFromInstance(LinkInstance $instance): ?string
-    {
-        if (!$instance->hasLinkValue()) {
-            return null;
-        }
-
-        $linkValue = $instance->linkValue;
-
-        if (is_array($linkValue)) {
-            $linkValue = $linkValue[0] ?? null;
-        }
-
-        if (!is_scalar($linkValue) && $linkValue !== null) {
-            return null;
-        }
-
-        return (string)$linkValue !== '' ? (string)$linkValue : null;
-    }
-
     public function isElement(): bool
     {
         return $this instanceof ElementLink;
     }
-
-
 
     public function getSettingsConfig(): array
     {
@@ -673,25 +671,6 @@ abstract class Link extends Element implements LinkInterface
         return $this->linkText;
     }
 
-    protected function getLinkTextLayoutDefault(): ?string
-    {
-        $fieldLayout = $this->getFieldLayout();
-
-        if (!$fieldLayout || !$fieldLayout->isFieldIncluded('linkText')) {
-            return null;
-        }
-
-        $layoutElement = $fieldLayout->getField('linkText');
-
-        if (!$layoutElement instanceof LinkTextField) {
-            return null;
-        }
-
-        $default = $layoutElement->defaultValue;
-
-        return ($default !== null && $default !== '') ? $default : null;
-    }
-
     public function getLinkUrl(): ?string
     {
         $linkValue = $this->linkValue;
@@ -955,6 +934,25 @@ abstract class Link extends Element implements LinkInterface
     // Protected Methods
     // =========================================================================
 
+    protected function getLinkTextLayoutDefault(): ?string
+    {
+        $fieldLayout = $this->getFieldLayout();
+
+        if (!$fieldLayout || !$fieldLayout->isFieldIncluded('linkText')) {
+            return null;
+        }
+
+        $layoutElement = $fieldLayout->getField('linkText');
+
+        if (!$layoutElement instanceof LinkTextField) {
+            return null;
+        }
+
+        $default = $layoutElement->defaultValue;
+
+        return ($default !== null && $default !== '') ? $default : null;
+    }
+
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
@@ -1036,5 +1034,4 @@ abstract class Link extends Element implements LinkInterface
 
         return $attributes;
     }
-
 }

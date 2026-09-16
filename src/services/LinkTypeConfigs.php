@@ -12,16 +12,42 @@ use verbb\hyper\models\LinkTypeDefinition;
 use Craft;
 use craft\base\Component;
 use craft\events\ConfigEvent;
-use craft\helpers\ArrayHelper;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class LinkTypeConfigs extends Component
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function normalizeLegacyStockHandles(array $linkTypes): array
+    {
+        foreach ($linkTypes as &$linkType) {
+            if (!is_array($linkType) || !empty($linkType['isCustom'])) {
+                continue;
+            }
+
+            $type = $linkType['type'] ?? null;
+
+            if (!is_string($type) || !is_subclass_of($type, \verbb\hyper\base\Link::class)) {
+                continue;
+            }
+
+            $legacyHandle = 'default-' . StringHelper::toKebabCase($type);
+
+            if (($linkType['handle'] ?? null) === $legacyHandle) {
+                $linkType['handle'] = $type::typeKey();
+            }
+        }
+        unset($linkType);
+
+        return $linkTypes;
+    }
+
+
     // Constants
     // =========================================================================
 
     public const PROJECT_CONFIG_PATH = 'plugins.hyper.linkTypeConfigs';
-
     public const DEFAULT_HANDLE = 'default';
     public const CUSTOM_HANDLE = 'custom';
 
@@ -257,30 +283,6 @@ class LinkTypeConfigs extends Component
 
             $linkTypes[] = $linkType->getSettingsConfigForDb();
         }
-
-        return $linkTypes;
-    }
-
-    public static function normalizeLegacyStockHandles(array $linkTypes): array
-    {
-        foreach ($linkTypes as &$linkType) {
-            if (!is_array($linkType) || !empty($linkType['isCustom'])) {
-                continue;
-            }
-
-            $type = $linkType['type'] ?? null;
-
-            if (!is_string($type) || !is_subclass_of($type, \verbb\hyper\base\Link::class)) {
-                continue;
-            }
-
-            $legacyHandle = 'default-' . StringHelper::toKebabCase($type);
-
-            if (($linkType['handle'] ?? null) === $legacyHandle) {
-                $linkType['handle'] = $type::typeKey();
-            }
-        }
-        unset($linkType);
 
         return $linkTypes;
     }

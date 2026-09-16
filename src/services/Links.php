@@ -2,9 +2,9 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
-use verbb\hyper\base\ElementLink;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\models\LinkInstance;
@@ -296,5 +296,4 @@ class Links extends Component
 
         return $link;
     }
-
 }

@@ -35,6 +35,7 @@ class Content extends Component
     // Public Methods
     // =========================================================================
 
+    /** Convert source payloads before destination field hydration. Use replace(null) to clear the field. */
     public function modifyRaw(HyperField $field, callable $transform, ?ModifyOptions $options = null): ModifyResult
     {
         $options ??= new ModifyOptions();
