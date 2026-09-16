@@ -377,7 +377,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         $links = $value->getLinks();
-        $first = $links[0] ?? null;
+        $first = $value->first();
 
         if (!$first) {
             return '';

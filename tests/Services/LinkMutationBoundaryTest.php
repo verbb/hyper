@@ -59,3 +59,12 @@ it('keeps custom-field state consistent when clearing or cloning a link', functi
         expect($copy->getFieldValue($caption->handle))->toBe('Copy caption');
     }
 })->with(['clear', 'clone', 'safe attributes']);
+
+it('previews the first remaining link after an array-access removal', function() {
+    $field = F::hyperField(['multipleLinks' => true, 'linkTypes' => [Url::class]]);
+    $owner = F::plainEntry(F::entrySection($field), 'Preview');
+    $links = new LinkCollection($field, [F::urlLinkPayload('https://example.test/first', 'First'), F::urlLinkPayload('https://example.test/second', 'Second')], $owner);
+    unset($links[0]);
+    expect($links->first()->getText())->toBe('Second');
+    expect($field->getPreviewHtml($links, $owner))->toBe('Second');
+});
