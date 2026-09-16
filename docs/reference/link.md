@@ -1,89 +1,275 @@
 # Link
 
-In templates you work with a hydrated **Link** object — a read-time view of one saved link row. Serialized content is stored as a `LinkInstance` DTO on the owner element; Hyper hydrates it through `Links::createLinkFromInstance()`.
+A Link represents one destination and its saved label, attributes and custom fields. Obtain one with `entry.myLinkField.first()` or by looping over a Hyper field. `first()` can return null; the field itself is a [LinkCollection](/reference/link-collection).
 
-For the field value wrapper (single vs multi-link), see [LinkCollection](/reference/link-collection).
+[Rendering Links](/feature-tour/rendering-links) provides template examples. This page describes the individual object and its saved content.
 
-## Architecture
+<span id="attributes"></span>
 
-Hyper separates **link type definitions** (field settings) from **link instances** (saved content):
+## Properties
 
-| Layer | Class | Role |
-| --- | --- | --- |
-| **Definition** | `LinkTypeDefinition` | One row in the Hyper field’s link type settings (handle, layout, enabled) |
-| **Settings owner** | `LinkTypeSettings` | CP-only Element used as the field layout owner when designing link types |
-| **Registry** | `Link` subclasses (`Url`, `Entry`, …) | Type behaviour: URL resolution, element queries, empty rules |
-| **Content** | `LinkInstance` | Serialized JSON on the owner element — `linkTypeHandle`, `linkValue`, attributes, custom fields |
-| **Field value** | `LinkCollection` | Iterable field value; hydrates `Link` objects for templates |
+::: reference
+### `type`
 
-Saved content never stores a Craft Element row per link. Link type settings (`label`, `sources`, layout config) live on the field definition — see [Link Type Settings](/reference/link-type-settings).
+**Type:** `string`
 
-Saved content uses **`linkTypeHandle`** to identify the link type. Content JSON stores the handle, link value, attributes, and custom field values keyed by layout element UID.
+Link class name, such as `verbb\hyper\links\Entry`.
+:::
 
-## Hydrated link (template object)
+::: reference
+### `linkType`
 
-### Attributes
+**Type:** `verbb\hyper\base\LinkInterface|null`
 
-Attribute | Description
---- | ---
-`type` | Link type class name, e.g. `verbb\hyper\links\Entry`.
-`linkType` | Settings prototype for this link’s handle.
-`url` | Resolved `href` value. Supports `.env` variables, aliases, prefix/suffix.
-`text` | Derived link label. Element links use the linked element’s title when Link Text is empty (after layout defaults).
-`target` | Returns `_blank` when the link opens in a new window.
-`newWindow` | Whether the link opens in a new window.
-`linkUrl` | Raw link URL before full resolution.
-`linkUri` | URI segment for element-based links.
-`linkValue` | Type-specific stored value (string, element id, etc.).
-`linkText` | Resolved label before `text` applies fallbacks.
-`customLinkText` | Author-entered Link Text only — `null` when blank. Use `text` for the full derived label.
-`ariaLabel` | Value for `aria-label`.
-`urlSuffix` | Suffix appended to the URL (`?query`, `#fragment`).
-`linkTitle` | Value for `title`.
-`classes` | Value for `class`.
-`customAttributes` | Custom HTML attributes.
+Settings prototype for the link’s configured handle.
+:::
 
-### Methods
+::: reference
+### `url`
 
-Method | Description
---- | ---
-`getElement(status)` | Linked element for element-based types. Default status: live only.
-`hasElement(status)` | Whether an element is linked.
-`getLink(attributes)` | Render an `<a>` tag. Pass attributes to override defaults.
-`getLinkAttributes(attributes, asString)` | HTML attributes for the anchor.
-`getCustomLinkText()` | Link Text field value only (`null` when blank).
+**Type:** `string|null`
 
-## Element link
+Resolved destination after applying the prefix, suffix and URL-policy checks. Returns null when the destination is absent or unavailable; a suffix alone does not create a destination. Stored destinations are literal text; environment-variable references and Craft aliases are not expanded.
+:::
 
-Element links extend the base link object (Entry, Category, Asset, etc.).
+::: reference
+### `text`
 
-### Attributes
+**Type:** `string|null`
 
-Attribute | Description
---- | ---
-`linkSiteId` | Site ID of the linked element.
+Display label using entered text, layout defaults and type-specific fallbacks. Ordinary links return null without a usable URL. Passive links can return a label without a URL.
+:::
 
-### Methods
+::: reference
+### `target`
 
-Method | Description
---- | ---
-`getElement(status)` | The linked Craft element.
-`hasElement(status)` | Whether a target element is set.
+**Type:** `string|null`
 
-Element links resolve URL and text from batch-primed elements and `hyper_links` relation rows. See [Element Links](/feature-tour/element-links) and [Eager Loading](/feature-tour/eager-loading).
+`_blank` when the link opens in a new window; otherwise null.
+:::
 
-## Developers
+::: reference
+### `newWindow`
 
-```php
-// Hydrate content
-Hyper::$plugin->getLinks()->createLinkFromInstance($field, $instance);
+**Type:** `bool|null`
 
-// Settings prototype
-Hyper::$plugin->getLinks()->createSettingsPrototype($config);
+Saved new-window choice; `target` uses the resolved choice including applicable field defaults.
+:::
 
-// Field definitions
-$field->getLinkTypeDefinitions();
-$field->getLinkTypeSettingsOwners();
-```
+::: reference
+### `linkUrl`
 
-See [Link Types](/developers/link-types) for custom link type registration.
+**Type:** `string|null`
+
+Type-specific destination before prefix and suffix.
+:::
+
+::: reference
+### `linkUri`
+
+**Type:** `string|null`
+
+URI of the resolved element, if available.
+:::
+
+::: reference
+### `linkValue`
+
+**Type:** `mixed`
+
+Type-specific stored value: a URL string, element ID, site UID or embed metadata.
+:::
+
+::: reference
+### `linkText`
+
+**Type:** `string|null`
+
+Link Text with layout defaults and type-specific fallbacks.
+:::
+
+::: reference
+### `customLinkText`
+
+**Type:** `string|null`
+
+Only the editor-entered Link Text; null when blank.
+:::
+
+::: reference
+### `ariaLabel`
+
+**Type:** `string|null`
+
+HTML `aria-label` value.
+:::
+
+::: reference
+### `urlSuffix`
+
+**Type:** `string|null`
+
+Suffix such as a query string or fragment.
+:::
+
+::: reference
+### `linkTitle`
+
+**Type:** `string|null`, `title`
+
+HTML `title` value, not the title of a selected entry.
+:::
+
+::: reference
+### `classes`
+
+**Type:** `string|null`
+
+HTML `class` value.
+:::
+
+::: reference
+### `customAttributes`
+
+**Type:** `array`
+
+Additional HTML attribute name/value pairs, subject to attribute-name validation.
+:::
+
+
+Custom layout fields are accessible by their handles. Values on the selected destination are accessed through `getElement()` instead.
+
+## Methods
+
+::: reference
+### `getElement($status)`
+
+**Returns:** `craft\base\ElementInterface|null` · **Return and Behaviour:** Selected Craft element or null. Entry links default to live entries; other element types use their applicable enabled status.
+
+Selected Craft element or null. Entry links default to live entries; other element types use their applicable enabled status.
+:::
+
+::: reference
+### `hasElement($status)`
+
+**Returns:** `bool` · **Return and Behaviour:** Whether the selected element can be resolved with the requested status.
+
+Whether the selected element can be resolved with the requested status.
+:::
+
+::: reference
+### `getLink(array $attributes = [])`
+
+**Returns:** `Twig\Markup|null` · **Return and Behaviour:** Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
+
+Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
+:::
+
+::: reference
+### `getLinkAttributes(array $attributes = [], bool $asString = false)`
+
+**Returns:** `Twig\Markup|array` · **Return and Behaviour:** Attribute array, or Twig markup containing the attribute string when `asString` is true.
+
+Attribute array, or Twig markup containing the attribute string when `asString` is true.
+:::
+
+::: reference
+### `getCustomLinkText()`
+
+**Returns:** `string|null` · **Return and Behaviour:** Editor-entered text only, or null when blank.
+
+Editor-entered text only, or null when blank.
+:::
+
+::: reference
+### `isEmpty()`
+
+**Returns:** `bool` · **Return and Behaviour:** Whether saved content has no meaningful destination, native attributes or custom values according to the type’s rules. This is not a URL-validity check.
+
+Whether saved content has no meaningful destination, native attributes or custom values according to the type’s rules. This is not a URL-validity check.
+:::
+
+
+Element links also expose `linkSiteId`, the selected destination’s site ID. For efficient access to their fields, see [Loading Links](/reference/loading-links).
+
+## Embed Links
+
+::: reference
+### `getHtml()`
+
+**Returns:** `Twig\Markup|null` · **Return and Behaviour:** Stored embed HTML as Twig markup, or null.
+
+Stored embed HTML as Twig markup, or null.
+:::
+
+::: reference
+### `getIframeSrc()`
+
+**Returns:** `string|null` · **Return and Behaviour:** First iframe source in stored embed HTML, or null.
+
+First iframe source in stored embed HTML, or null.
+:::
+
+::: reference
+### `getEmbedImage()`
+
+**Returns:** `string|null` · **Return and Behaviour:** Stored thumbnail/image URL, or null.
+
+Stored thumbnail/image URL, or null.
+:::
+
+::: reference
+### `getEmbedProviderName()`
+
+**Returns:** `string|null` · **Return and Behaviour:** Stored provider name, or null.
+
+Stored provider name, or null.
+:::
+
+::: reference
+### `getData()`
+
+**Returns:** `array|null`
+
+Available on Embed links.
+
+**Return and Behaviour:** Embed metadata on an Embed link.
+
+Embed metadata on an Embed link.
+:::
+
+
+For example, a URL link’s `linkValue` is an address string, an Entry link identifies an element, and an Embed link can store an object containing `url`, `title`, `code` and other provider metadata. Available embed keys depend on the fetched result.
+
+## Saved Content
+
+Hyper stores each link’s content on its owner rather than saving a Craft element row for each link. A `LinkInstance` carries supported values while `Links::createLinkFromInstance($field, $instance)` creates the runtime Link object using its configured type and layout.
+
+The supported content includes `linkTypeHandle`, `uid`, `linkValue`, `linkSiteId`, `newWindow`, `linkText`, `ariaLabel`, `urlSuffix`, `linkTitle`, `classes`, `customAttributes` and `fields`. Empty optional values may be omitted. Custom field values are stored by their layout placement UID; normal programmatic input can supply them by handle.
+
+Use `linkTypeHandle` when selecting an exact configured type in a content array. Input also accepts `handle`, or `type` containing a registered class name or built-in type key. Field settings and the content type identifier are separate contracts; do not put a complete type definition into each content row.
+
+For conversions of raw values, use [Managing Embedded Content](/developers/managing-embedded-content). For normal element saves, follow [Creating Links Programmatically](/guides/developers/creating-links-programmatically).
+
+## Built-in Classes
+
+All names below are in the `verbb\hyper\links` namespace. Types requiring another plugin are available only when their dependency is enabled.
+
+| Class | Destination |
+| --- | --- |
+| `Asset` | Craft asset. |
+| `CalendarEvent` | Calendar event. |
+| `Category` | Craft category. |
+| `Custom` | Custom address subject to the shared URI policy. |
+| `Email` | Email address. |
+| `Embed` | Remote URL and its embed metadata. |
+| `Entry` | Craft entry. |
+| `FormieForm` | Formie form. |
+| `Passive` | Label without a destination URL. |
+| `Phone` | Phone number. |
+| `Product` | Commerce product. |
+| `ShopifyProduct` | Shopify product. |
+| `Site` | Craft site. |
+| `Url` | Relative or absolute address. |
+| `User` | Craft user. |
+| `Variant` | Commerce variant. |

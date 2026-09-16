@@ -3,6 +3,10 @@ After Craft’s [entrification](https://craftcms.com/blog/entrification) convert
 
 Craft’s `entrify/categories` keeps the **same element ID** (`entries.id = categories.id`), so Hyper only flips the link type/handle — no ID mapping file.
 
+Custom link field values are retained. If the Entry link layout does not contain a
+field from the Category link layout, its data stays stored but is not shown in the
+editor. Add the corresponding custom field to the Entry link layout to use it.
+
 ## Prerequisites
 1. Run Craft’s `php craft entrify/categories` (or equivalent) first.
 2. Ensure each Hyper field has an enabled **Entry** link type (Category type can stay disabled afterward).

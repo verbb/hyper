@@ -1,7 +1,7 @@
 # Integrations
 
-Wire Hyper into other Craft plugins and import workflows.
+Use Hyper with other Craft plugins and import workflows.
 
-##### [Feed Me](/guides/integrations/feed-me)
+## [Feed Me](/guides/integrations/importing-links-with-feed-me)
 
 Import link content into entries and other elements via Feed Me field mapping.

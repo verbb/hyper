@@ -90,7 +90,8 @@ export default defineConfig({
     lastUpdated: true,
     vite: {
         ssr: {
-            noExternal: ['@verbb/vitepress-theme'],
+            // The theme imports mark.js source with extensionless imports; bundle it for SSR.
+            noExternal: ['@verbb/vitepress-theme', 'mark.js'],
         },
         plugins: [
             tailwindcss(),

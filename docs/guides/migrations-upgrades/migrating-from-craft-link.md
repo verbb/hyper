@@ -17,7 +17,7 @@ php craft hyper/migrate/craft-link --step=content
 php craft hyper/migrate/craft-link --step=content --dry-run=1
 ```
 
-## What gets mapped
+## What Gets Mapped
 
 | Craft type | Hyper type |
 | --- | --- |

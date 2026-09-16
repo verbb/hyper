@@ -4,6 +4,7 @@
         "collapsable": false,
         "children": [
             "get-started/installation-setup",
+            "get-started/creating-your-first-link",
             "get-started/requirements",
             "get-started/configuration",
             "get-started/upgrading-from-v2"
@@ -16,10 +17,28 @@
             "feature-tour/overview",
             "feature-tour/link-types",
             "feature-tour/link-type-configs",
+            "feature-tour/custom-fields-inside-links",
+            "feature-tour/working-with-multiple-sites"
+        ]
+    },
+    {
+        "title": "Template Guides",
+        "collapsable": false,
+        "children": [
+            "feature-tour/rendering-links",
             "feature-tour/element-links",
             "feature-tour/eager-loading",
-            "feature-tour/reverse-relations",
-            "feature-tour/rendering-links"
+            "feature-tour/reverse-relations"
+        ]
+    },
+    {
+        "title": "Developers",
+        "collapsable": false,
+        "children": [
+            "developers/creating-link-types",
+            "developers/events",
+            "developers/graphql",
+            "developers/managing-embedded-content"
         ]
     },
     {
@@ -28,26 +47,53 @@
         "children": [
             "reference/link",
             "reference/link-collection",
-            "reference/link-type-settings"
+            "reference/link-type-settings",
+            "reference/link-type-config",
+            "reference/loading-links",
+            "reference/graphql-fields",
+            "reference/link-type-api",
+            "reference/migration-tools"
         ]
     },
     {
-        "title": "Developers",
+        "title": "User Guides",
         "collapsable": false,
         "children": [
-            "developers/link-types",
-            "developers/events",
-            "developers/graphql"
-        ]
-    },
-    {
-        "title": "Guides",
-        "collapsable": false,
-        "children": [
-            "guides/index",
-            "guides/developers/index",
-            "guides/integrations/index",
-            "guides/migrations-upgrades/index"
+            {
+                "title": "Templating",
+                "collapsable": false,
+                "children": [
+                    "guides/templating/creating-and-displaying-your-first-links"
+                ]
+            },
+            {
+                "title": "Developers",
+                "collapsable": false,
+                "children": [
+                    "guides/developers/creating-hyper-fields-programmatically",
+                    "guides/developers/creating-links-programmatically",
+                    "guides/developers/checking-link-performance"
+                ]
+            },
+            {
+                "title": "Integrations",
+                "collapsable": false,
+                "children": [
+                    "guides/integrations/importing-links-with-feed-me"
+                ]
+            },
+            {
+                "title": "Migrations & Upgrades",
+                "collapsable": false,
+                "children": [
+                    "guides/migrations-upgrades/migrating-from-craft-link",
+                    "guides/migrations-upgrades/migrating-from-oembed",
+                    "guides/migrations-upgrades/entrification-category-entry",
+                    "guides/migrations-upgrades/migrating-from-link",
+                    "guides/migrations-upgrades/migrating-from-linkit",
+                    "guides/migrations-upgrades/migrating-from-typed-link"
+                ]
+            }
         ]
     }
 ]

@@ -9,9 +9,9 @@ npm install
 npm run dev:plugin-docs
 ```
 
-Preview: [http://localhost:5487](http://localhost:5487)
+Open the local preview URL printed in the terminal.
 
-## Screenshot automation
+## Screenshot Automation
 
 Uses **`@verbb/docs-screenshots`**. From plugin root:
 

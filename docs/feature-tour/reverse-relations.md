@@ -1,35 +1,10 @@
 # Reverse Relations
 
-Use `craft.hyper.getRelatedElements()` to find entries (or other elements) that link **to** a particular element through a Hyper field — for example, a “Used by” list on an entry edit screen or a “Pages linking here” module.
+Use a reverse relation to find content that links to the entry you are viewing. For example, a resource page could display a list of News articles that recommend it through a Hyper field.
 
-Hyper resolves reverse lookups through the `hyper_links` table. Relation rows sync when owner elements are saved.
+## Find Pages Linking Here
 
-```twig
-{% set linkingPages = craft.hyper.getRelatedElements({
-    relatedTo: {
-        targetElement: entry,
-        field: 'relatedContent',
-    },
-    elementType: 'craft\\elements\\Entry',
-    site: currentSite.handle,
-}).all() %}
-
-<ul>
-    {% for page in linkingPages %}
-        <li><a href="{{ page.url }}">{{ page.title }}</a></li>
-    {% endfor %}
-</ul>
-```
-
-## Parameters
-
-| Param | Required | Description |
-| --- | --- | --- |
-| `relatedTo.targetElement` | Yes | The element being linked **to**. |
-| `relatedTo.field` | Yes | Handle of the Hyper field on owner elements. |
-| `elementType` | No | Owner element class. Default: `craft\elements\Entry`. |
-| `site` | No | Site handle for owners. Default: current site. |
-| `criteria` | No | Additional ElementQuery criteria merged onto the result (e.g. `section`, `id`). |
+Suppose each News entry has a Hyper field with the handle `relatedContent`. On a resource entry’s Twig template, `entry` is the resource you want to look up. Place this snippet where its incoming links should appear:
 
 ```twig
 {% set linkingPages = craft.hyper.getRelatedElements({
@@ -38,40 +13,26 @@ Hyper resolves reverse lookups through the `hyper_links` table. Relation rows sy
         field: 'relatedContent',
     },
     criteria: {
-        section: 'pages',
-        id: ['not', 123],
+        section: 'news',
     },
 }).all() %}
+
+{% if linkingPages %}
+    <h2>Recommended in These Articles</h2>
+    <ul>
+        {% for page in linkingPages %}
+            <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+        {% endfor %}
+    </ul>
+{% endif %}
 ```
 
-Returns an `ElementQuery` — chain `all()`, `one()`, `count()`, etc.
+`targetElement` is the resource being linked to. `field` identifies the Hyper field on the articles, and `criteria.section` limits the results to News. Save an article linking to this resource, then view the resource page: that article should appear in the list. If no articles link to it, the heading and list are omitted.
 
-## PHP
+Hyper updates its relation index when the owning elements are saved. Craft’s native `relatedTo` parameter does not query Hyper fields; use `craft.hyper.getRelatedElements()` for this task.
 
-```php
-use craft\elements\Entry;
-use verbb\hyper\Hyper;
+## Work with Multiple Sites
 
-$query = Hyper::$plugin->getLinkRelations()->getRelatedElementsQuery([
-    'relatedTo' => [
-        'field' => 'relatedContent',
-        'targetElement' => $targetEntry,
-    ],
-    'elementType' => Entry::class,
-    'site' => 'default',
-    'criteria' => [
-        'section' => 'pages',
-    ],
-]);
-```
+Pass the target element from the site whose incoming links you want to inspect. The optional `site` parameter selects the site for the returned articles and defaults to the current site. It does not change which translation of the target you supplied.
 
-## Multisite
-
-Reverse lookups match `targetId` and `targetSiteId` from the `hyper_links` row. Pass the target element from the site context you care about; owner results respect the `site` param.
-
-## What this is not
-
-- **`link.element` / `getElement()`** — the forward target of a single link value on one owner.
-- **Craft `relatedTo` on Hyper fields** — not supported; Hyper links are not native relation fields.
-
-For forward element loading and `with()` paths, see [Eager Loading](/feature-tour/eager-loading). Developer checklist: [Performance](/guides/developers/performance).
+See [Reverse Lookup Parameters](/reference/loading-links#reverse-lookup-parameters) for additional query options and the PHP equivalent. To access a destination from an individual link, see [Element Links](/feature-tour/element-links).

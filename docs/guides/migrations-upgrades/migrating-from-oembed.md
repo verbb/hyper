@@ -14,7 +14,7 @@ php craft hyper/migrate/oembed --step=content
 php craft hyper/migrate/oembed --step=content --dry-run=1
 ```
 
-## What gets mapped
+## What Gets Mapped
 
 | oEmbed | Hyper |
 | --- | --- |

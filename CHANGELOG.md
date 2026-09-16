@@ -12,6 +12,9 @@
 
 ### Changed
 - Updated locked frontend dependencies.
+- Align documentation filenames with page titles and update internal links.
+- Revised documentation with complete link creation, rendering and import examples, corrected API guidance, multisite editing instructions, focused event listener examples, and the GraphQL interface reference alongside its queries.
+- Updated frontend dependencies to address security advisories.
 - Improved relation-index save performance for fields containing many links.
 - GraphQL link type names use the original field handle instead of a layout alias. Update fragments that use alias-derived type names; query field aliases are unchanged.
 - Link destinations now use literal values; existing environment-variable and alias references must be updated before upgrading.

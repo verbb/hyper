@@ -1,29 +1,33 @@
-# Guides
+# User Guides
 
-Outcome-oriented recipes for Hyper — CP setup through Twig output. For API parameters and object reference, use the sidebar sections above.
+These guides walk through practical tasks with Hyper, from creating fields to displaying links. The practical walkthroughs explain their setup and expected result; the main documentation covers the available settings and APIs.
+
+## Creating and Displaying Links
+
+Follow [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links) to add a field, save links and render them in Twig.
 
 ## Developers
 
-##### [Creating Links Programmatically](/guides/developers/creating-links-programatically)
+### [Creating Links Programmatically](/guides/developers/creating-links-programmatically)
 
 Create Link objects and assign them to Hyper fields when building custom integrations or element saves.
 
-##### [Creating Hyper Fields Programmatically](/guides/developers/creating-hyper-fields)
+### [Creating Hyper Fields Programmatically](/guides/developers/creating-hyper-fields-programmatically)
 
 Create Hyper fields in content migrations with a valid `linkTypes` settings array.
 
-##### [Performance](/guides/developers/performance)
+### [Performance](/guides/developers/checking-link-performance)
 
-Eager loading, reverse relations, and what changed vs Hyper 2 cache behaviour.
+Learn how to load linked content efficiently and find entries that link to another element.
 
 ## Integrations
 
-##### [Integrations](/guides/integrations/)
+### [Integrations](/guides/integrations/)
 
-Feed Me and other third-party plugin workflows.
+Connect Hyper to other plugins, including importing link content with Feed Me.
 
 ## Migrations & Upgrades
 
-##### [Migrations & Upgrades](/guides/migrations-upgrades/)
+### [Migrations & Upgrades](/guides/migrations-upgrades/)
 
-Moving to Hyper from Link, Linkit, Typed Link, and other plugins.
+Bring existing link content into Hyper from Link, Linkit, Typed Link, and other plugins.

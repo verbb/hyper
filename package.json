@@ -15,12 +15,17 @@
     },
     "devDependencies": {
         "@types/lodash-es": "^4.17.12",
+        "esbuild": "0.28.1",
+        "playwright": "1.61.1",
         "rollup-plugin-analyzer": "^4.0.0",
         "typescript": "^6.0.3",
         "vite": "^8.0.10",
-        "vite-plugin-compression": "^0.5.1",
-        "esbuild": "0.28.1",
-        "playwright": "1.61.1"
+        "vite-plugin-compression": "^0.5.1"
+    },
+    "overrides": {
+        "vitepress": {
+            "vite": "^6.4.3"
+        }
     },
     "dependencies": {
         "@dnd-kit/abstract": "^0.4.0",

@@ -1,254 +1,119 @@
 # Rendering Links
-There are several ways to render a [Link](docs:reference/link) object. 
 
-:::tip
-For this page, we'll assume your Hyper field has the handle `myLinkField`, so be sure to substitute that with your own link handle. We'll also assume we're on a single entry template, and there's a `entry` variable available.
-:::
+Use Hyper’s link renderer when you want an anchor containing the saved destination, label and attributes. Use individual properties when your design needs different markup, such as a linked card or a navigation heading without a destination.
 
-By default, outputting the value of a Hyper field will return the URL.
+The examples on this page belong in an entry’s Twig template. They assume `entry` is the current entry and its Hyper field has the handle `myLinkField`. Replace that handle with your own. If you have not created and attached a field yet, follow [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links).
 
-```twig
-{{ entry.myLinkField }}
-{{ entry.myLinkField.url }}
-
-{# Outputs: http://my-site.test/some-url (both are the same) #}
-```
-
-Next, are common attributes to build the `<a>` anchor tag to generate a URL.
-
-```twig
-{% set url = entry.myLinkField.url %}
-{% set text = entry.myLinkField.text %}
-{% set target = entry.myLinkField.target %}
-
-<a href="{{ url }}" target="{{ target }}">{{ text }}</a>
-
-{# Outputs: <a href="http://my-site.test/some-url" target="_blank">Some URL</a> #}
-```
-
-But, a shorthand version of this is to use `getLink()`.
+## Render a Single Link
 
 ```twig
 {{ entry.myLinkField.getLink() }}
-
-{# Outputs: <a href="http://my-site.test/some-url" target="_blank" rel="noopener noreferrer">Some URL</a> #}
 ```
 
-The benefit of using `getLink()` is that it'll automatically add any custom attributes, URL suffix, classes, Aria label, Link title and more to the `<a>` tag. Notice how the `rel` attribute is also added if we've selected to open this link in a new window?
+For a URL of `https://example.test/contact` and Link Text of `Contact us`, the result is:
 
-You can also pass in any extra attributes you require:
+```html
+<a href="https://example.test/contact">Contact us</a>
+```
+
+`getLink()` includes the saved classes, custom attributes, URL suffix and other native link attributes. When the link opens in a new window, it also adds the corresponding target and relationship attributes. If there is no usable URL, it outputs nothing.
+
+For a URL string alone, use `entry.myLinkField.url` or output `entry.myLinkField` directly. A field’s single-link shortcuts use its first link, even when multiple links are enabled. Loop over the field to display every link.
+
+## Add Attributes
+
+Pass attributes to `getLink()` to override the saved values for this rendering:
 
 ```twig
 {{ entry.myLinkField.getLink({
-    class: 'text-black font-bold',
-    'data-link': 'external',
+    class: 'button',
+    'data-location': 'page-footer',
 }) }}
-
-{# Outputs: <a href="http://my-site.test/some-url" class="text-black font-bold" data-link="external">Some URL</a> #}
 ```
 
-You can also override the link text using `text`.
+This renders the link with your button class and data attribute. Changing the template does not change the saved link. For individual native attributes and their meaning, see [Link](/reference/link#attributes).
+
+## Choose a Label
+
+`text` is the display label. It uses the entered Link Text, layout defaults and type-specific fallbacks such as an entry’s title. It can then fall back to the Link Text placeholder or “Read more”. For ordinary links it returns nothing without a usable URL.
+
+Use `customLinkText` when you want only the editor’s input, with no fallback. It returns `null` when blank:
+
+```twig
+{% if entry.myLinkField.url %}
+    {{ entry.myLinkField.getLink({
+        text: entry.myLinkField.customLinkText ?? 'Contact our team',
+    }) }}
+{% endif %}
+```
+
+The link’s `title` is its HTML title attribute. To read a selected entry’s title, get the [linked element](/feature-tour/element-links#linked-element).
+
+### Include Markup in the Label
+
+A Twig capture can supply template-authored markup as the label:
 
 ```twig
 {% set linkContent %}
-    <svg ... />
-    Check out this link
+    <span aria-hidden="true">→</span>
+    View the resource
 {% endset %}
 
-{{ entry.myLinkField.getLink({
-    text: linkContent,
-}) }}
+{{ entry.myLinkField.getLink({text: linkContent}) }}
 ```
 
-## Link Type
-You may want to customise the rendering of a link depending on it's type. You'll need to use the full class for the link type to compare:
-
-```twig
-{% if entry.myLinkField.type == 'verbb\\hyper\\links\\Url' %}
-    {# Output for a URL link #}
-{% elseif entry.myLinkField.type == 'verbb\\hyper\\links\\Entry' %}
-    {# Output for an Entry link #}
-{% endif %}
-```
-
-Available types:
-- `verbb\\hyper\\links\\Asset`
-- `verbb\\hyper\\links\\Category`
-- `verbb\\hyper\\links\\Custom`
-- `verbb\\hyper\\links\\Email`
-- `verbb\\hyper\\links\\Embed`
-- `verbb\\hyper\\links\\Entry`
-- `verbb\\hyper\\links\\Phone`
-- `verbb\\hyper\\links\\Site`
-- `verbb\\hyper\\links\\Url`
-- `verbb\\hyper\\links\\User`
-
-## Link Value
-You can access the raw "Link Value" if you require. This is a general purpose setting that varies depending on the link type.
-
-```twig
-{{ entry.myLinkField.linkValue }}
-
-{# URL link type #}
-{# http://my-site.test #}
-
-{# Email link type #}
-{# info@my-site.test #}
-
-{# Phone link type #}
-{# 1234 567 890 #}
-
-{# Element link type #}
-{# 25251 (the ID of the linked element) #}
-
-{# Site link type #}
-{# 76974830-73a5-45fb-9c73-72ac8c8981dc (the UID of the linked site) #}
-
-{# Embed link type #}
-{# {"title":"lofi hip hop radio - beats to relax/study to","description"... #}
-```
-
-## Native Fields
-
-For the available native fields, access them as attributes on the link:
-
-```twig
-{{ entry.myLinkField.ariaLabel }}
-{{ entry.myLinkField.linkText }}
-{{ entry.myLinkField.customLinkText }}
-{{ entry.myLinkField.linkTitle }}
-{{ entry.myLinkField.urlSuffix }}
-```
-
-::: tip
-For the full attribute and method reference, see [Link](/reference/link) and [Link Type Settings](/reference/link-type-settings).
-:::
-
-### Custom label vs resolved label
-`linkText` can include type-specific fallbacks (for example, the linked entry’s title when the Link Text field is empty). If you want **only** what the author typed—so a blank field stays blank and you can supply your own default in Twig—use `customLinkText`:
-
-```twig
-{% set label = entry.myLinkField.customLinkText ?? 'Our default' %}
-<a href="{{ entry.myLinkField.url }}">{{ label }}</a>
-```
-
-For the fully derived label (custom text, else element title where applicable, else field placeholder / “Read more”), use `text` or `getLink()`.
-
-## Empty
-You can check if a Hyper field has a value with `isEmpty()`.
-
-```twig
-{% if not entry.myLinkField.isEmpty() %}
-    {{ entry.myLinkField.getLink() }}
-{% endif %}
-```
-
-## Custom Fields
-If you have any custom fields added to your link type, you can access them as you would directly from an element using their field handle.
-
-```twig
-{{ entry.myLinkField.myCustomField }}
-{{ entry.myLinkField.myEntriesField.one().title }}
-```
-
-## Element Links
-For an element-based link, you can get the linked-to element. You can also use `hasElement()` to check if the link is linking to an element.
-
-```twig
-{% if entry.myLinkField.hasElement() %}
-    {% set linkElement = entry.myLinkField.getElement() %}
-
-    {{ linkElement.title }}
-    {{ linkElement.entryCustomField }}
-{% endif %}
-```
-
-### URL fragments (anchors)
-
-To link to a fragment on an element URL (for example `#pricing`), use the **URL Suffix** field on the link (Advanced tab by default). Hyper appends the suffix when building `url` and `getLink()`:
-
-```twig
-{# Link value: entry about page, URL Suffix: #team #}
-{{ entry.myLinkField.url }}
-{# https://example.test/about#team #}
-```
-
-:::tip
-Don't forget if you want the Title or URL of an element, it's more performant to use `entry.myLinkField.title` or `entry.myLinkField.url`.
-:::
-
-### Eager loading fields on linked elements
-
-When you loop over many entries and need fields **on the linked element** (not just the link URL/text), use Craft's normal `with()` syntax on the **owner** query:
-
-```php
-Entry::find()
-    ->section('nav')
-    ->with(['myLinkField.linkedElements.thumbnail'])
-    ->all();
-```
-
-```twig
-{% for item in craft.entries()
-    .section('nav')
-    .with(['myLinkField.linkedElements.thumbnail'])
-    .all() %}
-    {{ item.myLinkField.element.thumbnail.one().url }}
-{% endfor %}
-```
-
-Supported paths:
-
-| Path | Effect |
-| --- | --- |
-| `{hyperField}.linkedElements` | Batch-load linked target elements |
-| `{hyperField}.linkedElements.{fieldHandle}` | Batch-load targets and eager-load `{fieldHandle}` on each |
-| `{hyperField}.linkedElements.{fieldHandle}.{nested}` | Nested Craft `with` paths on the target batch query |
-
-Hyper intercepts these paths during query preparation and applies them when batch-loading linked elements.
-
-For the full priming behaviour and path reference, see [Eager Loading](/feature-tour/eager-loading).
-
-## Embed Links
-Embed links store extra information about the fetched page. This could be a Twitter post, a YouTube video, or a SoundCloud song.
-
-```twig
-{# Example URL: https://www.youtube.com/watch?v=jfKfPfyJRdk #}
-
-{{ entry.myLinkField.getLink() }}
-{# Outputs: <a href="https://www.youtube.com/watch?v=jfKfPfyJRdk">lofi hip hop radio - beats to relax/study to</a> #}
-
-{{ entry.myLinkField.getHtml() }}
-{# Outputs: <iframe src="https://www.youtube.com/embed/jfKfPfyJRdk" title="lofi hip hop radio - beats to relax/study to"></iframe> #}
-
-{{ entry.myLinkField.getIframeSrc() }}
-{# Outputs: https://www.youtube.com/embed/jfKfPfyJRdk #}
-
-{{ entry.myLinkField.getData() }}
-
-{# {
-    title: 'lofi hip hop radio - beats to relax/study to',
-    description: '🤗 Thank you for listening, I hope you will have a good time here💽',
-    ...
-} #}
-```
-
-### Embed allowlists
-Each Embed link type can restrict **Allowed Domains** in field settings (e.g. `youtube.com` and `youtu.be` for a video-only field). Empty domain lists fall back to the plugin `embedAllowedDomains` config.
-
-### YouTube thumbnails
-Hyper stores the thumbnail URL returned by oEmbed in `linkValue.image` (and GraphQL `embedImage`). YouTube often supplies `hqdefault.jpg`. Hyper upgrades that to `maxresdefault.jpg` when the HD asset exists. You can also enable `resolveHiResEmbedImage` in config to compare all candidate images by dimensions (slower).
+Hyper escapes ordinary strings and preserves trusted Twig markup. Keep editor-provided text escaped; do not apply `raw` to it to make HTML render.
 
 ## Multiple Links
 
-If your Hyper field allows multiple links, the field value is a [LinkCollection](/reference/link-collection) — iterate it or use array access.
+For a multi-link field, iterate over each link. This example also handles Passive links, which have a label but no URL:
 
 ```twig
-{% for link in entry.myLinkField %}
-    {{ link.getLink() }}
-{% endfor %}
+{% if not entry.myLinkField.isEmpty() %}
+    <ul>
+        {% for link in entry.myLinkField %}
+            {% if link.url %}
+                <li>{{ link.getLink() }}</li>
+            {% elseif link.type == 'verbb\\hyper\\links\\Passive' and link.text %}
+                <li><span>{{ link.text }}</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+{% endif %}
 ```
 
-:::tip
-Multi-link fields will still work with the previous examples (e.g. `myLinkField.url`, etc), but you'll only ever be outputting the first link in the field. As such, you'll want to adjust your templates to loop through a collection.
-:::
+A Passive label is displayed as text instead of an anchor. Other links without a usable URL are omitted. `isEmpty()` checks saved content, including labels and custom fields, so it is not interchangeable with checking whether a link can render an anchor.
+
+## Custom Fields
+
+Fields added to a link’s layout are available by handle on that link. For example, `link.summary` reads a Plain Text field called `summary`. See [Custom Fields Inside Links](/feature-tour/custom-fields-inside-links) for setup and a rendering example.
+
+To read fields on the selected destination, get the element first and check that it exists. The [Eager Loading example](/feature-tour/eager-loading#load-thumbnails-for-linked-entries) shows this with thumbnail assets.
+
+## URL Fragments (Anchors)
+
+To point at a section within a destination page, add **URL Suffix** to the link’s layout and enter a fragment such as `#team`. It is included in both `url` and `getLink()`:
+
+```twig
+{{ entry.myLinkField.url }}
+{# For an About entry with suffix #team: https://example.test/about#team #}
+```
+
+The destination template must contain an element with the corresponding ID, such as `<section id="team">`. Check the link in your browser to confirm it reaches that section.
+
+## Embed Links
+
+An Embed link stores metadata about a remote page. `getLink()` renders a link to that page; `getHtml()` renders its stored embed code when available. For a single-link field configured to accept Embed links:
+
+```twig
+{% set embed = entry.myLinkField.first() %}
+{% if embed and embed.getHtml() %}
+    {{ embed.getHtml() }}
+{% elseif embed and embed.url %}
+    {{ embed.getLink() }}
+{% endif %}
+```
+
+This displays the embedded content, falling back to a normal link when no embed HTML is available. A provider may return an iframe, other markup or no embeddable content. Configure [allowed domains](/get-started/configuration#embed-domains) before relying on a particular provider.
+
+Hyper uses the stored thumbnail metadata for Embed images. For YouTube, it checks whether a higher-resolution alternative to `hqdefault.jpg` exists. The optional `resolveHiResEmbedImage` setting compares additional candidates and can make fetching metadata slower. See the [Embed reference](/reference/link#embed-links) for the available helpers.

@@ -1,32 +1,121 @@
 # Configuration
-Create a `hyper.php` file under your `/config` directory with the following options available to you. You can also use multi-environment options to change these per environment.
 
-The below shows the defaults already used by Hyper, so you don't need to add these options unless you want to modify the values.
+You can customise Hyper’s settings using a PHP configuration file. This is optional: each setting has a default, so you only need to include the values you want to change.
+
+To override a setting, create `hyper.php` in your Craft project’s `/config` directory and return an array of setting names and values. For example, the following enables higher-resolution embed image selection:
 
 ```php
 <?php
 
 return [
-    '*' => [
-        'backupOnMigrate' => true,
-        'resolveHiResEmbedImage' => false,
-        'embedClientSettings' => [],
-        'embedHeaders' => [],
-        'embedDetectorsSettings' => [],
-        'embedAllowedDomains' => [],
-        'allowedUriSchemes' => [],
-    ],
+    'resolveHiResEmbedImage' => true,
 ];
 ```
 
-## Configuration options
-- `backupOnMigrate` - Whether to create a database backup before running the link migration utilities.
-- `resolveHiResEmbedImage` - Whether the Embed field should determine the most hi-resolution image available. Do note that there's performance implications for this, as it requires fetching every available image for the embed data and comparing them. Independently, YouTube `hqdefault` thumbs are upgraded to `maxresdefault` when that asset exists.
-- `embedClientSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links. Hyper defaults TLS peer/host verification on (`ssl_verify_peer` / `ssl_verify_host`); override explicitly only if you must. Hyper always disables Curl `follow_location` and resolves redirects itself, rejecting private / reserved / metadata IPs on every hop (SSRF hardening).
-- `embedHeaders` - Define any [headers](https://github.com/oscarotero/Embed#settings) to pass to the Curl Client for Embed links.
-- `embedDetectorsSettings` - Define any [settings](https://github.com/oscarotero/Embed#settings) to pass to the detectors for Embed links.
-- `embedAllowedDomains` - Define any allowed domain names for Embed links globally. Any embed links that are added _not_ in this list will fail to be saved. Leave empty to allow any domain. Include just the domain with no `http://`, `https://` or `www` (exact host or subdomain match — e.g. `youtube.com` allows `www.youtube.com` but not `youtube.com.evil.test`). Per Embed link type you can also set **Allowed Domains** in field settings to override or narrow this (e.g. video-only fields).
-- `allowedUriSchemes` - Extra URI schemes allowed on URL link values beyond the built-in set (`http`, `https`, `mailto`, `tel`, `sms`, plus fragment-only `#…` and relative paths). Example: `['slack', 'ftp']`. `javascript`, `data`, and `vbscript` are always blocked.
+All other settings keep their defaults. Add any further settings you want to change to the same array. The options below explain the available settings and their defaults.
+
+## Configuration Options
+
+::: reference
+### `backupOnMigrate`
+
+**Type:** `bool` · **Default:** `true`
+
+Whether migration utilities create a database backup before making changes. Leave this enabled unless you are deliberately managing the backup separately.
+:::
+
+::: reference
+### `resolveHiResEmbedImage`
+
+**Type:** `bool` · **Default:** `false`
+
+Compare candidate embed images to choose a higher-resolution image. This requires additional requests and can make fetching metadata slower. YouTube’s `hqdefault` thumbnail is checked for an available `maxresdefault` alternative independently of this setting.
+:::
+
+::: reference
+### `embedClientSettings`
+
+**Type:** `array` · **Default:** `[]`
+
+Set the timeout for an individual embed request. Hyper uses 10 seconds when no timeout is supplied and clamps a supplied value to 1–10 seconds. Connection checks and overall request limits remain enforced; see [Embed Requests](#embed-requests).
+
+For example, to limit each request to five seconds, use this override in `config/hyper.php`:
+
+```php
+<?php
+
+return [
+    'embedClientSettings' => [
+        'timeout' => 5,
+    ],
+];
+```
+:::
+
+::: reference
+### `embedHeaders`
+
+**Type:** `array` · **Default:** `[]`
+
+HTTP headers to send with embed requests. The empty default adds no custom headers. Use this when the service you are fetching requires a particular request header.
+:::
+
+::: reference
+### `embedDetectorsSettings`
+
+**Type:** `array` · **Default:** `[]`
+
+Settings passed to Embed’s metadata detectors. Leave this empty to use their normal behaviour. See the [Embed library documentation](https://github.com/oscarotero/Embed#settings) for detector options.
+:::
+
+::: reference
+### `embedAllowedDomains`
+
+**Type:** `array` · **Default:** `[]`
+
+Domains allowed for embed pages and their secondary requests. An empty list allows public hosts. A non-empty Allowed Domains list on an individual Embed link type replaces this global list.
+
+See [Embed Domains](#embed-domains) for a complete example and an explanation of secondary image and metadata hosts.
+:::
+
+::: reference
+### `allowedUriSchemes`
+
+**Type:** `array` · **Default:** `[]`
+
+Extra URI schemes permitted in links, such as `slack` or `ftp`. The built-in schemes are `http`, `https`, `mailto`, `tel` and `sms`; fragment-only and relative URLs are also permitted. You do not need to repeat the built-in schemes when adding an extra one.
+
+The schemes `javascript`, `data` and `vbscript` are always blocked. See [Additional URI Schemes](#additional-uri-schemes) for how this applies to Custom links.
+:::
+
+## Embed Domains
+
+For a video-only field, set **Allowed Domains** on its Embed link type. If the type’s list is empty, Hyper uses `embedAllowedDomains` from this file instead. Enter domains without a scheme or path. A domain such as `youtube.com` also permits its subdomains, but not unrelated hosts whose names contain that string.
+
+Embed pages may fetch metadata and images from other hosts. Include the provider’s required secondary domains, such as `ytimg.com` for YouTube thumbnails. For example, a `config/hyper.php` file allowing these YouTube domains would contain:
+
+```php
+<?php
+
+return [
+    'embedAllowedDomains' => ['youtube.com', 'youtu.be', 'ytimg.com'],
+];
+```
+
+Try a representative URL in the editor and check both its preview and saved metadata. If a redirect or image host is blocked, review the required host and add it to the applicable list. Private network addresses are not permitted even when a domain is listed.
+
+## Embed Requests
+
+Hyper verifies TLS and checks the destination of each page, redirect, metadata and image request. Client settings cannot turn these checks off. Requests are limited to five redirects, 20 requests, 2 MiB per response and 8 MiB in total, with a 30-second transport budget.
+
+These limits mean a provider requiring many requests or a slow response can fail to return complete embed metadata. Check the editor’s response with the actual provider URL before relying on an embed in your templates.
+
+## Additional URI Schemes
+
+If your site links into an application using a scheme such as `slack:`, add it to `allowedUriSchemes`. This applies to rendered Custom links as well as URL links; choosing Custom does not bypass the shared policy.
 
 ## Control Panel
-You can also manage configuration settings through the Control Panel by visiting Settings → Hyper.
+
+Open Hyper’s settings to manage [Link Type Configs](/feature-tour/link-type-configs) and access migration tools. The General Settings page does not provide controls for the PHP options above; edit `config/hyper.php` to change those values.
+
+[Custom Fields Inside Links](/feature-tour/custom-fields-inside-links) covers link layouts, nested Matrix fields and asset uploads.

@@ -1,42 +1,40 @@
 # Element Links
 
-Entry, Category, Asset, and other **element link types** point at a Craft element and use its title and URL for the link.
+Use an element link when an editor should choose existing Craft content, such as an entry or asset, instead of typing its URL. Hyper resolves the selected element’s URL when rendering the link. An Entry link can also use the entry’s title when the editor leaves Link Text empty and no layout default is set.
 
-Hyper stores the selected element reference in the field’s content JSON. When the owner element is saved, Hyper also syncs a row in the `hyper_links` relations table (`targetId`, `targetSiteId`, and field id). Those relation rows power [Reverse Relations](/feature-tour/reverse-relations) lookups and let Hyper batch-load linked elements when you read the field.
+## Choose Available Content
 
-For Twig output patterns, see [Rendering Links — Element Links](/feature-tour/rendering-links#element-links).
+In the Hyper field’s link type settings, select Entry and choose its **Sources**. For a related-articles field, restrict the sources to News so editors can find the relevant entries without searching unrelated sections. If the field uses a shared config, make this change in [Link Type Configs](/feature-tour/link-type-configs).
+
+Entry, Asset and User types also provide selectable-element conditions. Sources choose where editors can look; conditions narrow the choices within those sources. See [Link Type Settings](/reference/link-type-settings#selectable-element-conditions).
 
 ## URL & Text
 
-If all you need is the link’s destination or its label, read the values straight off the field:
+Suppose your entry has a single-link Hyper field with the handle `myLinkField`. In its entry template, use:
 
 ```twig
-{{ myLinkField.url }}
-{{ myLinkField.text }}
+{{ entry.myLinkField.getLink() }}
 ```
 
-These are resolved from the stored link content, so they’re fast and never require loading the linked element. Prefer this whenever you’re rendering a plain link.
+For custom markup, read `entry.myLinkField.url` and `entry.myLinkField.text`. These resolve through the linked element where needed. Hyper can load targets together, but reading URL or text is not a guarantee of zero database queries. [Eager Loading](/feature-tour/eager-loading) explains how to load additional content efficiently.
 
 ## Linked Element
 
-When you need the target element — for example to read its status, check its section, or call a method on it — access the element:
+Use `getElement()` when you need the selected element itself. For example, to display an Entry link’s target title independently of the editor’s link label:
 
 ```twig
-{% set entry = myLinkField.element %}
-{# or #}
-{% set entry = myLinkField.getElement() %}
+{% set linkedEntry = entry.myLinkField.getElement() %}
+{% if linkedEntry %}
+    <h2>{{ linkedEntry.title }}</h2>
+{% endif %}
 ```
 
-Hyper batch-primes linked targets when owner element queries populate on front-end requests, so listings that touch `element` generally avoid a query per link. See [Eager Loading](/feature-tour/eager-loading) for how priming works and when it applies.
+The link’s own `title` property is its HTML title attribute. It is not the selected entry’s title.
+
+Element lookups can return nothing if the selected target is unavailable. Entry links normally resolve live entries, taking publication and expiry dates into account. Guard access to target fields, and use `link.url` when deciding whether you can display an anchor. `isEmpty()` describes stored content and can be false even when a link has no usable destination.
 
 ## Custom Fields
 
-If you’ll be reading custom fields off the linked element (like a thumbnail or a nested relation), eager-load them from the owner query so they’re fetched together rather than one element at a time:
+If a card needs a thumbnail from its linked entry, load that field with the entries rather than querying it separately for each card. Add `myLinkField.linkedElements.thumbnail` to the owner query’s `with()` paths. The [Eager Loading example](/feature-tour/eager-loading#load-thumbnails-for-linked-entries) includes a complete query and output.
 
-```twig
-{% set entries = craft.entries()
-    .with(['myLinkField.linkedElements.thumbnail'])
-    .all() %}
-```
-
-This is the key step for keeping large navigations and card grids efficient. See [Eager Loading](/feature-tour/eager-loading) for the full syntax and more examples.
+For translated content and links selected from another site, see [Working with Multiple Sites](/feature-tour/working-with-multiple-sites).
