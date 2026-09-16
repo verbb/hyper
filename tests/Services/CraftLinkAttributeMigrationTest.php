@@ -52,8 +52,9 @@ it('preserves native link IDs relations and downloads through migration and resa
             $input = new DOMDocument();
             @$input->loadHTML($link->getFieldLayout()->getField('customAttributes')->inputHtml($link));
             $posted = [];
-            foreach ($input->getElementsByTagName('textarea') as $cell) {
-                $posted[] = urlencode($cell->getAttribute('name')) . '=' . urlencode($cell->textContent);
+            foreach ((new DOMXPath($input))->query('//textarea[@name] | //input[@name]') as $cell) {
+                $value = $cell->tagName === 'textarea' ? $cell->textContent : $cell->getAttribute('value');
+                $posted[] = urlencode($cell->getAttribute('name')) . '=' . urlencode($value);
             }
             parse_str(implode('&', $posted), $data);
             expect($data)->toHaveKey('customAttributes');
