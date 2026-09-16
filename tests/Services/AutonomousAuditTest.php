@@ -9,6 +9,37 @@ use verbb\hyper\links\Passive;
 use verbb\hyper\links\Url;
 use verbb\hyper\models\LinkCollection;
 
+it('retains unavailable legacy types instead of substituting the default link type', function() {
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    $raw = ['type' => 'unavailable\\links\\Legacy', 'linkValue' => 'legacy:opaque', 'extension' => ['code' => '00123']];
+    $collection = new LinkCollection($field, [$raw]);
+    expect($collection->getLinks()[0])->toBeInstanceOf(MissingLink::class);
+    expect(array_intersect_key($collection->serializeValues()[0], $raw))->toBe($raw);
+    $section = F::entrySection($field);
+    $owner = F::plainEntry($section, 'Opaque legacy owner', [$field->handle => [$raw]]);
+    $saved = $field->serializeValue($owner->getFieldValue($field->handle));
+    $owner->title = 'Unrelated edit';
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    $owner = Entry::find()->id($owner->id)->one();
+    $reloaded = $field->serializeValue($owner->getFieldValue($field->handle));
+    ksort($saved[0]);
+    ksort($reloaded[0]);
+    expect($reloaded)->toBe($saved);
+    foreach ($raw as $key => $value) {
+        expect($saved[0][$key])->toBe($value);
+    }
+});
+
+it('recovers an unavailable legacy class when its link type is restored', function() {
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    $raw = ['type' => \verbb\hyper\links\Email::class, 'linkValue' => 'hello@example.test'];
+    $serialized = (new LinkCollection($field, [$raw]))->serializeValues();
+    $field->setLinkTypes([F::linkTypeConfig(Url::class), F::linkTypeConfig(\verbb\hyper\links\Email::class)]);
+    $restored = new LinkCollection($field, $serialized);
+    expect($restored->getLinks()[0])->toBeInstanceOf(\verbb\hyper\links\Email::class);
+    expect($restored->getUrl())->toBe('mailto:hello@example.test');
+});
+
 it('resolves eager-load paths through layout-specific Hyper and Matrix handles', function() {
     $fixture = F::matrixFieldWithHyper();
     $inner = $fixture['hyperField'];

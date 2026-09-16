@@ -164,7 +164,7 @@ class Links extends Component
         $requestedHandle = $instance->linkTypeHandle;
         $prototype = $field->getLinkTypeByHandle($requestedHandle);
 
-        if (!$prototype) {
+        if (!$prototype || $prototype instanceof linkTypes\MissingLink || !$prototype->enabled) {
             // Retain opaque unresolved content through read/serialize (Astra H3-A07).
             return $this->_createUnsupportedContentLink($field, $instance);
         }
@@ -270,7 +270,8 @@ class Links extends Component
      */
     private function _createUnsupportedContentLink(HyperField $field, LinkInstance $instance): LinkInterface
     {
-        $payload = $instance->toSerialized();
+        // Keep raw records before the DTO's typed projection can discard extension data.
+        $payload = $instance->getOriginalPayload();
         $handle = $instance->linkTypeHandle !== '' ? $instance->linkTypeHandle : 'missing';
 
         $link = new linkTypes\MissingLink([

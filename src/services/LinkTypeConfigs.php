@@ -135,7 +135,7 @@ class LinkTypeConfigs extends Component
 
     public function resolveConfig(?string $ref): LinkTypeConfig
     {
-        if ($ref && $ref !== self::CUSTOM_HANDLE) {
+        if ($ref && $ref !== self::CUSTOM_HANDLE && $ref !== self::DEFAULT_HANDLE) {
             $config = StringHelper::isUUID($ref)
                 ? $this->getConfigByUid($ref)
                 : $this->getConfigByHandle($ref);
@@ -145,7 +145,14 @@ class LinkTypeConfigs extends Component
             }
 
             // Explicit unknown handle/UID — do not silently substitute Default (Astra A07).
-            Craft::warning("Hyper link type config “{$ref}” was not found; falling back to Default.", __METHOD__);
+            Craft::warning("Hyper link type config “{$ref}” was not found; retaining content as unsupported.", __METHOD__);
+
+            return new LinkTypeConfig([
+                'uid' => StringHelper::isUUID($ref) ? $ref : null,
+                'handle' => $ref,
+                'name' => Craft::t('hyper', 'Unavailable link type config'),
+                'linkTypes' => [],
+            ]);
         }
 
         return $this->getDefaultConfig();

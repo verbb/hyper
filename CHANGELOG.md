@@ -23,9 +23,10 @@
 - Multisite structure merge joins translations by content `uid` (position fallback only for pre-UID content).
 - Clipboard **copy** mints a new UID; **cut** preserves UID. Paste uses server-rendered blocks (same path as Bulk Add).
 - GraphQL interface `fields` bag respects active-schema `includeInGqlSchema` restrictions.
-- Named link type config miss logs a warning before falling back to Default.
+- Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed unavailable legacy link types being replaced by the default type and losing their original data on save.
 - Fixed a stored XSS vulnerability.
 - Fixed linked-element eager loading ignoring layout-specific field handles, including those inside Matrix.
 - Fixed GraphQL linked-element access not respecting section, site and user-group restrictions.

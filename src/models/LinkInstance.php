@@ -7,32 +7,17 @@ use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 
 use craft\base\Model;
+use craft\helpers\StringHelper;
 
 class LinkInstance extends Model
 {
-    // Properties
-    // =========================================================================
-
-    public string $linkTypeHandle = '';
-    public ?bool $newWindow = null;
-    public mixed $linkValue = null;
-    public ?int $linkSiteId = null;
-    public ?string $linkText = null;
-    public ?string $ariaLabel = null;
-    public ?string $urlSuffix = null;
-    public ?string $linkTitle = null;
-    public ?string $classes = null;
-    public array $customAttributes = [];
-    public array $fields = [];
-    public ?string $uid = null;
-
-
-    // Public Methods
+    // Static Methods
     // =========================================================================
 
     public static function fromSerialized(array $data, HyperField $field): self
     {
         $instance = new self();
+        $instance->_originalPayload = $data;
         $instance->linkTypeHandle = self::_resolveLinkTypeHandle($data, $field);
         $instance->newWindow = $data['newWindow'] ?? null;
         $instance->linkValue = self::_normalizeLinkValue($data['linkValue'] ?? null);
@@ -56,6 +41,72 @@ class LinkInstance extends Model
         }
 
         return new self();
+    }
+
+    private static function _resolveLinkTypeHandle(array $data, HyperField $field): string
+    {
+        if (!empty($data['linkTypeHandle'])) {
+            return (string)$data['linkTypeHandle'];
+        }
+
+        if (!empty($data['handle'])) {
+            return (string)$data['handle'];
+        }
+
+        if (!empty($data['type'])) {
+            foreach ($field->getLinkTypes() as $linkType) {
+                // Accept either the FQCN (verbb\hyper\links\Url) or the short, author-owned
+                // type key (`url`) as `type` — the latter is what we now document for
+                // programmatic content, so developers never have to reference class names.
+                if ($linkType::class === $data['type'] || $linkType::typeKey() === $data['type']) {
+                    return (string)$linkType->handle;
+                }
+            }
+
+            // An explicit unavailable legacy type must retain its payload, not become Default.
+            $type = (string)$data['type'];
+
+            return str_contains($type, '\\') ? 'default-' . StringHelper::toKebabCase($type) : $type;
+        }
+
+        return (string)$field->defaultLinkType;
+    }
+
+    private static function _normalizeLinkValue(mixed $linkValue): mixed
+    {
+        if ($linkValue === '' || $linkValue === []) {
+            return null;
+        }
+
+        return $linkValue;
+    }
+
+
+    // Properties
+    // =========================================================================
+
+    public string $linkTypeHandle = '';
+    public ?bool $newWindow = null;
+    public mixed $linkValue = null;
+    public ?int $linkSiteId = null;
+    public ?string $linkText = null;
+    public ?string $ariaLabel = null;
+    public ?string $urlSuffix = null;
+    public ?string $linkTitle = null;
+    public ?string $classes = null;
+    public array $customAttributes = [];
+    public array $fields = [];
+    public ?string $uid = null;
+
+    private ?array $_originalPayload = null;
+
+
+    // Public Methods
+    // =========================================================================
+
+    public function getOriginalPayload(): array
+    {
+        return $this->_originalPayload ?? $this->toSerialized();
     }
 
     public function toLinkAttributes(): array
@@ -137,42 +188,5 @@ class LinkInstance extends Model
         }
 
         return $this->linkValue !== null && $this->linkValue !== '';
-    }
-
-
-    // Private Methods
-    // =========================================================================
-
-    private static function _resolveLinkTypeHandle(array $data, HyperField $field): string
-    {
-        if (!empty($data['linkTypeHandle'])) {
-            return (string)$data['linkTypeHandle'];
-        }
-
-        if (!empty($data['handle'])) {
-            return (string)$data['handle'];
-        }
-
-        if (!empty($data['type'])) {
-            foreach ($field->getLinkTypes() as $linkType) {
-                // Accept either the FQCN (verbb\hyper\links\Url) or the short, author-owned
-                // type key (`url`) as `type` — the latter is what we now document for
-                // programmatic content, so developers never have to reference class names.
-                if ($linkType::class === $data['type'] || $linkType::typeKey() === $data['type']) {
-                    return (string)$linkType->handle;
-                }
-            }
-        }
-
-        return (string)$field->defaultLinkType;
-    }
-
-    private static function _normalizeLinkValue(mixed $linkValue): mixed
-    {
-        if ($linkValue === '' || $linkValue === []) {
-            return null;
-        }
-
-        return $linkValue;
     }
 }

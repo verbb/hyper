@@ -87,7 +87,7 @@ class MissingLink extends Link
         if ($this->_opaqueSerializedPayload !== null) {
             $payload = $this->_opaqueSerializedPayload;
 
-            if (empty($payload['uid'])) {
+            if ($this->uid || empty($payload['uid'])) {
                 $payload['uid'] = $this->uid ?: \craft\helpers\StringHelper::UUID();
                 $this->uid = $payload['uid'];
             }
@@ -96,12 +96,24 @@ class MissingLink extends Link
                 $payload['linkTypeHandle'] = $this->handle;
             }
 
-            return array_filter($payload, static function($value) {
-                return ($value !== null && $value !== '' && $value !== []);
-            });
+            return $payload;
         }
 
         return parent::getSerializedValues();
+    }
+
+    public function isEmpty(): bool
+    {
+        return $this->_opaqueSerializedPayload !== null ? $this->_opaqueSerializedPayload === [] : parent::isEmpty();
+    }
+
+    public function getInputConfig(): array
+    {
+        return [
+            ...parent::getInputConfig(),
+            // A separate envelope prevents frontend normalization of unavailable fields.
+            'unsupportedPayload' => $this->getSerializedValues(),
+        ];
     }
 
     public function getLinkUrl(): ?string
