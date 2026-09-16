@@ -82,7 +82,8 @@ class Content extends Component
 
             $encoded = $adapter->encode($newValue, $ref);
 
-            if ($this->_serializedValuesEqual($existingEncoded, $encoded)) {
+            if ($this->_serializedValuesEqual($existingEncoded, $encoded)
+                && !($options->persistTransformedValues && $newValue !== $decoded)) {
                 return false;
             }
 

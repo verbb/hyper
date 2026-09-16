@@ -98,3 +98,24 @@ it('finds field layout uids for a Hyper field', function() {
 
     expect($layoutUids)->not->toBeEmpty();
 });
+
+it('persists an explicit empty migration replacement without weakening dry runs', function() {
+    $field = HyperFixtureFactory::hyperField();
+    $section = HyperFixtureFactory::entrySection($field);
+    $entry = HyperFixtureFactory::entryWithLinks($section, []);
+    $uid = $entry->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $where = ['elementId' => $entry->id, 'siteId' => $entry->siteId];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$uid => ['url' => '']]),
+    ], $where)->execute();
+    $read = fn() => (new \craft\db\Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+    $original = $read();
+    $transform = fn() => new LinkCollection($field, []);
+    $service = Hyper::$plugin->getContent();
+    $dry = $service->modify($field, $transform, new ModifyOptions(dryRun: true, elementIds: [$entry->id], persistTransformedValues: true));
+    expect($dry->wouldModify)->toBe(1);
+    expect($read())->toBe($original);
+    $result = $service->modify($field, $transform, new ModifyOptions(elementIds: [$entry->id], persistTransformedValues: true));
+    expect($result->modified)->toBe(1);
+    expect(json_decode($read(), true)[$uid])->toBe([]);
+});

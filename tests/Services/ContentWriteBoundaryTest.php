@@ -91,6 +91,28 @@ it('embedded content obeys the same content prefilter as durable values', functi
     expect($matching->matched)->toBe(1)->and($matching->modified)->toBe(1);
 });
 
+it('expanding Matrix owners retains explicit migration replacement options', function() {
+    ['matrix' => $matrix, 'blockEntryType' => $type, 'hyperField' => $field] = F::matrixFieldWithHyper();
+    $owner = F::entryWithMatrixHyperLink(F::entrySectionWithField($matrix), $matrix, $field, $type, []);
+    $block = $owner->getFieldValue($matrix->handle)->one();
+    $uid = $block->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $where = ['elementId' => $block->id, 'siteId' => $block->siteId];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new yii\db\JsonExpression([$uid => ['url' => '']])], $where)->execute();
+    $options = new ModifyOptions(elementIds: [$owner->id], persistTransformedValues: true);
+    $flags = [];
+    (new \verbb\hyper\content\ElementContentStore())->eachFieldValue($field, function($ref, $expandedOptions) use (&$flags) {
+        $flags[] = $expandedOptions->persistTransformedValues;
+        return false;
+    }, $options);
+    expect($flags)->toBe([true]);
+    $result = Hyper::$plugin->getContent()->modify($field, fn() => new LinkCollection($field, []), new ModifyOptions(
+        elementIds: [$owner->id], persistTransformedValues: true,
+    ));
+    expect($result->modified)->toBe(1);
+    $raw = (new Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+    expect(Json::decode($raw)[$uid])->toBe([]);
+});
+
 it('whole-field writes reject an owner changed after the migration snapshot', function() {
     $f = contentWriteFixture();
     $before = ($f['read'])();
