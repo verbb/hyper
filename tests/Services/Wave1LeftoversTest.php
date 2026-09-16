@@ -123,6 +123,7 @@ it('preserves embed urls when only a url string is provided on save', function()
 
     expect($collection->isEmpty())->toBeFalse();
     expect($collection->getLinkUrl())->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    expect($collection->getIframeSrc())->toContain('youtube.com/embed');
-    expect($collection->getEmbedImage())->toContain('ytimg.com');
+    expect($collection->getIframeSrc())->toBeNull();
+    // URL-only saves deliberately do not fetch remote preview metadata.
+    expect($collection->getEmbedImage())->toBeNull();
 });

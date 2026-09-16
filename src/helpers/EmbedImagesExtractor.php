@@ -2,17 +2,59 @@
 namespace verbb\hyper\helpers;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\http\EmbedClient;
 use verbb\hyper\models\Settings;
 
 use Embed\Detectors\Detector;
 use Embed\Detectors\Image;
-
-use GuzzleHttp\Client;
-
+use Embed\Http\Crawler;
 use Psr\Http\Message\UriInterface;
 
 class EmbedImagesExtractor extends Detector
 {
+    // Static Methods
+    // =========================================================================
+
+    public static function youtubeMaxResCandidate(string $imageUrl): ?string
+    {
+        if (!preg_match('#^(https?://(?:i\d*\.)?ytimg\.com/vi(?:_webp)?/)([^/]+)/(hqdefault|mqdefault|sddefault|default)(\.[a-z]+)(?:\?.*)?$#i', $imageUrl, $matches)) {
+            return null;
+        }
+
+        return $matches[1] . $matches[2] . '/maxresdefault' . $matches[4];
+    }
+
+    public static function preferYouTubeMaxRes(string $imageUrl, ?Crawler $crawler = null): ?string
+    {
+        $maxResUrl = self::youtubeMaxResCandidate($imageUrl);
+
+        if ($maxResUrl === null) {
+            return null;
+        }
+
+        try {
+            $settings = Hyper::$plugin->getSettings();
+            $crawler ??= new Crawler(new EmbedClient($settings->embedAllowedDomains, ['timeout' => 3]));
+            $response = $crawler->sendRequest($crawler->createRequest('HEAD', $maxResUrl));
+            $status = $response->getStatusCode();
+
+            // YouTube sometimes returns 200 with a tiny placeholder; prefer GET content-length when present
+            if ($status >= 200 && $status < 300) {
+                $length = (int)($response->getHeaderLine('Content-Length') ?: 0);
+
+                // Placeholder maxres responses are typically very small (~1KB); real thumbs are larger
+                if ($length === 0 || $length > 2000) {
+                    return $maxResUrl;
+                }
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+
     // Public Methods
     // =========================================================================
 
@@ -32,7 +74,7 @@ class EmbedImagesExtractor extends Detector
             }
 
             if (is_string($image) && $image !== '') {
-                $image = self::preferYouTubeMaxRes($image) ?? $image;
+                $image = self::preferYouTubeMaxRes($image, $this->extractor->getCrawler()) ?? $image;
             }
 
             return ['image' => $image];
@@ -58,21 +100,27 @@ class EmbedImagesExtractor extends Detector
 
         foreach (array_unique($imageUrls) as $imageUrl) {
             $url = $imageUrl instanceof UriInterface ? (string)$imageUrl : (string)$imageUrl;
-            $normalized[] = self::preferYouTubeMaxRes($url) ?? $url;
+            $normalized[] = self::preferYouTubeMaxRes($url, $this->extractor->getCrawler()) ?? $url;
         }
 
-        $client = new Client();
+        $crawler = $this->extractor->getCrawler();
         $largestImage = null;
         $largestSize = 0;
 
         // Fetch them, returning just the largest
         foreach (array_unique($normalized) as $imageUrl) {
             // Fetch the image content
-            $response = $client->get($imageUrl);
+            $response = $crawler->sendRequest($crawler->createRequest('GET', $imageUrl));
             $imageContent = $response->getBody()->getContents();
 
             // Get image dimensions
-            [$width, $height] = getimagesizefromstring($imageContent);
+            $dimensions = @getimagesizefromstring($imageContent);
+
+            if (!$dimensions) {
+                continue;
+            }
+
+            [$width, $height] = $dimensions;
 
             $size = $width * $height;
 
@@ -91,44 +139,6 @@ class EmbedImagesExtractor extends Detector
         return $largestImage;
     }
 
-    public static function youtubeMaxResCandidate(string $imageUrl): ?string
-    {
-        if (!preg_match('#^(https?://(?:i\d*\.)?ytimg\.com/vi(?:_webp)?/)([^/]+)/(hqdefault|mqdefault|sddefault|default)(\.[a-z]+)(?:\?.*)?$#i', $imageUrl, $matches)) {
-            return null;
-        }
-
-        return $matches[1] . $matches[2] . '/maxresdefault' . $matches[4];
-    }
-
-    public static function preferYouTubeMaxRes(string $imageUrl): ?string
-    {
-        $maxResUrl = self::youtubeMaxResCandidate($imageUrl);
-
-        if ($maxResUrl === null) {
-            return null;
-        }
-
-        try {
-            $client = new Client(['http_errors' => false, 'timeout' => 3]);
-            $response = $client->head($maxResUrl);
-            $status = $response->getStatusCode();
-
-            // YouTube sometimes returns 200 with a tiny placeholder; prefer GET content-length when present
-            if ($status >= 200 && $status < 300) {
-                $length = (int)($response->getHeaderLine('Content-Length') ?: 0);
-
-                // Placeholder maxres responses are typically very small (~1KB); real thumbs are larger
-                if ($length === 0 || $length > 2000) {
-                    return $maxResUrl;
-                }
-            }
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return null;
-    }
-
 
     // Private Methods
     // =========================================================================
@@ -145,5 +155,4 @@ class EmbedImagesExtractor extends Detector
             return $this->extractor->getUri();
         }
     }
-
 }

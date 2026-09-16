@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed embed metadata requests bypassing destination restrictions or exceeding response limits.
 - Fixed empty oEmbed values retaining legacy content after migration.
 - Fixed Linkit social links losing their configured link types during migration.
 - Fixed native Craft Link and Typed Link migrations replacing explicit destination sites with the content owner's site.

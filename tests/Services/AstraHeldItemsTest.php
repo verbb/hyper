@@ -16,16 +16,14 @@ it('rejects private and metadata addresses for embed hosts', function() {
     expect(UrlSafety::isPublicIp('192.168.1.10'))->toBeFalse();
     expect(UrlSafety::isPublicIp('169.254.169.254'))->toBeFalse();
     expect(UrlSafety::isPublicIp('::1'))->toBeFalse();
-    expect(UrlSafety::isPublicFetchHost('localhost'))->toBeFalse();
-    expect(UrlSafety::isPublicFetchHost('metadata.google.internal'))->toBeFalse();
+    expect(UrlSafety::isPublicIp('100.64.0.1'))->toBeFalse();
+    expect(UrlSafety::isPublicIp('::ffff:127.0.0.1'))->toBeFalse();
 });
 
 it('fails closed when resolving an embed URL that targets a private host', function() {
-    $error = null;
-    $resolved = UrlSafety::resolvePublicEmbedUrl('http://127.0.0.1/', 2, $error);
-
-    expect($resolved)->toBeNull()
-        ->and($error)->toBe('Embed URL host is not allowed.');
+    $client = new \verbb\hyper\http\EmbedClient();
+    expect(fn()=> $client->sendRequest(new \GuzzleHttp\Psr7\Request('GET','http://127.0.0.1/')))
+        ->toThrow(RuntimeException::class, 'Embed URL host is not allowed.');
 });
 
 it('dual-reads link type config handles and rewrites field settings to UIDs', function() {

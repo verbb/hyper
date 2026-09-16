@@ -38,26 +38,16 @@ class Settings extends Model
         return array_replace_recursive($defaults, $this->embedClientConfig);
     }
 
-    /**
-     * Safe Curl defaults for Embed fetches. Projects may still override via
-     * embedClientSettings, but TLS verification is on unless explicitly disabled.
-     */
+    /** Transport security cannot be disabled by legacy Curl settings. */
     public function getEmbedClientSettings(): array
     {
-        $settings = array_replace([
+        return [
+            'timeout' => max(1, min(10, (int)($this->embedClientSettings['timeout'] ?? 10))),
             'ssl_verify_peer' => true,
             'ssl_verify_host' => 2,
-            'timeout' => 10,
-            'connect_timeout' => 10,
+            'follow_location' => false,
             'max_redirs' => 0,
-        ], $this->embedClientSettings);
-
-        // Hyper resolves redirects itself with a public-IP policy (SSRF). Never let
-        // project overrides re-enable opaque Curl FOLLOWLOCATION.
-        $settings['follow_location'] = false;
-        $settings['max_redirs'] = 0;
-
-        return $settings;
+        ];
     }
 
     /**
@@ -100,5 +90,4 @@ class Settings extends Model
     {
         return UrlSafety::isAllowedUrl($url, $this->allowedUriSchemes);
     }
-
 }
