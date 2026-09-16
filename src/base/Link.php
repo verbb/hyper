@@ -317,13 +317,7 @@ abstract class Link extends Element implements LinkInterface
         return $this instanceof ElementLink;
     }
 
-    public function scenarios(): array
-    {
-        $scenarios = parent::scenarios();
-        $scenarios[self::SCENARIO_SETTINGS] = [];
 
-        return $scenarios;
-    }
 
     public function getSettingsConfig(): array
     {

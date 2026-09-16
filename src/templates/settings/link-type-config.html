@@ -58,6 +58,8 @@
         <p>{{ 'Configure the types of links available for users to pick from.' | t('hyper') }}</p>
     </div>
 
+    {{ forms.errorList(config.getErrors('linkTypes')) }}
+
     <div
         class="hyper-configurator"
         data-hyper-settings

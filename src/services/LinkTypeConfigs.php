@@ -3,6 +3,7 @@ namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
+use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\StringHelper;
 use verbb\hyper\links as linkTypes;
 use verbb\hyper\models\LinkTypeConfig;
@@ -336,6 +337,33 @@ class LinkTypeConfigs extends Component
         if ($savedHandle === self::DEFAULT_HANDLE && $config->handle !== self::DEFAULT_HANDLE) {
             $config->addError('handle', Craft::t('hyper', 'The Default link type config handle cannot be changed.'));
 
+            return false;
+        }
+
+        // Shared configs must satisfy the same link-type rules as field-owned
+        // configs before they can change every field that consumes them.
+        $field = new HyperField([
+            'linkTypeConfig' => self::CUSTOM_HANDLE,
+            'linkTypes' => $normalized,
+        ]);
+        $field->validateLinkTypes();
+
+        foreach ($field->getErrors('linkTypes') as $error) {
+            $config->addError('linkTypes', $error);
+        }
+
+        foreach ($field->getLinkTypes() as $linkType) {
+            if (!$linkType->validate()) {
+                foreach ($linkType->getErrorSummary(true) as $error) {
+                    $config->addError('linkTypes', Craft::t('hyper', '{label}: {error}', [
+                        'label' => $linkType->label,
+                        'error' => $error,
+                    ]));
+                }
+            }
+        }
+
+        if ($config->hasErrors()) {
             return false;
         }
 

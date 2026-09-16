@@ -26,6 +26,8 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed shared and field-owned link type configurations accepting invalid settings or no enabled types.
+- Fixed custom link type handles colliding in GraphQL type names.
 - Fixed renaming the Default link type config handle removing its default status and deletion protection.
 - Fixed configured link types being lost when ordering positions were duplicated.
 - Fixed different fields sharing a layout alias reusing each other's GraphQL custom-field definitions.

@@ -138,9 +138,14 @@ class Links extends Component
     public function createSettingsPrototype(mixed $config): LinkInterface
     {
         $link = $this->createLink($config);
+        $settings = is_array($config) ? ComponentHelper::mergeSettings($config) : [];
 
         if ($link instanceof Link) {
             $link->clearContentState();
+            // Supply the same defaults as the settings UI for programmatic configs.
+            // Explicit empty values remain invalid and are handled by settings rules.
+            $link->label ??= $settings['label'] ?? $link::displayName();
+            $link->handle ??= $settings['handle'] ?? $link::typeKey();
             $link->setScenario(Link::SCENARIO_SETTINGS);
         }
 

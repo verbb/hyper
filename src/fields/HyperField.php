@@ -265,7 +265,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $linkTypes = $this->getLinkTypes();
 
         // Ensure there is at least one enabled link type
-        if (!ArrayHelper::getColumn($linkTypes, 'enabled')) {
+        if (!array_filter(ArrayHelper::getColumn($linkTypes, 'enabled'))) {
             $this->addError('linkTypes', Craft::t('hyper', 'You must enable at least one link type.'));
         }
 
@@ -273,6 +273,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         // content payloads, `getLinkTypeByHandle()`), so they must be unique within the
         // field. The client keeps row keys unique, but this is the authoritative guard.
         $seen = [];
+        $gqlHandles = [];
 
         foreach ($linkTypes as $linkType) {
             $handle = (string)$linkType->handle;
@@ -288,6 +289,17 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             }
 
             $seen[$handle] = true;
+
+            $gqlHandle = StringHelper::toPascalCase($handle);
+
+            if (isset($gqlHandles[$gqlHandle]) && $gqlHandles[$gqlHandle] !== $handle) {
+                $this->addError('linkTypes', Craft::t('hyper', 'Link type handles “{first}” and “{second}” produce the same GraphQL type name. Choose distinct handles.', [
+                    'first' => $gqlHandles[$gqlHandle],
+                    'second' => $handle,
+                ]));
+            }
+
+            $gqlHandles[$gqlHandle] = $handle;
         }
     }
 
