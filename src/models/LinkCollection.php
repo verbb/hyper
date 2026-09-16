@@ -22,15 +22,17 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
     private HyperField $_field;
     private array $_links = [];
     private ?ElementInterface $_element = null;
+    private ?int $_ownerSiteId = null;
     private ?LinkInterface $_firstLink = null;
 
 
     // Public Methods
     // =========================================================================
 
-    public function __construct(HyperField $field, array $links = [], ?ElementInterface $element = null)
+    public function __construct(HyperField $field, array $links = [], ?ElementInterface $element = null, ?int $ownerSiteId = null)
     {
         $this->_element = $element;
+        $this->_ownerSiteId = $element?->siteId ?? $ownerSiteId;
         $this->_field = $field;
 
         $this->setLinks($links);
@@ -240,7 +242,7 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
 
         // Normalized values can be assigned to a different field or owner. Their
         // links must use the receiving settings without changing the source value.
-        return new self($field, $this->_links, $element);
+        return new self($field, $this->_links, $element, $this->_ownerSiteId);
     }
 
     public function serializeValues(?ElementInterface $element = null): array
@@ -264,16 +266,16 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
     {
         // Every insertion path applies the destination layout and settings.
         if ($data instanceof LinkInterface) {
-            $link = $this->_rebindLinkObject($this->_field, $data, $this->_element);
+            $link = $this->_rebindLinkObject($this->_field, $data);
         } elseif (is_array($data)) {
             $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($this->_field, $data);
         } else {
             return null;
         }
 
-        if ($link && $this->_element) {
-            $link->ownerSiteId = $this->_element->siteId;
-            $link->siteId = $this->_element->siteId;
+        if ($link && $this->_ownerSiteId !== null) {
+            $link->ownerSiteId = $this->_ownerSiteId;
+            $link->siteId = $this->_ownerSiteId;
         }
 
         return $link;
@@ -283,7 +285,7 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
      * Rebind a bare Link object onto this field’s configured prototype/layout so
      * programmatic `new Url(); $link->fields = […]` examples work (Astra H3-A17).
      */
-    private function _rebindLinkObject(HyperField $field, LinkInterface $link, ?ElementInterface $element): LinkInterface
+    private function _rebindLinkObject(HyperField $field, LinkInterface $link): LinkInterface
     {
         if ($link instanceof \verbb\hyper\links\MissingLink) {
             return Hyper::$plugin->getLinks()->createLinkFromSerialized($field, $link->getSerializedValues());
@@ -312,8 +314,9 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
             $rebound = Hyper::$plugin->getLinks()->createLinkFromInstance($field, $instance);
 
             if ($rebound) {
-                if ($element) {
-                    $rebound->ownerSiteId = $element->siteId;
+                if ($this->_ownerSiteId !== null) {
+                    $rebound->ownerSiteId = $this->_ownerSiteId;
+                    $rebound->siteId = $this->_ownerSiteId;
                 }
 
                 if ($instance->fields && $rebound instanceof Link) {
@@ -334,8 +337,9 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
 
         $link->field = $field;
 
-        if ($element) {
-            $link->ownerSiteId = $element->siteId;
+        if ($this->_ownerSiteId !== null) {
+            $link->ownerSiteId = $this->_ownerSiteId;
+            $link->siteId = $this->_ownerSiteId;
         }
 
         return $link;

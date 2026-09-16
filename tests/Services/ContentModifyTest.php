@@ -119,3 +119,46 @@ it('persists an explicit empty migration replacement without weakening dry runs'
     expect($result->modified)->toBe(1);
     expect(json_decode($read(), true)[$uid])->toBe([]);
 });
+
+it('keeps content row site context through normalized callback mutations', function() {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $related = HyperFixtureFactory::entriesField();
+    $prototype = new \verbb\hyper\links\Entry();
+    $layout = $prototype::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($related)]);
+    $prototype->setFieldLayout($layout);
+    $field = HyperFixtureFactory::hyperFieldWithLinkTypes([HyperFixtureFactory::linkTypeConfig($prototype)], [
+        'multipleLinks' => true,
+        'translationMethod' => \craft\base\Field::TRANSLATION_METHOD_SITE,
+    ]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $target = HyperFixtureFactory::plainEntry($section, 'Localized target', [], $primary);
+    $owner = HyperFixtureFactory::plainEntry($section, 'Content owner', [$field->handle => [[
+        'handle' => 'entry', 'linkValue' => [$target->id], 'fields' => [$related->handle => [$target->id]],
+    ]]], $primary);
+    $uid = $owner->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $where = ['elementId' => $owner->id, 'siteId' => $secondary->id];
+    $raw = json_decode((new \craft\db\Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar(), true);
+    unset($raw[$uid][0]['linkSiteId']);
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new \yii\db\JsonExpression($raw)], $where)->execute();
+    $found = [];
+    Hyper::$plugin->content->modify($field, function(LinkCollection $links, \verbb\hyper\content\ContentRef $ref) use (&$found, $primary, $related) {
+        $found[$ref->siteId] = $links->first()->getElement()?->siteId;
+        expect($links->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($ref->siteId);
+        $before = $links->serializeValues();
+        $copy = $links->withLinks($links->getLinks());
+        expect($copy->first()->getElement()?->siteId)->toBe($ref->siteId);
+        expect($copy->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($ref->siteId);
+        $copy[] = $before[0];
+        expect($copy[1]->getElement()?->siteId)->toBe($ref->siteId);
+        $explicit = $before[0];
+        $explicit['linkSiteId'] = $primary->id;
+        $copy[] = $explicit;
+        expect($copy[2]->getElement()?->siteId)->toBe($primary->id);
+        expect($copy[2]->getFieldValue($related->handle)->one()?->siteId)->toBe($ref->siteId);
+        expect($links->serializeValues())->toBe($before);
+        return $copy;
+    }, new ModifyOptions(dryRun: true, elementIds: [$owner->id]));
+    expect($found[$secondary->id] ?? null)->toBe($secondary->id);
+});

@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed content API callbacks resolving implicit-site links in the current site instead of the content’s site.
 - Fixed Embed links ignoring authored link titles.
 - Fixed Site and Embed links ignoring configured Link Text defaults.
 - Fixed field layout edits being lost when saving immediately.

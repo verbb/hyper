@@ -43,7 +43,7 @@ class HyperFieldAdapter implements JsonFieldAdapter
             $stored = [];
         }
 
-        return new LinkCollection($this->_field, $stored);
+        return new LinkCollection($this->_field, $stored, ownerSiteId: $ref->siteId);
     }
 
     public function encode(mixed $value, ContentRef $ref): mixed
