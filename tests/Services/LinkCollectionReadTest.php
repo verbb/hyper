@@ -132,6 +132,10 @@ it('does not clone the field definition when the collection is cloned', function
     expect($clone)->not->toBe($collection);
     expect($clone->first())->not->toBe($collection->first());
     expect($clone->getUrl())->toBe($collection->getUrl());
+    expect($clone->first()->field)->toBe($field);
+    expect((new ReflectionProperty($clone, '_field'))->getValue($clone))->toBe($field);
+    $clone->first()->linkText = 'Clone only';
+    expect($collection->getCustomLinkText())->toBe('Clone');
 });
 
 it('keeps first() in sync after array access mutations', function() {

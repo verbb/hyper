@@ -131,7 +131,7 @@ it('reads link type definitions from serialized settings without content bleed',
 it('persists link type configs in project config', function() {
     $configs = Hyper::$plugin->getLinkTypeConfigs();
     $stock = $configs->createStockSerializedLinkTypes();
-    $stock = array_slice($stock, 0, 1);
+    $stock = array_values(array_filter($stock, fn(array $type) => $type['type'] === Url::class));
     $stock[0]['label'] = 'Simple URL';
     $stock[0]['sortOrder'] = '0';
 
@@ -170,7 +170,7 @@ it('reserves the default handle for the seeded config', function() {
 
 it('reorders link type configs for the admin table', function() {
     $configs = Hyper::$plugin->getLinkTypeConfigs();
-    $stock = array_slice($configs->createStockSerializedLinkTypes(), 0, 1);
+    $stock = array_values(array_filter($configs->createStockSerializedLinkTypes(), fn(array $type) => $type['type'] === Url::class));
     $simple = new \verbb\hyper\models\LinkTypeConfig([
         'name' => 'Simple',
         'handle' => 'simple',

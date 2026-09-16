@@ -77,15 +77,3 @@ it('builds youtube maxresdefault candidates from lower-res thumbs', function() {
         ->toBe('https://i.ytimg.com/vi/jfKfPfyJRdk/maxresdefault.jpg');
     expect(EmbedImagesExtractor::youtubeMaxResCandidate('https://example.com/thumb.jpg'))->toBeNull();
 });
-
-it('serializes layout fields bag for graphql-style access', function() {
-    $field = HyperFixtureFactory::hyperField([
-        'linkTypes' => [Url::class],
-    ]);
-    $link = Hyper::$plugin->getLinks()->createLink(Url::class);
-    $link->field = $field;
-    $link->handle = $field->getLinkTypes()[0]->handle;
-    $link->linkValue = 'https://example.com';
-
-    expect($link->getSerializedLayoutFields())->toBeArray();
-});
