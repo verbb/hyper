@@ -74,23 +74,33 @@ final class SaveLinkPerfScenario
      */
     public static function profileLegacyUpsertCache(array $scenario): array
     {
-        $owner = self::reloadOwner($scenario['owner']);
+        // The legacy simulation must not borrow today's automatic priming or warm cache.
+        $relations = Hyper::$plugin->getLinkRelations();
+        $enabled = $relations->enableRequestPriming;
+        $relations->resetRequestState();
+        $relations->enableRequestPriming = false;
+        try {
+            $owner = self::reloadOwner($scenario['owner']);
 
-        if (!$owner) {
-            throw new \RuntimeException('Owner entry missing for upsertCache perf scenario.');
+            if (!$owner) {
+                throw new \RuntimeException('Owner entry missing for upsertCache perf scenario.');
+            }
+
+            return QueryProfiler::profile(function() use ($scenario, $owner): int {
+                LegacyElementCacheSeeder::seedFromOwner($scenario['field'], $owner);
+
+                return (int)(new Query())
+                    ->from('{{%hyper_element_cache}}')
+                    ->where([
+                        'sourceId' => $owner->id,
+                        'fieldId' => $scenario['field']->id,
+                    ])
+                    ->count();
+            });
+        } finally {
+            $relations->resetRequestState();
+            $relations->enableRequestPriming = $enabled;
         }
-
-        return QueryProfiler::profile(function() use ($scenario, $owner): int {
-            LegacyElementCacheSeeder::seedFromOwner($scenario['field'], $owner);
-
-            return (int)(new Query())
-                ->from('{{%hyper_element_cache}}')
-                ->where([
-                    'sourceId' => $owner->id,
-                    'fieldId' => $scenario['field']->id,
-                ])
-                ->count();
-        });
     }
 
     /**
@@ -101,8 +111,8 @@ final class SaveLinkPerfScenario
         $pattern = 'LIMIT ?';
         $count = 0;
 
-        foreach ($profile['topPatterns'] ?? [] as $query => $hits) {
-            if (str_contains($query, 'elements`.`id`=?)') && str_contains($query, $pattern)) {
+        foreach ($profile['patterns'] ?? throw new \RuntimeException('Full query patterns are required for assertions.') as $query => $hits) {
+            if (preg_match('/["`]elements["`]\.["`]id["`]\s*=\s*\?\)/', $query) && str_contains($query, $pattern)) {
                 $count += $hits;
             }
         }

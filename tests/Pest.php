@@ -8,7 +8,7 @@ use verbb\hyper\Hyper;
 uses(Tests\General\TestCase::class)
     ->in('Gql', 'Performance', 'Services');
 
-beforeEach(function(): void {
+uses()->beforeEach(function(): void {
     ResetTestDatabase::resetHyperData();
 
     if (Hyper::$plugin) {

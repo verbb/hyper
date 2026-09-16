@@ -26,8 +26,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "craftcms/cms": "^5.0.0",
-        "embed/embed": "^3.0.0 || ^4.0.0",
+        "craftcms/cms": "^5.9",
+        "embed/embed": "^4.0.0",
         "nystudio107/craft-plugin-vite": "^5.0.0",
         "verbb/base": "^3.0.0"
     },
@@ -37,7 +37,9 @@
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin": "^3.0",
         "vlucas/phpdotenv": "^5.6",
-        "yiisoft/yii2-shell": "^2.0.3"
+        "yiisoft/yii2-shell": "^2.0.3",
+        "craftcms/feed-me": "^6.0",
+        "verbb/vizy": "3.2.7"
     },
     "autoload": {
         "psr-4": {
@@ -57,15 +59,14 @@
         }
     },
     "scripts": {
-        "test": "./vendor/bin/pest --bootstrap tests/bootstrap-craft.php -c phpunit.craft.xml tests/Services --exclude-group=slow --exclude-group=perf",
-        "test:setup": "@php tests/bin/test-setup.php",
-        "test:perf": "./vendor/bin/pest --bootstrap tests/bootstrap-craft.php -c phpunit.craft.xml tests --group=perf",
-        "test:baseline": "@php tests/bin/capture-baselines.php",
-        "test:baseline:wired": "@php tests/bin/capture-wired-baselines.php",
-        "test:baseline:save": "@php tests/bin/capture-save-baselines.php",
-        "test:baseline:assert": "@php tests/bin/assert-baselines.php",
-        "test:baseline:check": "./vendor/bin/pest --bootstrap tests/bootstrap-craft.php -c phpunit.craft.xml tests/Performance/BaselineRegressionTest.php --group=baseline",
-        "test:all": "./vendor/bin/pest --bootstrap tests/bootstrap-craft.php -c phpunit.craft.xml tests"
+        "test:baseline": "ddev test --task=capture-baselines",
+        "test:baseline:wired": "ddev test --task=capture-wired-baselines",
+        "test:baseline:save": "ddev test --task=capture-save-baselines",
+        "test:baseline:assert": "ddev test --task=assert-baselines",
+        "test:baseline:check": "ddev test --suite=baseline",
+        "test": "ddev test",
+        "test:all": "ddev test --suite=all",
+        "test:perf": "ddev test --suite=performance"
     },
     "extra": {
         "name": "Hyper",

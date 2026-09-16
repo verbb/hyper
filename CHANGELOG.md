@@ -10,6 +10,7 @@
 - `HyperField::getHydratedLinkBlocks()` shared by bulk add and clipboard paste (`mode=seed`).
 
 ### Changed
+- Hyper 3 now requires Craft 5.9 or later and Embed 4.
 - Named **Link Type Config** field settings are stored by config **UID** (dual-read legacy handles on load). Renaming a config handle no longer orphans fields.
 - Embed fetches resolve redirects manually with a public-IP policy; Curl `follow_location` is forced off even if overridden in `embedClientSettings`.
 - Normalize CP General Settings chrome to the shared `verbb-base` settings layout (Settings → Plugins → Hyper crumbs, `pageTabs` / `pageTitle` helpers; empty settings message unchanged).

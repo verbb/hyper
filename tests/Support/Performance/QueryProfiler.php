@@ -53,6 +53,8 @@ class QueryProfiler
             'durationMs' => round((hrtime(true) - $start) / 1_000_000, 2),
             'queries' => count($queries),
             'duplicatePatterns' => array_sum(array_map(static fn(int $count): int => max(0, $count - 1), $patterns)),
+            // Assertions need every query; the top five are only a diagnostic summary.
+            'patterns' => $patterns,
             'topPatterns' => array_slice($patterns, 0, 5, true),
         ];
     }

@@ -1,0 +1,31 @@
+{
+    "project": "hyper-react-tests",
+    "suites": {
+        "default": [
+            "--exclude-group=slow",
+            "--exclude-group=perf",
+            "--exclude-group=perf-large",
+            "--exclude-group=migrate-plugins",
+            "--exclude-group=baseline"
+        ],
+        "all": [
+            "--exclude-group=perf-large",
+            "--exclude-group=migrate-plugins"
+        ],
+        "performance": [
+            "--group=perf"
+        ],
+        "slow": [
+            "--group=slow"
+        ],
+        "baseline": [
+            "--group=baseline"
+        ]
+    },
+    "tasks": {
+        "capture-baselines": "tests/bin/capture-baselines.php",
+        "capture-wired-baselines": "tests/bin/capture-wired-baselines.php",
+        "capture-save-baselines": "tests/bin/capture-save-baselines.php",
+        "assert-baselines": "tests/bin/assert-baselines.php"
+    }
+}

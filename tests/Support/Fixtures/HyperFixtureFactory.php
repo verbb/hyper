@@ -36,7 +36,7 @@ class HyperFixtureFactory
     {
         self::$sequence++;
 
-        return sprintf('%s%s%s', $prefix, self::$sequence, substr(StringHelper::UUID(), 0, 4));
+        return sprintf('%s%s%s', $prefix, self::$sequence, substr(str_replace('-', '', StringHelper::UUID()), 0, 12));
     }
 
     /**
@@ -604,6 +604,9 @@ class HyperFixtureFactory
      */
     public static function ensureSites(int $count = 2): array
     {
+        Craft::$app->getSites()->refreshSites();
+        Craft::$app->getIsMultiSite(true);
+        Craft::$app->getIsMultiSite(true, true);
         $sites = Craft::$app->getSites()->getAllSites();
 
         if (count($sites) >= $count) {
@@ -633,6 +636,8 @@ class HyperFixtureFactory
                 throw new RuntimeException('Failed creating multisite fixture: ' . json_encode($site->getErrors()));
             }
 
+            Craft::$app->getIsMultiSite(true);
+            Craft::$app->getIsMultiSite(true, true);
             $sites = Craft::$app->getSites()->getAllSites();
         }
 

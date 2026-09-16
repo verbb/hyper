@@ -30,7 +30,7 @@ final class NavLinkPerfScenario
         $targets = HyperFixtureFactory::entryTargets($linkCount, $section);
         $owner = HyperFixtureFactory::entryWithLinkPayloads(
             $section,
-            array_map(static fn(Entry $target): array => HyperFixtureFactory::entryLinkPayload($target), $targets),
+            array_map(static fn(Entry $target): array => HyperFixtureFactory::entryLinkPayload($target, self::targetLabel($target)), $targets),
             'Nav with ' . $linkCount . ' links',
         );
 
@@ -40,6 +40,7 @@ final class NavLinkPerfScenario
             'targets' => $targets,
             'owners' => [$owner],
             'expectedLinked' => $linkCount,
+            'expectedRows' => array_map(fn($target) => self::expectedRow($owner, $target), $targets),
         ];
     }
 
@@ -58,13 +59,18 @@ final class NavLinkPerfScenario
         $section = HyperFixtureFactory::entrySection($field, null, true);
         $targets = HyperFixtureFactory::entryTargets($ownerCount, $section);
         $owners = [];
+        $expectedRows = [];
 
         foreach ($targets as $target) {
             $owners[] = HyperFixtureFactory::entryWithLinkPayloads(
                 $section,
-                [HyperFixtureFactory::entryLinkPayload($target, $target->title)],
+                [HyperFixtureFactory::entryLinkPayload($target, self::targetLabel($target))],
                 'Nav item for ' . $target->title,
             );
+        }
+
+        foreach ($owners as $i => $owner) {
+            $expectedRows[] = self::expectedRow($owner, $targets[$i]);
         }
 
         return [
@@ -73,6 +79,7 @@ final class NavLinkPerfScenario
             'targets' => $targets,
             'owners' => $owners,
             'expectedLinked' => $ownerCount,
+            'expectedRows' => $expectedRows,
         ];
     }
 
@@ -92,17 +99,20 @@ final class NavLinkPerfScenario
         $field = HyperFixtureFactory::hyperField(['multipleLinks' => true]);
         $section = HyperFixtureFactory::entrySection($field, null, true);
         $owners = [];
+        $expectedRows = [];
 
+        // Reuse target IDs across sites to catch caches accidentally keyed only by ID.
+        $targets = HyperFixtureFactory::entryTargets($ownersPerSite, $section, $sites[0]);
         foreach ($sites as $site) {
-            $targets = HyperFixtureFactory::entryTargets($ownersPerSite, $section, $site);
-
-            foreach ($targets as $target) {
+            foreach ($targets as $original) {
+                $target = HyperFixtureFactory::localizedEntryForSite($original, $site);
                 $owners[] = HyperFixtureFactory::entryWithLinkPayloads(
                     $section,
-                    [HyperFixtureFactory::entryLinkPayload($target, $target->title)],
+                    [HyperFixtureFactory::entryLinkPayload($target, self::targetLabel($target))],
                     sprintf('%s nav %s', $site->handle, $target->title),
                     $site,
                 );
+                $expectedRows[] = self::expectedRow($owners[array_key_last($owners)], $target);
             }
         }
 
@@ -112,6 +122,7 @@ final class NavLinkPerfScenario
             'targets' => [],
             'owners' => $owners,
             'expectedLinked' => $sitesCount * $ownersPerSite,
+            'expectedRows' => $expectedRows,
             'sites' => $sites,
         ];
     }
@@ -127,14 +138,14 @@ final class NavLinkPerfScenario
         $relations->enableRequestPriming = false;
 
         $legacy = QueryProfiler::profile(function() use ($scenario): int {
-            return self::countResolvedElements($scenario['field'], $scenario['section']);
+            return self::countResolvedLinks($scenario);
         });
 
         $relations->resetRequestState();
         $relations->enableRequestPriming = true;
 
         $wired = QueryProfiler::profile(function() use ($scenario): int {
-            return self::countResolvedElements($scenario['field'], $scenario['section']);
+            return self::countResolvedLinks($scenario);
         });
 
         $relations->resetRequestState();
@@ -158,7 +169,7 @@ final class NavLinkPerfScenario
         $relations->enableRequestPriming = true;
 
         $profile = QueryProfiler::profile(function() use ($scenario): int {
-            return self::countResolvedUrlsAndText($scenario['field'], $scenario['section']);
+            return self::countResolvedLinks($scenario);
         });
 
         $relations->resetRequestState();
@@ -170,7 +181,7 @@ final class NavLinkPerfScenario
     {
         $count = 0;
 
-        foreach ($profile['topPatterns'] ?? [] as $query => $hits) {
+        foreach ($profile['patterns'] ?? throw new \RuntimeException('Full query patterns are required for assertions.') as $query => $hits) {
             if (str_contains($query, 'hyper_element_cache')) {
                 $count += $hits;
             }
@@ -179,37 +190,39 @@ final class NavLinkPerfScenario
         return $count;
     }
 
-    private static function countResolvedElements(HyperField $field, Section $section): int
+    private static function targetLabel(Entry $target): string
     {
-        $linked = 0;
-
-        foreach (Entry::find()->section($section->handle)->all() as $entry) {
-            $links = $entry->getFieldValue($field->handle);
-
-            foreach ($links ?? [] as $link) {
-                if ($link instanceof ElementLink && $link->getElement()) {
-                    $linked++;
-                }
-            }
-        }
-
-        return $linked;
+        return 'Target ' . $target->id . ' on site ' . $target->siteId;
     }
 
-    private static function countResolvedUrlsAndText(HyperField $field, Section $section): int
+    private static function expectedRow(Entry $owner, Entry $target): array
     {
-        $resolved = 0;
+        return [$owner->id, $owner->siteId, $target->id, $target->siteId, $target->getUrl(), self::targetLabel($target)];
+    }
 
-        foreach (Entry::find()->section($section->handle)->all() as $entry) {
-            $links = $entry->getFieldValue($field->handle);
-
-            foreach ($links ?? [] as $link) {
-                if ($link instanceof ElementLink && $link->getUrl() && $link->getLinkText()) {
-                    $resolved++;
-                }
+    private static function countResolvedLinks(array $scenario): int
+    {
+        // Propagated copies of an owner must not stand in for its intended site.
+        $pairs = ['or'];
+        foreach ($scenario['owners'] as $owner) {
+            $pairs[] = ['elements.id' => $owner->id, 'elements_sites.siteId' => $owner->siteId];
+        }
+        $entries = Entry::find()->section($scenario['section']->handle)
+            ->siteId(array_values(array_unique(array_column($scenario['expectedRows'], 1))))
+            ->andWhere($pairs)->all();
+        $actual = [];
+        foreach ($entries as $entry) {
+            foreach ($entry->getFieldValue($scenario['field']->handle) as $link) {
+                $target = $link instanceof ElementLink ? $link->getElement() : null;
+                $actual[] = [$entry->id, $entry->siteId, $target?->id, $target?->siteId, $link->getUrl(), $link->getLinkText()];
             }
         }
-
-        return $resolved;
+        $expected = $scenario['expectedRows'];
+        sort($expected);
+        sort($actual);
+        if ($actual !== $expected) {
+            throw new \RuntimeException('Hydration must preserve exact owner/target site pairs, URLs and labels: ' . json_encode(['expected' => $expected, 'actual' => $actual]));
+        }
+        return count($actual);
     }
 }
