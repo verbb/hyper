@@ -28,7 +28,6 @@ class MigrateCraftLinkContent extends PluginContentMigration
         'url' => linkTypes\Url::class,
         'product' => linkTypes\Product::class,
     ];
-
     public string $oldFieldTypeClass = CraftLinkField::class;
 
 
@@ -90,6 +89,14 @@ class MigrateCraftLinkContent extends PluginContentMigration
             $link->linkSiteId = $parsed['siteId'] ?? $this->contentSiteId;
         } else {
             $link->linkValue = is_scalar($value) ? (string)$value : null;
+            // Craft persists these schemes in the value; Hyper adds them when rendering.
+            if (is_string($link->linkValue)) {
+                if ($link instanceof linkTypes\Email) {
+                    $link->linkValue = preg_replace('/^mailto:/i', '', $link->linkValue);
+                } elseif ($link instanceof linkTypes\Phone) {
+                    $link->linkValue = preg_replace('/^tel:/i', '', $link->linkValue);
+                }
+            }
         }
 
         $link->linkText = isset($oldSettings['label']) && $oldSettings['label'] !== ''

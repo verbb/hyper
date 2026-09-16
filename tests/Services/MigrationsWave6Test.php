@@ -163,3 +163,13 @@ it('preserves an empty typed link field as an empty collection', function() {
         'type' => 'url', 'linkedUrl' => null, 'linkedId' => null,
     ]))->toBe([]);
 });
+
+it('removes native Craft email and phone schemes before Hyper rendering', function(string $type, string $value, string $expected) {
+    $field = HyperFixtureFactory::hyperField(['linkTypes' => [Email::class, \verbb\hyper\links\Phone::class]]);
+    $converted = (new \verbb\hyper\migrations\MigrateCraftLinkContent())->convertModel($field, ['type' => $type, 'value' => $value]);
+    expect($converted[0]['linkValue'])->toBe($expected);
+})->with([
+    ['email', 'mailto:hello@example.test', 'hello@example.test'],
+    ['tel', 'tel:+61312345678', '+61312345678'],
+    ['email', 'hello@example.test', 'hello@example.test'],
+]);
