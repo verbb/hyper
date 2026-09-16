@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}registry';export * from '${source}elementEditor';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -34,6 +34,64 @@ try {
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
+    // Exercise Craft's actual serializer: it reads the form before emitting its event.
+    // Direct save/autosave calls bypass the jQuery data('serializer') callback.
+    const directSave = await page.evaluate((nativeSource) => {
+        const form = document.createElement('form');
+        form.innerHTML = '<input name="title" value="Untouched"><input name="action" value="entries/save-entry"><input name="redirect" value="destination"><input data-hyper-store name="fields[links]" value="old"><div data-hyper-input><input name="fields[hyperData][row][linkValue]" value="latest"></div>';
+        document.body.append(form);
+        const host = form.querySelector('[data-hyper-input]');
+        const store = form.querySelector('[data-hyper-store]');
+        const portal = host.querySelector('input');
+        const listeners = new Map();
+        let flushes = 0;
+        const editor = {
+            $container: $(form),
+            settings: { isUnpublishedDraft: false },
+            namespaceInputName: name => name,
+            on(name, handler) {
+                listeners.set(name, [...(listeners.get(name) || []), handler]);
+            },
+            trigger(name, event) {
+                for (const handler of listeners.get(name) || []) handler(event);
+            },
+            serializeForm: (0, eval)(`(${nativeSource})`),
+        };
+        const oldEscapeRegex = Craft.escapeRegex;
+        Craft.escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        $(form).data('elementEditor', editor);
+        $(form).data('initialSerializedValue', 'baseline');
+        editor.lastSerializedValue = 'last-saved';
+        const unregister = Audit.registerHyperInputSync(() => {
+            flushes++;
+            store.value = portal.value;
+        });
+        try {
+            Audit.ensureElementEditorSerializeHook(host);
+            Audit.ensureElementEditorSerializeHook(host);
+            editor.on('serializeForm', event => { event.data.serialized += '&extension=retained'; });
+            const save = editor.serializeForm(false);
+            portal.value = 'latest-autosave';
+            const autosave = editor.serializeForm(true);
+            return { save, autosave, flushes, baseline: $(form).data('initialSerializedValue'), lastSaved: editor.lastSerializedValue };
+        } finally {
+            unregister();
+            form.remove();
+            Craft.escapeRegex = oldEscapeRegex;
+        }
+    }, nativeSerializeForm);
+    for (const [name, expected] of [['save', 'latest'], ['autosave', 'latest-autosave']]) {
+        const params = new URLSearchParams(directSave[name]);
+        assert.equal(params.get('fields[links]'), expected);
+        assert.equal(params.get('title'), 'Untouched');
+        assert.equal(params.get('extension'), 'retained');
+        assert(!params.has('fields[hyperData][row][linkValue]'));
+        assert.equal(params.has('action'), name === 'save');
+        assert.equal(params.has('redirect'), name === 'save');
+    }
+    assert.equal(directSave.flushes, 2);
+    assert.equal(directSave.baseline, 'baseline');
+    assert.equal(directSave.lastSaved, 'last-saved');
     // Simulate an edit before deferred widget initialization, then a submit flush.
     await page.locator('.visible').fill('https://example.test/before-mount');
     await page.evaluate(()=>Audit.syncEmbedWidgets());
@@ -51,6 +109,20 @@ try {
     // Submit synchronization sees programmatic/widget changes even without input events.
     await page.evaluate(()=>{document.querySelector('.visible').value='https://example.test/submit';Audit.syncEmbedWidgets();});
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/submit');
+    const initialization = await page.evaluate(async () => {
+        const form=document.createElement('form');const host=document.createElement('div');form.append(host);document.body.append(form);
+        const store = document.createElement('input'); store.value = 'old'; form.append(store);
+        const editor={serializeForm(){return store.value;},on(){},pauseLevel:0,pause:async function(){this.pauseLevel++;},resume:function(){this.pauseLevel--;},formObserver:{_serialize(){}}};
+        // Field scripts can run before Craft installs the editor on the form.
+        Audit.ensureElementEditorSerializeHook(host);
+        setTimeout(() => $(form).data('elementEditor',editor), 20);
+        const unregister = Audit.registerHyperInputSync(() => { store.value = 'fresh'; });
+        const calls=[];
+        await Audit.enqueueHyperFieldInit(host,async()=>{calls.push('parent');setTimeout(()=>Audit.enqueueHyperFieldInit(host,()=>calls.push('late child')),20);});
+        const serialized = editor.serializeForm();
+        unregister();form.remove();return {calls,pauseLevel:editor.pauseLevel,serialized};
+    });
+    assert.deepEqual(initialization,{calls:['parent','late child'],pauseLevel:0,serialized:'fresh'});
     // Removal cancels the pending debounce; remount creates one request, no stale handler.
     const before=await page.evaluate(()=>{window.removed=document.querySelector('#embed');removed.remove();return pending.length;});
     await page.waitForTimeout(600);
@@ -59,5 +131,5 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:['immediate URL','response race','clear race','submit sync','removed debounce','remount']}));
+    console.log(JSON.stringify({ok:true,scenarios:["direct", "embed", "init", "removal"]}));
 } finally {await browser.close();}

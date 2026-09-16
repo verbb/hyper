@@ -85,11 +85,17 @@ export function ensureElementEditorSerializeHook(container: HTMLElement): void {
         return;
     }
 
-    // Match legacy Vue hyper.js: portal fields are authoring-only; persisted content
-    // lives in [data-hyper-store] which HyperInput keeps updated via syncStore().
-    elementEditor.on?.('serializeForm', (event) => {
-        // Craft saves via ElementEditor.serializeForm(), not always a native form submit.
+    // Craft emits serializeForm after reading the inputs, and direct save/autosave
+    // calls bypass the form's serializer callback. Flush before that first read.
+    const serializeForm = elementEditor.serializeForm;
+    elementEditor.serializeForm = function(...args) {
         syncAllHyperInputStores();
+        return serializeForm.apply(this, args);
+    };
+
+    // Keep Craft's serialization and other extensions' event handlers intact.
+    // The portals are authoring inputs; only the hidden stores should be posted.
+    elementEditor.on?.('serializeForm', (event) => {
         event.data.serialized = stripHyperPortalParams(event.data.serialized);
     });
 
@@ -166,6 +172,7 @@ export function enqueueHyperFieldInit(
 
                 // ElementEditor may not exist yet when hyper.ts first mounts fields.
                 await waitForElementEditor(container);
+                ensureElementEditorSerializeHook(container);
 
                 const elementEditor = getElementEditor(container);
                 let paused = false;
@@ -176,18 +183,17 @@ export function enqueueHyperFieldInit(
                 }
 
                 try {
-                    const callbacks = activeBatch.callbacks.splice(0);
+                    do {
+                        for (const callback of activeBatch.callbacks.splice(0)) {
+                            await callback();
+                        }
 
-                    for (const callback of callbacks) {
-                        await callback();
-                    }
-
-                    // Let Garnish / element selects finish mutating hyperData while still paused.
-                    await waitForAnimationFrames(2);
-                    await new Promise<void>((resolve) => {
-                        window.setTimeout(resolve, 100);
-                    });
-                    await waitForAnimationFrames(2);
+                        // A mounted Matrix/Vizy field can enqueue descendants during this
+                        // settling period. Drain them before deleting the shared batch.
+                        await waitForAnimationFrames(2);
+                        await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
+                        await waitForAnimationFrames(2);
+                    } while (activeBatch.callbacks.length);
                     sanitizeElementEditorSerializedBaseline(container);
                     syncElementEditorFormObserver(container);
                 } finally {

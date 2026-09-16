@@ -63,6 +63,10 @@ export class HyperInput {
 
     private storageHandler: ((event: StorageEvent) => void) | null = null;
 
+    private readonly captureUserEdit = (event: Event): void => {
+        if (event.isTrusted) this.markContentTouched();
+    };
+
     constructor(container: HTMLElement) {
         this.container = container;
 
@@ -93,6 +97,11 @@ export class HyperInput {
         }
 
         this.initialStoreValue = this.storeInput.value;
+        // Native widgets may finish mounting after their inputs become editable. Capture
+        // real author edits immediately so a fast copy/save cannot restore the SSR value.
+        this.container.addEventListener('input', this.captureUserEdit, true);
+        this.container.addEventListener('change', this.captureUserEdit, true);
+        this.unregisterSubmitSync = registerHyperInputSync(() => this.syncStore(true));
         ensureElementEditorSerializeHook(fieldRoot);
 
         void enqueueHyperFieldInit(fieldRoot, async () => {
@@ -278,6 +287,8 @@ export class HyperInput {
 
     /** Tear down listeners when the field root is removed from the CP (Astra H3-A16). */
     destroy(): void {
+        this.container.removeEventListener('input', this.captureUserEdit, true);
+        this.container.removeEventListener('change', this.captureUserEdit, true);
         this.unregisterSubmitSync?.();
         this.unregisterSubmitSync = null;
 
@@ -967,9 +978,6 @@ export class HyperInput {
         this.bindAddLink();
         this.bindTypeChanges();
         this.updateEmptyChrome();
-        this.unregisterSubmitSync = registerHyperInputSync(() => {
-            this.syncStore(true);
-        });
         this.container.classList.add('hyper-input--ready');
         fieldRoot.classList.add('hyper-input--ready');
         // Portal watches start after ElementEditor baseline adopt (see init()) — Craft widget
