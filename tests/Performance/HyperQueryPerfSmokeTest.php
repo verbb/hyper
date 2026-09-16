@@ -31,7 +31,7 @@ it('captures baseline query counts for reading Hyper link fields', function() {
 
     expect($profile['queries'])->toBeGreaterThan(0);
     expect($profile['resultSize'])->toBe(10);
-    expect($profile['durationMs'])->toBeGreaterThanOrEqual(0.0);
+    expect($profile['queries'])->toBeLessThanOrEqual(3);
 
     fwrite(STDERR, "\nHyper perf smoke profile: " . json_encode($profile, JSON_PRETTY_PRINT) . "\n");
 })->group('perf');
@@ -62,6 +62,7 @@ it('captures entry-backed link hydration costs', function() {
             return $count;
         }),
         'touch-linked-elements' => QueryProfiler::profile(function() use ($section, $field): int {
+            \verbb\hyper\Hyper::$plugin->linkRelations->resetRequestState();
             $linked = 0;
 
             foreach (Entry::find()->section($section->handle)->all() as $entry) {
@@ -78,7 +79,12 @@ it('captures entry-backed link hydration costs', function() {
         }),
     ];
 
-    expect($profiles['read-urls-only']['queries'])->toBeGreaterThan(0);
+    expect($profiles['read-urls-only']['resultSize'])->toBe(10);
+    expect($profiles['touch-linked-elements']['resultSize'])->toBe(5);
+    foreach ($profiles as $profile) {
+        expect($profile['queries'])->toBeGreaterThan(0);
+        expect($profile['queries'])->toBeLessThanOrEqual(3);
+    }
 
     fwrite(STDERR, "\nHyper entry-link perf profile: " . json_encode($profiles, JSON_PRETTY_PRINT) . "\n");
 })->group('perf');

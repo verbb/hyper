@@ -20,6 +20,8 @@ it('registers populated entry owners for priming', function() {
     Hyper::$plugin->getLinkRelations()->registerElementForPriming($owner);
     Hyper::$plugin->getLinkRelations()->primePendingOwners();
 
+    expect(Hyper::$plugin->linkRelations->getPrimedElement($target->id, $target->siteId)?->id)->toBe($target->id);
+
     $links = $owner->getFieldValue($field->handle);
     $link = $links->getLinks()[0];
 
@@ -34,7 +36,7 @@ it('parses hyper linkedElements with paths during query prepare', function() {
     $query = Entry::find();
     $query->with = [$field->handle . '.linkedElements'];
 
-    Hyper::$plugin->getLinkedElementEagerLoader()->parseWithPaths($query);
+    $query->all();
 
     expect($query->with)->toBe([]);
 });

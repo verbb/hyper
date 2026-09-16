@@ -22,6 +22,14 @@ class LinkedElementEagerLoader extends Component
         }
 
         $remaining = [];
+        $fieldsByHandle = [];
+
+        // Handles can be overridden per layout; the global field registry has only originals.
+        foreach ($query->getFieldLayouts() as $layout) {
+            foreach ($layout->getCustomFields() as $field) {
+                $fieldsByHandle[$field->handle][] = $field;
+            }
+        }
 
         foreach ($query->with as $withToken) {
             if (!is_string($withToken)) {
@@ -29,7 +37,7 @@ class LinkedElementEagerLoader extends Component
                 continue;
             }
 
-            if ($this->_consumeHyperWithToken($withToken)) {
+            if ($this->_consumeHyperWithToken($withToken, $fieldsByHandle)) {
                 continue;
             }
 
@@ -43,24 +51,28 @@ class LinkedElementEagerLoader extends Component
     // Private Methods
     // =========================================================================
 
-    private function _consumeHyperWithToken(string $withToken): bool
+    private function _consumeHyperWithToken(string $withToken, array $fieldsByHandle): bool
     {
         $segments = explode('.', $withToken);
+        $fields = $fieldsByHandle[$segments[0]] ?? [];
 
-        if (count($segments) < 2) {
-            $field = $this->_getFieldByHandle($segments[0]);
-
-            if ($field instanceof HyperField) {
-                return true;
-            }
-
-            return false;
+        if ($fields === [] && ($field = $this->_getFieldByHandle($segments[0]))) {
+            $fields[] = $field;
         }
 
-        return $this->_walkWithSegments($segments, 0) !== null;
+        $consumed = false;
+
+        foreach ($fields as $field) {
+            // Register every matching layout, rather than letting the first alias win.
+            if ($this->_walkWithSegments($segments, 0, $field) !== null) {
+                $consumed = true;
+            }
+        }
+
+        return $consumed;
     }
 
-    private function _walkWithSegments(array $segments, int $index): ?HyperField
+    private function _walkWithSegments(array $segments, int $index, ?FieldInterface $field = null): ?HyperField
     {
         $handle = $segments[$index] ?? null;
 
@@ -68,7 +80,7 @@ class LinkedElementEagerLoader extends Component
             return null;
         }
 
-        $field = $this->_getFieldByHandle($handle);
+        $field ??= $this->_getFieldByHandle($handle);
 
         if (!$field instanceof FieldInterface) {
             return null;
@@ -97,6 +109,8 @@ class LinkedElementEagerLoader extends Component
         }
 
         if ($field instanceof Matrix) {
+            $matched = null;
+
             // Craft 5 Matrix uses entry types — getBlockTypes() was removed (Astra H3-A11).
             foreach ($field->getEntryTypes() as $entryType) {
                 $layout = $entryType->getFieldLayout();
@@ -110,20 +124,19 @@ class LinkedElementEagerLoader extends Component
                         continue;
                     }
 
-                    if ($nestedField instanceof HyperField) {
-                        $remaining = array_slice($segments, $index + 1);
-
-                        return $this->_walkWithSegments($remaining, 0);
-                    }
-
-                    if ($index + 2 < count($segments)) {
-                        $result = $this->_walkWithSegments($segments, $index + 1);
+                    if ($nestedField instanceof HyperField || $index + 2 < count($segments)) {
+                        $result = $this->_walkWithSegments($segments, $index + 1, $nestedField);
 
                         if ($result) {
-                            return $result;
+                            // Different entry types can expose different fields under one alias.
+                            $matched = $result;
                         }
                     }
                 }
+            }
+
+            if ($matched) {
+                return $matched;
             }
         }
 
