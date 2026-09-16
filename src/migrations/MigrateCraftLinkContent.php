@@ -106,19 +106,19 @@ class MigrateCraftLinkContent extends PluginContentMigration
         $target = $oldSettings['target'] ?? null;
         $link->newWindow = $target === '_blank' || $target === true;
 
-        if (!empty($oldSettings['urlSuffix'])) {
+        if (isset($oldSettings['urlSuffix'])) {
             $link->urlSuffix = (string)$oldSettings['urlSuffix'];
         }
 
-        if (!empty($oldSettings['title'])) {
+        if (isset($oldSettings['title'])) {
             $link->linkTitle = (string)$oldSettings['title'];
         }
 
-        if (!empty($oldSettings['class'])) {
+        if (isset($oldSettings['class'])) {
             $link->classes = (string)$oldSettings['class'];
         }
 
-        if (!empty($oldSettings['ariaLabel'])) {
+        if (isset($oldSettings['ariaLabel'])) {
             $link->ariaLabel = (string)$oldSettings['ariaLabel'];
         }
 

@@ -185,3 +185,19 @@ it('converts explicitly empty legacy oEmbed values to an empty collection', func
     [['url' => '   ']],
     [['']],
 ]);
+
+it('retains zero-valued metadata when converting native Craft links', function() {
+    $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
+    $migrator = new \verbb\hyper\migrations\MigrateCraftLinkContent();
+    $converted = $migrator->convertModel($field, [
+        'type' => 'url', 'value' => 'https://example.test/path/',
+        'label' => '0', 'urlSuffix' => '0', 'title' => '0', 'class' => '0', 'ariaLabel' => '0',
+    ]);
+    $link = $field->normalizeValue($converted)->first();
+
+    expect($link->getUrl())->toBe('https://example.test/path/0');
+    expect($link->getText())->toBe('0');
+    expect($link->getTitle())->toBe('0');
+    expect($link->getClasses())->toBe('0');
+    expect($link->getAriaLabel())->toBe('0');
+});
