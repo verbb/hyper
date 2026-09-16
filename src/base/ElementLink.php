@@ -304,22 +304,11 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getElements(): array
     {
-        $elements = [];
+        // The editor must show the same locale as rendering, including disabled
+        // selections, without rewriting the stored array-shaped target value.
+        $element = $this->getElement(null);
 
-        // Temp normalization during development
-        if (is_array($this->linkValue)) {
-            $this->linkValue = $this->linkValue[0] ?? null;
-        }
-
-        if ($this->linkValue) {
-            $element = Craft::$app->getElements()->getElementById($this->linkValue, static::elementType(), $this->linkSiteId);
-
-            if ($element) {
-                $elements[] = $element;
-            }
-        }
-
-        return $elements;
+        return $element ? [$element] : [];
     }
 
     public function getElement(mixed $status = Element::STATUS_ENABLED): ?ElementInterface

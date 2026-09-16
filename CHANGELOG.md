@@ -26,6 +26,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed selected-element cards resolving in the wrong site or changing stored target values.
 - Fixed link text containing only “0” being replaced by fallback text or treated as empty.
 - Fixed control-panel previews being empty after removing the first link programmatically.
 - Fixed programmatic custom-field updates being lost on save, partial link updates clearing custom fields, and explicitly cleared values remaining cached.

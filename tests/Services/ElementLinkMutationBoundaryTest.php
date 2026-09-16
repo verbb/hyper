@@ -24,3 +24,17 @@ it('preserves an element selection through partial updates and clears it explici
     expect($saved->getElement())->toBeNull();
     expect($saved->getSerializedValues()['linkValue'] ?? null)->toBeNull();
 });
+
+it('uses the owner site for selected element cards without changing the content shape', function() {
+    [$primary, $secondary] = F::ensureSites(2);
+    $field = F::hyperField(['linkTypes' => [EntryLink::class]]);
+    $section = F::translatableEntrySection($field, 2);
+    $target = F::plainEntry($section, 'Selected target', [], $primary);
+    $owner = F::plainEntry($section, 'Owner', [], $secondary);
+    $links = $field->normalizeValue([['linkTypeHandle' => 'entry', 'linkValue' => [$target->id]]], $owner);
+    $link = $links->first();
+    $before = $link->getSerializedValues();
+    expect($link->getElement()?->siteId)->toBe($secondary->id);
+    expect($link->getElements()[0]->siteId ?? null)->toBe($secondary->id);
+    expect($link->getSerializedValues())->toBe($before);
+});

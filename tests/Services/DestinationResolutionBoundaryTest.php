@@ -37,3 +37,18 @@ it('ignores unavailable sites in options while retaining valid site destinations
     $link = Hyper::$plugin->links->createLinkFromSerialized($field, ['linkTypeHandle' => 'site', 'linkValue' => $site->uid, 'urlSuffix' => '#section']);
     expect($link->getUrl())->toBe($site->getBaseUrl() . '#section');
 });
+
+it('keeps disabled or scheduled selections visible in the editor without rendering a suffix', function(string $state) {
+    $field = F::hyperField(['linkTypes' => [Entry::class]]);
+    $target = F::plainEntry(F::entrySection(), 'Unavailable target');
+    if ($state === 'disabled') {
+        $target->enabled = false;
+    } else {
+        $target->postDate = new DateTime('+1 day');
+    }
+    expect(Craft::$app->elements->saveElement($target))->toBeTrue();
+    Hyper::$plugin->linkRelations->resetRequestState();
+    $link = Hyper::$plugin->links->createLinkFromSerialized($field, F::entryLinkPayload($target) + ['urlSuffix' => '#section']);
+    expect($link->getElements()[0]->id ?? null)->toBe($target->id);
+    expect($link->getUrl())->toBeNull();
+})->with(['disabled', 'scheduled']);
