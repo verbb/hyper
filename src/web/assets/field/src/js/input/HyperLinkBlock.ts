@@ -1,3 +1,4 @@
+import { destroyEmbedWidgets } from './embed';
 import { debounce } from 'lodash-es';
 
 import type { HyperInputSettings } from '../types';
@@ -115,6 +116,7 @@ export class HyperLinkBlock {
 
         if (portal instanceof HTMLElement) {
             portal.dataset.hyperPortal = `${this.el.dataset.linkId}-${handle}`;
+            destroyEmbedWidgets(portal);
             portal.innerHTML = bodyHtml;
             initBlockCraftUi(portal);
             applyPreservedAttrsToPortal(portal, preserved);
@@ -325,6 +327,9 @@ export class HyperLinkBlock {
     }
 
     destroy(): void {
+        destroyEmbedWidgets(this.el);
+        this.emitChangeDebounced.cancel();
+        $(this.el).find('[data-hyper-portal]').off('.hyperPortal');
         this.headerAbort.abort();
         this.portalObserver?.disconnect();
         this.menuBtn?.destroy();
@@ -533,7 +538,7 @@ export class HyperLinkBlock {
             characterData: true,
         });
 
-        $(portal).on('input change', 'input, textarea, select', () => {
+        $(portal).on('input.hyperPortal change.hyperPortal', 'input, textarea, select', () => {
             if (this.suppressPortalSync) {
                 return;
             }
@@ -542,7 +547,7 @@ export class HyperLinkBlock {
         });
 
         // Element select / asset fields mutate the portal without input/change on the container.
-        $(portal).on('selectElements removeElements', '.elementselect, .assetselect', () => {
+        $(portal).on('selectElements.hyperPortal removeElements.hyperPortal', '.elementselect, .assetselect', () => {
             if (this.suppressPortalSync) {
                 return;
             }

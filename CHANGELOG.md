@@ -28,6 +28,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed embed edits being lost before initialization or overwritten by stale preview requests.
 - Fixed temporary uploads in link custom fields not being finalized when the owner was saved.
 - Fixed an embed preview authorization issue.
 - Fixed embed metadata requests bypassing destination restrictions or exceeding response limits.

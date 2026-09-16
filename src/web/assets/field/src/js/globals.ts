@@ -1,4 +1,4 @@
-import { debounce } from 'lodash-es';
+import { mountEmbed } from './input/embed';
 
 import {
     ensureElementEditorSerializeHook,
@@ -48,90 +48,8 @@ export function registerHyperGlobals(): void {
 
     Craft.Hyper.Embed = Garnish.Base.extend({
         init(fieldId: string) {
-            const $container = $(fieldId);
-            const $spinner = $container.find('.spinner');
-            const $response = $container.find('.hyper-embed-response');
-            const hyperFieldId = $container.attr('data-hyper-field-id') || '';
-            const linkTypeHandle = $container.attr('data-hyper-link-type-handle') || '';
-            const $ownerField = $container.closest('[data-hyper-input]');
-            const ownerElementId = $ownerField.attr('data-hyper-element-id') || '';
-            const ownerSiteId = $ownerField.attr('data-hyper-site-id') || '';
-            // Correlate async responses with the latest typed URL (Astra H3-A13).
-            let fetchGeneration = 0;
-
-            $('body').on('keyup blur change', `${fieldId} input`, debounce((event: JQueryEventObject) => {
-                const $target = $(event.target);
-                const value = String($target.val() ?? '');
-                const prevValue = $target.attr('data-value');
-
-                if (value === prevValue) {
-                    return;
-                }
-
-                $target.attr('data-value', value);
-                const generation = ++fetchGeneration;
-
-                $container.find('.favicon-icon').remove();
-                $response.empty();
-
-                // Persist the latest URL immediately so a slow/failed fetch cannot wipe it.
-                const $embedData = $container.find('.link-embed-data');
-
-                if (value) {
-                    $embedData.val(JSON.stringify({ url: value }));
-                    $spinner.removeClass('hidden');
-
-                    Craft.sendActionRequest('GET', Craft.getActionUrl('hyper/fields/preview-embed', {
-                        value,
-                        fieldId: hyperFieldId || undefined,
-                        linkTypeHandle: linkTypeHandle || undefined,
-                        elementId: ownerElementId || undefined,
-                        siteId: ownerSiteId || undefined,
-                    }))
-                        .then((response) => {
-                            if (generation !== fetchGeneration) {
-                                return;
-                            }
-
-                            if (response?.data?.data) {
-                                const embedPayload = response.data.data as Record<string, unknown>;
-                                $embedData.val(JSON.stringify(embedPayload));
-
-                                const icon = embedPayload.icon;
-
-                                if (typeof icon === 'string' && icon) {
-                                    const wrap = document.createElement('div');
-                                    wrap.className = 'favicon-icon';
-                                    const img = document.createElement('img');
-                                    img.src = icon;
-                                    wrap.appendChild(img);
-                                    $container.append(wrap);
-                                }
-                            }
-                        })
-                        .catch(({ response }) => {
-                            if (generation !== fetchGeneration) {
-                                return;
-                            }
-
-                            if (response?.data?.message) {
-                                const err = document.createElement('div');
-                                err.className = 'error';
-                                err.textContent = String(response.data.message);
-                                $response.empty().append(err);
-                            }
-                        })
-                        .finally(() => {
-                            if (generation === fetchGeneration) {
-                                $spinner.addClass('hidden');
-                            }
-                        });
-                } else {
-                    // Clear invalidates pending results by bumping generation above.
-                    $embedData.val(JSON.stringify({}));
-                    $spinner.addClass('hidden');
-                }
-            }, 500));
+            const container = $(fieldId)[0];
+            if (container instanceof HTMLElement) mountEmbed(container);
         },
     });
 }

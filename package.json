@@ -10,14 +10,17 @@
         "build": "vite build",
         "watch": "vite build --watch",
         "dev:plugin-docs": "npm run docs:dev --prefix docs",
-        "docs:screenshots": "npm --prefix docs run docs:screenshots --"
+        "docs:screenshots": "npm --prefix docs run docs:screenshots --",
+        "test:browser": "node tests/Frontend/browser-boundaries.mjs"
     },
     "devDependencies": {
         "@types/lodash-es": "^4.17.12",
         "rollup-plugin-analyzer": "^4.0.0",
         "typescript": "^6.0.3",
         "vite": "^8.0.10",
-        "vite-plugin-compression": "^0.5.1"
+        "vite-plugin-compression": "^0.5.1",
+        "esbuild": "0.28.1",
+        "playwright": "1.61.1"
     },
     "dependencies": {
         "@dnd-kit/abstract": "^0.4.0",

@@ -1,3 +1,5 @@
+import { syncEmbedWidgets } from './embed';
+
 const syncCallbacks = new Set<() => void>();
 
 export function registerHyperInputSync(callback: () => void): () => void {
@@ -9,6 +11,7 @@ export function registerHyperInputSync(callback: () => void): () => void {
 }
 
 export function syncAllHyperInputStores(): void {
+    syncEmbedWidgets();
     syncCallbacks.forEach((callback) => {
         callback();
     });
