@@ -57,6 +57,7 @@ class MigrateLinkitField extends PluginFieldMigration
             $allowCustomText = $settings['allowCustomText'] ?? true;
 
             $types = [];
+            $typeMap = [];
 
             foreach (($settings['types'] ?? []) as $key => $type) {
                 $linkTypeClass = $this->getLinkType($key);
@@ -85,6 +86,8 @@ class MigrateLinkitField extends PluginFieldMigration
                 $linkType->layoutConfig = $fieldLayout->getConfig();
 
                 $types[] = $linkType->getSettingsConfig();
+                // Several Linkit classes share Hyper's URL class but retain distinct settings.
+                $typeMap[$key] = $linkType->handle;
             }
 
             // Disable some Hyper link types that don't exist for Linkit, to ensure 1-for-1 migration. Still creates the link type.
@@ -107,6 +110,7 @@ class MigrateLinkitField extends PluginFieldMigration
 
             $newFieldConfig['newWindow'] = $settings['allowTarget'] ?? false;
             $newFieldConfig['linkTypes'] = $types;
+            $newFieldConfig['migrationData'] = ['linkitTypes' => $typeMap];
 
             $newField = new HyperField($newFieldConfig);
 

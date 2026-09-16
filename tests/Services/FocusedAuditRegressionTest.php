@@ -92,3 +92,35 @@ it('preserves migrated destination sites through rendering and relation indexing
     $row = (new Query())->from('{{%hyper_links}}')->where(['ownerId' => $owner->id, 'ownerSiteId' => $ownerSite->id, 'fieldId' => $field->id])->one();
     expect((int)$row['targetSiteId'])->toBe($expectedSite->id);
 })->with([['native', true], ['native', false], ['typed', true], ['typed', false]]);
+
+it('keeps Linkit social types associated with their migrated settings', function() {
+    $legacy = new PlainText(['name' => 'Linkit migration', 'handle' => F::handle('hyperTestLinkit')]);
+    expect(Craft::$app->fields->saveField($legacy))->toBeTrue();
+    $prefix = 'presseddigital\\linkit\\models\\';
+    $settings = ['types' => [
+        $prefix . 'Url' => ['enabled' => false],
+        $prefix . 'Twitter' => ['enabled' => true, 'customPlaceholder' => 'Twitter URL'],
+        $prefix . 'Facebook' => ['enabled' => true, 'customPlaceholder' => 'Facebook URL'],
+    ]];
+    $row = (new Query())->from('{{%fields}}')->where(['id' => $legacy->id])->one();
+    $row['settings'] = json_encode($settings);
+    $migration = new MigrateLinkitField();
+    $migration->fields = [$row];
+    $migration->processFieldSettings();
+    Craft::$app->fields->refreshFields();
+    $field = Craft::$app->fields->getFieldById($legacy->id);
+    expect($field)->toBeInstanceOf(HyperField::class);
+    $handles = [];
+    foreach (['Twitter', 'Facebook'] as $type) {
+        $url = 'https://' . strtolower($type) . '.com/CraftCMS';
+        $converted = (new MigrateLinkitContent())->convertModel($field, ['type' => $prefix . $type, 'value' => $url]);
+        $link = (new LinkCollection($field, $converted))->getLinks()[0];
+        expect($link)->toBeInstanceOf(Url::class);
+        expect($link->getUrl())->toBe($url);
+        expect($link->placeholder)->toBe($type . ' URL');
+        expect((new MigrateLinkitContent())->convertModel($field, $converted))->toBeNull();
+        $handles[] = $converted[0]['linkTypeHandle'];
+    }
+    expect(array_unique($handles))->toHaveCount(2);
+    expect($handles)->not->toContain('url');
+});

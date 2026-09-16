@@ -66,7 +66,7 @@ class MigrateLinkitContent extends PluginContentMigration
         $oldType = $oldSettings['type'] ?? null;
         $hyperType = $oldSettings[0]['type'] ?? null;
 
-        if (str_contains($hyperType, 'verbb\\hyper')) {
+        if (isset($oldSettings[0]['linkTypeHandle']) || (is_string($hyperType) && str_contains($hyperType, 'verbb\\hyper'))) {
             $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
 
             return null;
@@ -87,7 +87,7 @@ class MigrateLinkitContent extends PluginContentMigration
         }
 
         $link = new $linkTypeClass();
-        $link->handle = $linkTypeClass::typeKey();
+        $link->handle = $field->migrationData['linkitTypes'][$oldType] ?? $linkTypeClass::typeKey();
         $link->linkValue = $oldSettings['value'] ?? null;
         $link->linkText = $oldSettings['customText'] ?? null;
         $link->newWindow = $oldSettings['target'] ?? false;
