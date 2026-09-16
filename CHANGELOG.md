@@ -44,7 +44,7 @@
 - Portal serialization no longer restores cleared custom fields / trailing array entries, and no longer coerces numeric-looking strings (phones, codes, large IDs) to JavaScript numbers.
 - `Content::modify()` relation sync used `getElementById($id, $siteId)` incorrectly (site was passed as element type); index could stay stale after successful JSON transforms.
 - Request batch priming stopped after the first owner batch; later owners regressed to N+1.
-- Primed element cache no longer falls back to an ID-only (wrong-site) hit; instance cache rechecks site/status.
+- Fixed cached element links resolving to the wrong site or returning scheduled and expired entries as live links.
 - Reverse relations no longer confuse target class with owner class; empty queries return `[]` instead of a `-1` sentinel.
 - Nested Matrix `with(['matrix.hyper.linkedElements…'])` uses Craft 5 `getEntryTypes()` (removed `getBlockTypes()`).
 - Programmatic bare `new Url()` objects rebind onto the destination field layout (documented custom-field path).

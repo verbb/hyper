@@ -36,16 +36,18 @@ class Entry extends ElementLink
 
     public function modifyElementQuery(ElementQueryInterface $query, mixed $status = Element::STATUS_ENABLED): void
     {
-        // Modify the status for entries, which have `STATUS_LIVE` vs `STATUS_ENABLED`.
-        // Equate querying for enabled statuses to be the same as live (by default), unless passing otherwise.
-        if ($status === Element::STATUS_ENABLED) {
-            $query->status(EntryElement::STATUS_LIVE);
-        }
+        $query->status($this->normalizeElementStatus($status));
     }
 
 
     // Protected Methods
     // =========================================================================
+
+    protected function normalizeElementStatus(mixed $status): mixed
+    {
+        // Both database queries and cached entries must respect publication dates.
+        return $status === Element::STATUS_ENABLED ? EntryElement::STATUS_LIVE : $status;
+    }
 
     protected function createSelectionCondition(): ?ElementConditionInterface
     {

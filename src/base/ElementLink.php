@@ -444,6 +444,11 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         return null;
     }
 
+    protected function normalizeElementStatus(mixed $status): mixed
+    {
+        return $status;
+    }
+
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
@@ -525,31 +530,19 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             return null;
         }
 
-        $candidates = [];
+        // Cache lookup must use the same destination as an uncached query.
+        $siteId = $this->linkSiteId
+            ?? $this->ownerSiteId
+            ?? Craft::$app->getSites()->getCurrentSite()->id;
+        $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, (int)$siteId);
 
-        if ($this->linkSiteId) {
-            $candidates[] = (int)$this->linkSiteId;
-        } else {
-            if ($this->ownerSiteId) {
-                $candidates[] = (int)$this->ownerSiteId;
-            }
-
-            $candidates[] = Craft::$app->getSites()->getCurrentSite()->id;
-        }
-
-        foreach (array_unique($candidates) as $siteId) {
-            $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, (int)$siteId);
-
-            if ($element && $this->_matchesElementStatus($element, $status)) {
-                return $element;
-            }
-        }
-
-        return null;
+        return $element && $this->_matchesElementStatus($element, $status) ? $element : null;
     }
 
     private function _matchesElementStatus(ElementInterface $element, mixed $status): bool
     {
+        $status = $this->normalizeElementStatus($status);
+
         if ($status === null) {
             return true;
         }
