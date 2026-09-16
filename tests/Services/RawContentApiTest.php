@@ -150,3 +150,40 @@ it('raw embedded writes detect concurrent changes to JSON object shapes', functi
         $writer->close();
     }
 });
+
+it('invalidates committed raw writes independently across database connections', function(bool $commitFirst) {
+    $first = hyperRawFixture();
+    $second = hyperRawFixture();
+    $db = Craft::$app->db;
+    $writer = new \craft\db\Connection(['dsn' => $db->dsn, 'username' => $db->username, 'password' => $db->password, 'tablePrefix' => $db->tablePrefix]);
+    $beforeFirst = ($first['read'])();
+    $beforeSecond = ($second['read'])();
+    $events = 0;
+    $listener = function() use (&$events) { $events++; };
+    Craft::$app->elements->on(craft\services\Elements::EVENT_INVALIDATE_CACHES, $listener);
+    $firstTransaction = $db->beginTransaction();
+    $secondTransaction = $writer->beginTransaction();
+    try {
+        // Consumers retain a coordinator when registering their own container adapters.
+        $api = Hyper::$plugin->content->rawContent();
+        expect($api->modifyFieldValues($first['map'], fn() => Change::replace('first update'), ['db' => $db, 'elementIds' => [$first['owner']->id]])['modified'])->toBe(1);
+        expect($api->modifyFieldValues($second['map'], fn() => Change::replace('second update'), ['db' => $writer, 'elementIds' => [$second['owner']->id]])['modified'])->toBe(1);
+        expect($events)->toBe(0);
+        if ($commitFirst) {
+            $firstTransaction->commit();
+        } else {
+            $firstTransaction->rollBack();
+        }
+        $secondTransaction->commit();
+        expect(($second['read'])())->not->toBe($beforeSecond);
+        if (!$commitFirst) {
+            expect(($first['read'])())->toBe($beforeFirst);
+        }
+        expect($events)->toBe($commitFirst ? 2 : 1);
+    } finally {
+        if ($firstTransaction->getIsActive()) $firstTransaction->rollBack();
+        if ($secondTransaction->getIsActive()) $secondTransaction->rollBack();
+        Craft::$app->elements->off(craft\services\Elements::EVENT_INVALIDATE_CACHES, $listener);
+        $writer->close();
+    }
+})->with(['first commits' => [true], 'first rolls back' => [false]]);

@@ -10,6 +10,7 @@ use yii\db\Expression;
 
 use InvalidArgumentException;
 use RuntimeException;
+use WeakMap;
 
 /**
  * Raw field migration coordinator. Container adapters own their storage grammar.
@@ -21,7 +22,7 @@ final class RawContent
     // =========================================================================
 
     private array $adapters;
-    private bool $invalidationScheduled = false;
+    private WeakMap $invalidationScheduled;
 
 
     // Public Methods
@@ -29,6 +30,7 @@ final class RawContent
 
     public function __construct()
     {
+        $this->invalidationScheduled = new WeakMap();
         $this->adapters = [];
         foreach (['vizy', 'hyper'] as $handle) {
             $plugin = Craft::$app->getPlugins()->getPlugin($handle);
@@ -189,15 +191,17 @@ final class RawContent
     public function invalidateAfterCommit(Connection $db): void
     {
         if (!$db->getTransaction()?->getIsActive()) throw new RuntimeException('Cache invalidation requires the writer transaction.');
-        if ($this->invalidationScheduled) {
+        if (isset($this->invalidationScheduled[$db])) {
             return;
         }
-        $this->invalidationScheduled = true;
+        // A retained coordinator may serve independent writer transactions. One
+        // writer's commit or rollback must not consume another writer's callback.
+        $this->invalidationScheduled[$db] = true;
         $commit = $rollback = null;
         $cleanup = function() use ($db, &$commit, &$rollback): void {
             $db->off(Connection::EVENT_COMMIT_TRANSACTION, $commit);
             $db->off(Connection::EVENT_ROLLBACK_TRANSACTION, $rollback);
-            $this->invalidationScheduled = false;
+            unset($this->invalidationScheduled[$db]);
         };
         $commit = function() use ($cleanup): void {
             $cleanup();
