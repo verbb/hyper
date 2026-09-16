@@ -188,10 +188,9 @@ class Migrations extends Component
         $fieldCount = $this->_countFieldsByType($types);
         $ready = $readyOverride ?? ($installed && $fieldCount > 0);
 
-        // Show CP tab when plugin is present (even if fields already migrated) or native fields remain
-        $showInNav = $readyOverride !== null
-            ? $readyOverride || $fieldCount > 0
-            : $installed;
+        // Content conversion runs after fields have changed, including on other environments.
+        // Native Craft Link is always available; its menu must survive the field step too.
+        $showInNav = $installed;
 
         return [
             'id' => $id,
