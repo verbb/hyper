@@ -37,7 +37,7 @@ it('imports ordered links and custom fields through the registered Feed Me mappe
         'type' => ['node' => 'usedefault', 'default' => 'entry'],
         'linkValue' => ['node' => 'links/id'],
         'linkText' => ['node' => 'links/text'],
-        $caption->handle => ['node' => 'links/caption'],
+        $caption->handle => ['node' => 'links/caption', 'default' => 'Unused default'],
     ]];
     $mapper->feedData = [];
     $selected = $multiple ? $targets : [$targets[0]];
@@ -59,6 +59,8 @@ it('imports ordered links and custom fields through the registered Feed Me mappe
         }
         expect(array_map('intval', LinkRelation::find()->select('targetId')->where(['ownerId' => $owner->id])->orderBy('sortOrder')->column()))->toBe(array_map(fn($target) => $target->id, $selected));
 
+        // Remove the fallback before checking an explicitly empty import.
+        unset($mapper->fieldInfo['fields'][$caption->handle]['default']);
         // Feed Me uses null for an unmapped field and [] for an explicitly empty import.
         $mapper->feedData = ['unrelated' => 'leave links alone'];
         expect($mapper->parseField())->toBeNull();
@@ -138,3 +140,60 @@ it('preserves zero values when an imported link uses a default type', function(s
     'phone' => [\verbb\hyper\links\Phone::class, 'tel', 'linkValue'],
     'passive label' => [\verbb\hyper\links\Passive::class, 'passive', 'linkText'],
 ])->with(['single' => false, 'multiple' => true])->with(['string zero' => '0', 'integer zero' => 0]);
+
+it('imports default custom values through the registered Feed Me mapper', function(bool $multiple, string $default) {
+    $caption = new PlainText(['name' => 'Import caption', 'handle' => F::handle('importCaption')]);
+    expect(Craft::$app->fields->saveField($caption))->toBeTrue();
+    $link = new EntryLink();
+    $layout = EntryLink::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($caption)]);
+    $link->setFieldLayout($layout);
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($link)], ['multipleLinks' => $multiple]);
+    $section = F::entrySection($field);
+    $targets = [F::plainEntry($section, 'First destination'), F::plainEntry($section, 'Second destination')];
+    $owner = F::plainEntry($section, 'Import owner');
+    $mapper = FeedMe::$plugin->fields->getRegisteredField(HyperField::class);
+    expect($mapper)->toBeInstanceOf(\verbb\hyper\integrations\feedme\fields\Hyper::class);
+    $mapper->field = $field;
+    $mapper->element = $owner;
+    $mapper->feed = ['id' => null, 'setEmptyValues' => true];
+    $mapper->fieldInfo = ['fields' => [
+        'type' => ['node' => 'usedefault', 'default' => 'entry'],
+        'linkValue' => ['node' => 'links/id'],
+        'linkText' => ['node' => 'links/text'],
+        $caption->handle => ['node' => 'usedefault', 'default' => $default],
+    ]];
+    $mapper->feedData = [];
+    $selected = $multiple ? $targets : [$targets[0]];
+    foreach ($selected as $i => $target) {
+        $mapper->feedData['links/' . $i . '/id'] = (string)$target->id;
+        $mapper->feedData['links/' . $i . '/text'] = 'Link ' . $i;
+    }
+    try {
+        $owner->setFieldValue($field->handle, $mapper->parseField());
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        $links = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks();
+        expect($links)->toHaveCount(count($selected));
+        foreach ($links as $i => $imported) {
+            expect($imported->getElement()->id)->toBe($selected[$i]->id);
+            expect($imported->getUrl())->toBe($selected[$i]->getUrl());
+            expect($imported->getLinkText())->toBe('Link ' . $i);
+            expect($imported->getFieldValue($caption->handle))->toBe($default);
+        }
+        expect(array_map('intval', LinkRelation::find()->select('targetId')->where(['ownerId' => $owner->id])->orderBy('sortOrder')->column()))->toBe(array_map(fn($target) => $target->id, $selected));
+
+        // Feed Me uses null for an unmapped field and [] for an explicitly empty import.
+        $mapper->feedData = ['unrelated' => 'leave links alone'];
+        expect($mapper->parseField())->toBeNull();
+        $mapper->feedData = ['links/0/id' => '', 'links/0/text' => '', 'links/0/caption' => ''];
+        expect($mapper->parseField())->toBe([]);
+        $owner->setFieldValue($field->handle, $mapper->parseField());
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks())->toBe([]);
+        expect(LinkRelation::find()->where(['ownerId' => $owner->id])->exists())->toBeFalse();
+    } finally {
+        Craft::$app->fields->deleteField($caption);
+    }
+})->with(['single' => false, 'multiple' => true])->with(['Default caption', '0']);
+

@@ -173,6 +173,14 @@ class Hyper extends Field implements FieldInterface
         $fullResults = [];
         foreach ($results as $result) {
             foreach ($fields as $handle => $info) {
+                if (in_array($handle, $customFieldHandles, true)) {
+                    if (!isset($result['fields'][$handle])) {
+                        $result['fields'][$handle] = $info['default'] ?? '';
+                    }
+
+                    continue;
+                }
+
                 if(!isset($result[$handle])) {
                     $result[$handle] = $info['default'] ?? '';
                 }
