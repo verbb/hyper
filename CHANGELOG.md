@@ -10,6 +10,7 @@
 - `HyperField::getHydratedLinkBlocks()` shared by bulk add and clipboard paste (`mode=seed`).
 
 ### Changed
+- Link destinations now use literal values; existing environment-variable and alias references must be updated before upgrading.
 - Hyper 3 now requires Craft 5.9 or later and Embed 4.
 - Named **Link Type Config** field settings are stored by config **UID** (dual-read legacy handles on load). Renaming a config handle no longer orphans fields.
 - Embed fetches resolve redirects manually with a public-IP policy; Curl `follow_location` is forced off even if overridden in `embedClientSettings`.
@@ -24,6 +25,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed an information disclosure vulnerability.
 - Portal serialization no longer restores cleared custom fields / trailing array entries, and no longer coerces numeric-looking strings (phones, codes, large IDs) to JavaScript numbers.
 - `Content::modify()` relation sync used `getElementById($id, $siteId)` incorrectly (site was passed as element type); index could stay stale after successful JSON transforms.
 - Request batch priming stopped after the first owner batch; later owners regressed to N+1.

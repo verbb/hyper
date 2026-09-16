@@ -20,7 +20,6 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\elements\conditions\ElementConditionInterface;
 use craft\fieldlayoutelements\BaseNativeField;
-use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\StringHelper;
 use craft\helpers\Template;
@@ -306,7 +305,7 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        return App::parseEnv((string)$linkValue) ?: null;
+        return (string)$linkValue !== '' ? (string)$linkValue : null;
     }
 
     public function isElement(): bool
@@ -690,9 +689,9 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        $parsed = App::parseEnv((string)$linkValue);
-
-        return $parsed !== '' ? $parsed : null;
+        // Link destinations are authored content. Expanding configuration variables
+        // here would expose server-side values in rendered URLs and API responses.
+        return (string)$linkValue;
     }
 
     public function getHtml(): ?Markup

@@ -8,7 +8,6 @@ use craft\base\conditions\BaseTextConditionRule;
 use craft\base\ElementInterface;
 use craft\elements\conditions\ElementConditionRuleInterface;
 use craft\elements\db\ElementQueryInterface;
-use craft\helpers\App;
 
 class LinkValueConditionRule extends BaseTextConditionRule implements ElementConditionRuleInterface
 {
@@ -59,8 +58,6 @@ class LinkValueConditionRule extends BaseTextConditionRule implements ElementCon
             return null;
         }
 
-        $parsed = App::parseEnv((string)$value);
-
-        return $parsed !== '' ? $parsed : null;
+        return (string)$value;
     }
 }

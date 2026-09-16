@@ -56,6 +56,25 @@ it('rejects javascript urls on validation and render', function() {
     expect($link->getUrl())->toBeNull();
 });
 
+it('never expands environment variables in authored link destinations', function() {
+    $key = 'HYPER_AUDIT_URL_SENTINEL';
+    putenv($key . '=synthetic-private-value');
+    try {
+        $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
+        $value = 'https://example.test/${' . $key . '}';
+        $entry = HyperFixtureFactory::entryWithLinks(HyperFixtureFactory::entrySection($field), [[
+            'linkTypeHandle' => 'url', 'linkValue' => $value, 'linkText' => 'Ordinary content',
+        ]]);
+        $entry = \craft\elements\Entry::find()->id($entry->id)->siteId($entry->siteId)->status(null)->one();
+        $link = $entry->getFieldValue($field->handle)->first();
+        expect($link->getUrl())->toBe($value);
+        expect((string)$link->getLink())->not->toContain('synthetic-private-value');
+        expect(Url::resolveUrlFromInstance($link->toInstance()))->toBe($value);
+    } finally {
+        putenv($key);
+    }
+});
+
 it('allows configured extra uri schemes but never blocked schemes', function() {
     $settings = Hyper::$plugin->getSettings();
     $previous = $settings->allowedUriSchemes;
