@@ -2,6 +2,7 @@
 namespace verbb\hyper\gql\interfaces;
 
 use verbb\hyper\base\Link;
+use verbb\hyper\gql\resolvers\LinkedElement;
 use verbb\hyper\gql\types\generators\LinkTypeGenerator;
 use verbb\hyper\gql\types\ArrayType;
 
@@ -66,6 +67,7 @@ class LinkInterface extends BaseInterfaceType
                 'name' => 'element',
                 'description' => 'The element (if provided) for the link.',
                 'type' => Element::getType(),
+                'resolve' => [LinkedElement::class, 'resolve'],
             ],
             'isElement' => [
                 'name' => 'isElement',
