@@ -11,17 +11,13 @@ use verbb\hyper\records\LinkRelation as LinkRelationRecord;
 use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
-use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\Entry;
-use craft\fields\Matrix;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
 
 use Throwable;
-
-use benf\neo\Field as NeoField;
 
 class LinkRelations extends Component
 {
@@ -187,20 +183,13 @@ class LinkRelations extends Component
 
         $this->registerOwner($element->id, $element->siteId);
 
-        $fieldLayout = $element->getFieldLayout();
-
-        if (!$fieldLayout) {
-            return;
-        }
-
-        foreach ($fieldLayout->getCustomFields() as $field) {
-            $this->_registerNestedOwnersFromField($element, $field);
-        }
+        // Matrix and Neo owners register when Craft actually populates them.
+        // Reading unrelated owners must not force their nested queries to run.
     }
 
     public function primePendingOwners(): void
     {
-        if ($this->_priming || !$this->_pendingOwners) {
+        if ($this->_priming || $this->_loadingTargets || !$this->_pendingOwners) {
             return;
         }
 
@@ -531,39 +520,6 @@ class LinkRelations extends Component
         }
 
         return $links;
-    }
-
-    private function _registerNestedOwnersFromField(ElementInterface $element, FieldInterface $field): void
-    {
-        if ($field instanceof Matrix) {
-            $blocks = $element->getFieldValue($field->handle);
-
-            if (!is_iterable($blocks)) {
-                return;
-            }
-
-            foreach ($blocks as $block) {
-                if ($block instanceof ElementInterface) {
-                    $this->registerElementForPriming($block);
-                }
-            }
-
-            return;
-        }
-
-        if (class_exists(NeoField::class) && $field instanceof NeoField) {
-            $blocks = $element->getFieldValue($field->handle);
-
-            if (!is_iterable($blocks)) {
-                return;
-            }
-
-            foreach ($blocks as $block) {
-                if ($block instanceof ElementInterface) {
-                    $this->registerElementForPriming($block);
-                }
-            }
-        }
     }
 
     private function _extractElementTarget(LinkInterface $link, ElementInterface $owner): ?array

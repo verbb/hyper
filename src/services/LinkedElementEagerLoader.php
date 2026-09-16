@@ -37,7 +37,13 @@ class LinkedElementEagerLoader extends Component
                 continue;
             }
 
-            if ($this->_consumeHyperWithToken($withToken, $fieldsByHandle)) {
+            $containerPath = $this->_consumeHyperWithToken($withToken, $fieldsByHandle);
+
+            if ($containerPath !== null) {
+                if ($containerPath !== '') {
+                    $remaining[] = $containerPath;
+                }
+
                 continue;
             }
 
@@ -51,7 +57,7 @@ class LinkedElementEagerLoader extends Component
     // Private Methods
     // =========================================================================
 
-    private function _consumeHyperWithToken(string $withToken, array $fieldsByHandle): bool
+    private function _consumeHyperWithToken(string $withToken, array $fieldsByHandle): ?string
     {
         $segments = explode('.', $withToken);
         $fields = $fieldsByHandle[$segments[0]] ?? [];
@@ -60,19 +66,22 @@ class LinkedElementEagerLoader extends Component
             $fields[] = $field;
         }
 
-        $consumed = false;
+        $hyperIndex = null;
 
         foreach ($fields as $field) {
             // Register every matching layout, rather than letting the first alias win.
-            if ($this->_walkWithSegments($segments, 0, $field) !== null) {
-                $consumed = true;
+            $index = $this->_walkWithSegments($segments, 0, $field);
+
+            if ($index !== null) {
+                $hyperIndex = max($hyperIndex ?? 0, $index);
             }
         }
 
-        return $consumed;
+        // Keep native containing fields so Craft can load nested owners in a batch.
+        return $hyperIndex === null ? null : implode('.', array_slice($segments, 0, $hyperIndex));
     }
 
-    private function _walkWithSegments(array $segments, int $index, ?FieldInterface $field = null): ?HyperField
+    private function _walkWithSegments(array $segments, int $index, ?FieldInterface $field = null): ?int
     {
         $handle = $segments[$index] ?? null;
 
@@ -90,7 +99,7 @@ class LinkedElementEagerLoader extends Component
             $suffix = implode('.', array_slice($segments, $index + 1));
 
             if ($suffix === '' || $suffix === 'linkedElements') {
-                return $field;
+                return $index;
             }
 
             $linkedElementsPrefix = 'linkedElements.';
@@ -102,10 +111,10 @@ class LinkedElementEagerLoader extends Component
                     Hyper::$plugin->getLinkRelations()->registerLinkedElementWith($field->id, $targetWith);
                 }
 
-                return $field;
+                return $index;
             }
 
-            return $field;
+            return $index;
         }
 
         if ($field instanceof Matrix) {
@@ -127,7 +136,7 @@ class LinkedElementEagerLoader extends Component
                     if ($nestedField instanceof HyperField || $index + 2 < count($segments)) {
                         $result = $this->_walkWithSegments($segments, $index + 1, $nestedField);
 
-                        if ($result) {
+                        if ($result !== null) {
                             // Different entry types can expose different fields under one alias.
                             $matched = $result;
                         }
@@ -135,7 +144,7 @@ class LinkedElementEagerLoader extends Component
                 }
             }
 
-            if ($matched) {
+            if ($matched !== null) {
                 return $matched;
             }
         }

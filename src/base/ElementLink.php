@@ -523,7 +523,10 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $siteId = $this->linkSiteId
             ?? $this->ownerSiteId
             ?? Craft::$app->getSites()->getCurrentSite()->id;
-        $element = Hyper::$plugin->getLinkRelations()->getPrimedElement($targetId, (int)$siteId);
+        // Craft's eager loader populates nested owners without the query batch event.
+        $relations = Hyper::$plugin->getLinkRelations();
+        $relations->primePendingOwners();
+        $element = $relations->getPrimedElement($targetId, (int)$siteId);
 
         return $element && $this->_matchesElementStatus($element, $status) ? $element : null;
     }
