@@ -33,6 +33,11 @@ export function mountEmbed(container: HTMLElement): void {
             const payload = response?.data?.data as Record<string, unknown> | undefined;
             if (payload) {
                 data.value = JSON.stringify(payload);
+                if (responseEl) {
+                    // The controller isolates provider HTML inside its sandboxed preview.
+                    const preview = response.data.preview;
+                    responseEl.innerHTML = typeof preview === 'string' ? preview : '';
+                }
                 const icon = payload.icon;
                 if (typeof icon === 'string' && /^https?:\/\//i.test(icon)) {
                     const wrap = document.createElement('div');

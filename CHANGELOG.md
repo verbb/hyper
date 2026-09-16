@@ -32,6 +32,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed Embed previews not appearing after fetching a URL.
 - Fixed an information disclosure vulnerability.
 - Fixed GraphQL dropping Content Block values inside links.
 - Fixed native Craft Link migrations dropping IDs, rel values, and download settings.

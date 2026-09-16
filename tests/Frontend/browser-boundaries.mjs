@@ -30,7 +30,7 @@ try {
     await page.addScriptTag({path:path.join(craftPath,'src/web/assets/jquery/dist/jquery.js')});
     await page.evaluate(()=>{
         window.pending=[];window.posted={fields:{main:'edited'}};
-        window.Craft={randomString:()=>crypto.randomUUID(),getActionUrl:(a,p)=>p,sendActionRequest:(m,p)=>new Promise(r=>pending.push({p,r})),expandPostArray:()=>({hyperData:{row:posted}})};
+        window.Craft={randomString:()=>crypto.randomUUID(),getActionUrl:(a,p)=>p,sendActionRequest:(m,p)=>new Promise((r,j)=>pending.push({p,r,j})),expandPostArray:()=>({hyperData:{row:posted}})};
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
@@ -100,12 +100,31 @@ try {
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/first');
     await page.waitForFunction(()=>pending.length===1);
     await page.locator('.visible').fill('https://example.test/second');
-    await page.evaluate(()=>pending[0].r({data:{data:{url:'https://example.test/first',title:'stale'}}}));
+    await page.evaluate(()=>pending[0].r({data:{data:{url:'https://example.test/first',title:'stale'},preview:'<iframe title="stale"></iframe>'}}));
+    assert.equal(await page.locator('.hyper-embed-response iframe').count(),0);
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/second');
     await page.waitForFunction(()=>pending.length===2);
+    await page.evaluate(()=>pending[1].r({data:{data:{url:'https://example.test/second',title:'Current'},preview:'<iframe title="Current preview" sandbox="allow-scripts allow-same-origin allow-presentation" src="data:text/html,%3Cp%3EPreview%3C%2Fp%3E"></iframe>'}}));
+    await page.waitForFunction(()=>JSON.parse(document.querySelector('.link-embed-data').value).title==='Current');
+    assert.equal(await page.locator('.hyper-embed-response iframe').count(),1);
+    assert.equal(await page.locator('.hyper-embed-response iframe').getAttribute('title'),'Current preview');
+    assert.equal(await page.locator('.hyper-embed-response iframe').getAttribute('sandbox'),'allow-scripts allow-same-origin allow-presentation');
+    await page.locator('.visible').fill('https://example.test/failed');
+    assert.equal(await page.locator('.hyper-embed-response iframe').count(),0);
+    await page.waitForFunction(()=>pending.length===3);
+    await page.evaluate(()=>pending[2].j({response:{data:{message:'Provider unavailable'}}}));
+    await page.waitForFunction(()=>document.querySelector('.hyper-embed-response .error')?.textContent==='Provider unavailable');
+    await page.locator('.visible').fill('https://example.test/retry');
+    await page.waitForFunction(()=>pending.length===4);
+    await page.evaluate(()=>pending[3].r({data:{data:{url:'https://example.test/retry'},preview:'<iframe title="Retry preview"></iframe>'}}));
+    await page.waitForFunction(()=>document.querySelector('.hyper-embed-response iframe')?.title==='Retry preview');
+    await page.locator('.visible').fill('https://example.test/clear');
+    await page.waitForFunction(()=>pending.length===5);
     await page.locator('.visible').fill('');
-    await page.evaluate(()=>pending[1].r({data:{data:{url:'https://example.test/second'}}}));
+    await page.evaluate(()=>pending[4].r({data:{data:{url:'https://example.test/clear'},preview:'<iframe title="Cleared preview"></iframe>'}}));
     assert.deepEqual(JSON.parse(await page.locator('.link-embed-data').inputValue()),{});
+    assert.equal(await page.locator('.hyper-embed-response').textContent(),'');
+    assert.equal(await page.locator('.hyper-embed-response iframe').count(),0);
     // Submit synchronization sees programmatic/widget changes even without input events.
     await page.evaluate(()=>{document.querySelector('.visible').value='https://example.test/submit';Audit.syncEmbedWidgets();});
     assert.equal(JSON.parse(await page.locator('.link-embed-data').inputValue()).url,'https://example.test/submit');
@@ -216,7 +235,7 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:['direct Craft save and autosave','immediate URL','response race','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
+    console.log(JSON.stringify({ok:true,scenarios:['direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}
 
 await import('./input-lifecycle.mjs');
