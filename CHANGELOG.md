@@ -10,6 +10,7 @@
 - `HyperField::getHydratedLinkBlocks()` shared by bulk add and clipboard paste (`mode=seed`).
 
 ### Changed
+- GraphQL link type names use the original field handle instead of a layout alias. Update fragments that use alias-derived type names; query field aliases are unchanged.
 - Link destinations now use literal values; existing environment-variable and alias references must be updated before upgrading.
 - Hyper 3 now requires Craft 5.9 or later and Embed 4.
 - Named **Link Type Config** field settings are stored by config **UID** (dual-read legacy handles on load). Renaming a config handle no longer orphans fields.
@@ -25,6 +26,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed different fields sharing a layout alias reusing each other's GraphQL custom-field definitions.
 - Fixed configured fixed URLs being overridden by submitted or imported link content.
 - Fixed an authorization vulnerability.
 - Fixed missing or unpublished destinations rendering their retained suffix as a link.

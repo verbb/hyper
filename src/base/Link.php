@@ -102,8 +102,12 @@ abstract class Link extends Element implements LinkInterface
         // yields clean GraphQL type names like `linkField_Url_LinkType` rather than the old
         // `linkField_DefaultVerbbHyperLinksUrl_LinkType`.
         $handle = $context->handle ?: $context::typeKey();
+        $field = $context->field;
+        $sourceField = $field->uid ? Craft::$app->getFields()->getFieldByUid($field->uid) : null;
 
-        return $context->field->handle . '_' . StringHelper::toPascalCase($handle) . '_LinkType';
+        // Layout aliases are local to a layout; different fields can share one.
+        // Anchor schema identity to the original field while query keys keep aliases.
+        return ($sourceField?->handle ?? $field->handle) . '_' . StringHelper::toPascalCase($handle) . '_LinkType';
     }
 
     public static function getDefaultFieldLayout(): FieldLayout
