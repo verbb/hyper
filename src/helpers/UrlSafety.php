@@ -20,6 +20,11 @@ class UrlSafety
      */
     public static function isAllowedUrl(string $url, array $extraSchemes = []): bool
     {
+        // Browsers strip URL control characters before interpreting a scheme.
+        if (preg_match('/[\x00-\x1f\x7f]/', trim($url, ' '))) {
+            return false;
+        }
+
         $url = trim($url);
 
         if ($url === '' || str_starts_with($url, '#')) {

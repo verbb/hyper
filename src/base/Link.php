@@ -841,14 +841,36 @@ abstract class Link extends Element implements LinkInterface
         $attributes = [];
 
         foreach ($this->customAttributes as $value) {
-            $name = (string)($value['attribute'] ?? '');
+            if (!is_array($value) || !is_string($value['attribute'] ?? null)) {
+                continue;
+            }
+
+            $name = trim($value['attribute']);
 
             // Drop event-handler / malformed names — Yii interpolates attribute names raw.
             if (!UrlSafety::isSafeAttributeName($name)) {
                 continue;
             }
 
-            $attributes[$name] = $value['value'] ?? '';
+            $attributeValue = $value['value'] ?? '';
+
+            // Author values come from text cells. Yii expands structured data/aria
+            // values into new attribute names, outside the name check above.
+            if (!is_scalar($attributeValue) && $attributeValue !== null) {
+                continue;
+            }
+
+            // Author attributes can override the native destination. Enforce the same
+            // policy here; caller-supplied template attributes remain explicitly trusted.
+            if (in_array(strtolower($name), ['href', 'xlink:href', 'ping'], true)) {
+                $extra = Hyper::$plugin?->getSettings()->allowedUriSchemes ?? [];
+
+                if (!is_string($attributeValue) || !UrlSafety::isAllowedUrl($attributeValue, $extra)) {
+                    continue;
+                }
+            }
+
+            $attributes[$name] = $attributeValue;
         }
 
         return $attributes;

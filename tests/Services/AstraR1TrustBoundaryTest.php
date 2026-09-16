@@ -56,6 +56,27 @@ it('rejects javascript urls on validation and render', function() {
     expect($link->getUrl())->toBeNull();
 });
 
+it('does not expand structured author attributes into executable markup', function() {
+    $field = HyperFixtureFactory::hyperField(['linkTypes' => [Url::class]]);
+    $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($field, [
+        'linkTypeHandle' => 'url', 'linkValue' => 'https://example.test', 'linkText' => 'Safe',
+        'customAttributes' => [
+            ['attribute' => 'data', 'value' => ['x onclick' => 'window.__hyperAudit = 1']],
+            ['attribute' => 'aria', 'value' => ['x onfocus' => 'window.__hyperAudit = 1']],
+            ['attribute' => 'data-normal', 'value' => '<ordinary text>'],
+        ],
+    ]);
+    $html = (string)$link->getLink();
+    $document = new DOMDocument();
+    $document->loadHTML($html);
+    $anchor = $document->getElementsByTagName('a')->item(0);
+    expect($anchor->hasAttribute('onclick'))->toBeFalse();
+    expect($anchor->hasAttribute('onfocus'))->toBeFalse();
+    expect($anchor->getAttribute('data-normal'))->toBe('<ordinary text>');
+    // Template attributes are a separate, explicitly trusted API.
+    expect((string)$link->getLink(['data' => ['structured' => ['safe' => true]]]))->toContain('data-structured=');
+});
+
 it('never expands environment variables in authored link destinations', function() {
     $key = 'HYPER_AUDIT_URL_SENTINEL';
     putenv($key . '=synthetic-private-value');
@@ -120,7 +141,14 @@ it('stores string embed urls without fetching during setAttributes', function() 
 it('isolates embed preview html inside a sandboxed data iframe', function() {
     $preview = Embed::getPreviewHtml('<iframe src="https://example.test"></iframe><script>alert(1)</script>');
 
-    expect($preview)->toContain('sandbox=')
-        ->and($preview)->toContain('data:text/html')
-        ->and($preview)->not->toContain('<script>alert(1)</script>');
+    $document = new DOMDocument();
+    $document->loadHTML($preview);
+    $frames = $document->getElementsByTagName('iframe');
+    expect($frames->length)->toBe(1);
+    expect($document->getElementsByTagName('script')->length)->toBe(0);
+    $frame = $frames->item(0);
+    expect(explode(' ', $frame->getAttribute('sandbox')))->toEqualCanonicalizing(['allow-scripts', 'allow-same-origin', 'allow-presentation']);
+    expect($frame->getAttribute('referrerpolicy'))->toBe('no-referrer');
+    expect($frame->getAttribute('src'))->toStartWith('data:text/html;charset=utf-8,');
+    expect(rawurldecode(explode(',', $frame->getAttribute('src'), 2)[1]))->toBe('<iframe src="https://example.test"></iframe><script>alert(1)</script>');
 });

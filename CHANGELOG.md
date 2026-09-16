@@ -26,6 +26,7 @@
 - Named link type config miss logs a warning before falling back to Default.
 
 ### Fixed
+- Fixed a stored XSS vulnerability.
 - Fixed linked-element eager loading ignoring layout-specific field handles, including those inside Matrix.
 - Fixed GraphQL linked-element access not respecting section, site and user-group restrictions.
 - Fixed selected-element cards resolving in the wrong site or changing stored target values.
