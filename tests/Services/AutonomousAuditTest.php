@@ -40,6 +40,30 @@ it('recovers an unavailable legacy class when its link type is restored', functi
     expect($restored->getUrl())->toBe('mailto:hello@example.test');
 });
 
+it('keeps a cleared passive translation when structure is propagated', function() {
+    [$primary, $secondary] = F::ensureSites(2);
+    $field = F::hyperField(['multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Passive::class]]);
+    $section = F::translatableEntrySection($field, 2);
+    $owner = F::plainEntry($section, 'Passive owner', [$field->handle => [F::passiveLinkPayload('Original')]], $primary);
+    $target = F::localizedEntryForSite($owner, $secondary);
+    $links = $target->getFieldValue($field->handle);
+    $links->getLinks()[0]->linkText = null;
+    $target->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($target))->toBeTrue();
+    $target = Entry::find()->id($owner->id)->siteId($secondary->id)->one();
+    expect($target->getFieldValue($field->handle)->getLinks()[0]->getCustomLinkText())->toBeNull();
+    $source = Entry::find()->id($owner->id)->siteId($primary->id)->one();
+    $links = $source->getFieldValue($field->handle);
+    $new = Hyper::$plugin->links->createLinkFromSerialized($field, F::passiveLinkPayload('New label'));
+    $source->setFieldValue($field->handle, $links->withLinks([...$links->getLinks(), $new]));
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+    $target = Entry::find()->id($owner->id)->siteId($secondary->id)->one();
+    $links = $target->getFieldValue($field->handle)->getLinks();
+    expect($links)->toHaveCount(2);
+    expect($links[0]->getCustomLinkText())->toBeNull();
+    expect($links[1]->getCustomLinkText())->toBe('New label');
+});
+
 it('resolves eager-load paths through layout-specific Hyper and Matrix handles', function() {
     $fixture = F::matrixFieldWithHyper();
     $inner = $fixture['hyperField'];

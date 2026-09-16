@@ -2,9 +2,9 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\base\ElementLink;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
-use verbb\hyper\links\Entry as EntryLink;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkCollectionInterface;
 
@@ -177,7 +177,8 @@ class MultisiteLinks extends Component
                     $existing = new LinkCollection($field, [], $localizedElement);
                 }
 
-                if ($existing->isEmpty()) {
+                // Empty label-only rows still have identity and saved translation choices.
+                if ($existing->getLinks() === []) {
                     $merged = $this->localizeLinkCollection(
                         $field,
                         $collection,
@@ -200,7 +201,9 @@ class MultisiteLinks extends Component
                 }
 
                 $localizedElement->setFieldValue($field->handle, $merged);
-                Craft::$app->getElements()->saveElement($localizedElement, false, false, false);
+                if (!Craft::$app->getElements()->saveElement($localizedElement, false, false, false)) {
+                    throw new \RuntimeException('Unable to propagate Hyper link structure.');
+                }
             }
         } finally {
             unset($this->_propagating[$key]);
@@ -234,38 +237,35 @@ class MultisiteLinks extends Component
             }
         }
 
-        $useUidJoin = $targetByUid !== [];
+        $targetUids = array_map(static fn($link) => $link instanceof Link && $link->hasLegacyIdentity() ? null : ($link->uid ?? null), $targetLinks);
 
         foreach ($sourceLinks as $index => $sourceLink) {
             if (!$sourceLink instanceof LinkInterface) {
                 continue;
             }
 
-            $payload = $sourceLink->getSerializedValues();
+            $sourceUid = $sourceLink->uid;
+            $sourceLegacy = $sourceLink instanceof Link ? $sourceLink->hasLegacyIdentity() : !$sourceUid;
+            $targetLink = $sourceUid ? ($targetByUid[$sourceUid] ?? null) : null;
+            $positionalTarget = $targetLinks[$index] ?? null;
 
-            // Prefer UID match; fall back to position once for pre-UID content.
-            $targetLink = null;
-
-            if ($useUidJoin) {
-                $sourceUid = $sourceLink->uid ?? ($payload['uid'] ?? null);
-
-                if (is_string($sourceUid) && $sourceUid !== '' && isset($targetByUid[$sourceUid])) {
-                    $targetLink = $targetByUid[$sourceUid];
-                }
-            } else {
-                $targetLink = $targetLinks[$index] ?? null;
+            // Adopt legacy identity only where one side originally lacked a UID. A new
+            // fully identified occurrence must never steal another row's translation.
+            if (!$targetLink && $positionalTarget && ($sourceLegacy || empty($targetUids[$index]))) {
+                $targetLink = $positionalTarget;
+                $sourceLink->uid = $sourceUid ?: ($targetUids[$index] ?? null);
             }
 
+            $payload = $sourceLink->getSerializedValues();
+
             if ($targetLink instanceof LinkInterface) {
-                if ($targetLink->getCustomLinkText() !== null && $targetLink->getCustomLinkText() !== '') {
-                    $payload['linkText'] = $targetLink->getCustomLinkText();
-                }
+                // A cleared label is a saved translation choice for an existing occurrence.
+                $payload['linkText'] = $targetLink->getCustomLinkText();
 
                 $targetPayload = $targetLink->getSerializedValues();
 
-                if (!empty($targetPayload['fields'])) {
-                    $payload['fields'] = $targetPayload['fields'];
-                }
+                // An empty field bag also belongs to this saved translation.
+                $payload['fields'] = $targetPayload['fields'] ?? [];
             }
 
             if ($sourceLink instanceof ElementLink) {

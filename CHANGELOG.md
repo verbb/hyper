@@ -26,6 +26,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed multisite structure changes restoring deliberately cleared translated link text or custom fields, including label-only links.
 - Fixed category and other localized element links retaining the source site during propagation.
 - Fixed custom relation fields resolving in the wrong site when loading or copying links.
 - Fixed unavailable legacy link types being replaced by the default type and losing their original data on save.

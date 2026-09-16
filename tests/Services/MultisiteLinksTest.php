@@ -63,6 +63,71 @@ it('localizes category links during owner propagation and structure updates', fu
     }
 })->with([false, true]);
 
+it('preserves cleared translated text when a sibling adds another link', function(?string $cleared) {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField([
+        'multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Url::class],
+    ]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [
+        $field->handle => [HyperFixtureFactory::urlLinkPayload('https://example.test', 'Source label')],
+    ], $primary);
+    $localized = HyperFixtureFactory::localizedEntryForSite($owner, $secondary);
+    $links = $localized->getFieldValue($field->handle);
+    expect($links->getLinks()[0]->getCustomLinkText())->toBe('Source label');
+    $uid = $links->getLinks()[0]->uid;
+    $links->getLinks()[0]->linkText = $cleared;
+    $localized->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($localized))->toBeTrue();
+    $reload = fn($site) => Entry::find()->id($owner->id)->siteId($site->id)->one();
+    expect($reload($secondary)->getFieldValue($field->handle)->getLinks()[0]->getCustomLinkText())->toBeNull();
+    $source = $reload($primary);
+    $links = $source->getFieldValue($field->handle);
+    $new = Hyper::$plugin->links->createLinkFromSerialized($field, HyperFixtureFactory::urlLinkPayload('https://example.test/new', 'New label'));
+    $source->setFieldValue($field->handle, $links->withLinks([...$links->getLinks(), $new]));
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+    $translated = $reload($secondary)->getFieldValue($field->handle)->getLinks();
+    expect($translated)->toHaveCount(2);
+    expect($translated[0]->uid)->toBe($uid);
+    expect($translated[0]->getCustomLinkText())->toBeNull();
+    expect($translated[1]->getCustomLinkText())->toBe('New label');
+})->with([null, '']);
+
+it('keeps an empty translated custom-field bag when a sibling adds a link', function() {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $caption = new \craft\fields\PlainText(['name' => 'Translated caption', 'handle' => HyperFixtureFactory::handle('hyperCaption')]);
+    expect(Craft::$app->fields->saveField($caption))->toBeTrue();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($caption)]);
+    $url->setFieldLayout($layout);
+    $field = HyperFixtureFactory::hyperFieldWithLinkTypes([HyperFixtureFactory::linkTypeConfig($url)], [
+        'multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE,
+    ]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $payload = HyperFixtureFactory::urlLinkPayload('https://example.test', 'Source label') + ['fields' => [$caption->handle => 'Source caption']];
+    $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [$field->handle => [$payload]], $primary);
+    $reload = fn($site) => Entry::find()->id($owner->id)->siteId($site->id)->one();
+    $localized = $reload($secondary);
+    $translated = $field->serializeValue($localized->getFieldValue($field->handle));
+    $translated[0]['fields'] = [];
+    $localized->setFieldValue($field->handle, $translated);
+    expect(Craft::$app->elements->saveElement($localized))->toBeTrue();
+    expect($reload($secondary)->getFieldValue($field->handle)->first()->getFieldValue($caption->handle))->toBeNull();
+
+    $source = $reload($primary);
+    $links = $source->getFieldValue($field->handle);
+    expect($links->first()->getFieldValue($caption->handle))->toBe('Source caption');
+    $new = Hyper::$plugin->links->createLinkFromSerialized($field, $payload);
+    $source->setFieldValue($field->handle, $links->withLinks([...$links->getLinks(), $new]));
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+    $translated = $reload($secondary)->getFieldValue($field->handle)->getLinks();
+    expect($translated)->toHaveCount(2);
+    expect($translated[0]->getFieldValue($caption->handle))->toBeNull();
+    expect($translated[1]->getFieldValue($caption->handle))->toBe('Source caption');
+});
+
 it('propagates multi-link structure to sibling sites while preserving translated link text', function() {
     $sites = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([

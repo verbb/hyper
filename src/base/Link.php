@@ -183,6 +183,7 @@ abstract class Link extends Element implements LinkInterface
     public ?int $ownerSiteId = null;
     public bool $isFieldRequired = false;
 
+    private bool $_generatedUid = false;
     private ?FieldLayout $_fieldLayout = null;
     private bool $_hydratingFromInstance = false;
 
@@ -272,6 +273,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function populateFromInstance(LinkInstance $instance): void
     {
+        $this->_generatedUid = false;
         $this->_hydratingFromInstance = true;
         $this->setAttributes($instance->toLinkAttributes(), false);
         $this->_hydratingFromInstance = false;
@@ -364,11 +366,17 @@ abstract class Link extends Element implements LinkInterface
         ];
     }
 
+    public function hasLegacyIdentity(): bool
+    {
+        return !$this->uid || $this->_generatedUid;
+    }
+
     public function getSerializedValues(): array
     {
         // Mint a durable uid once so copy/cut/paste and structure sync can key links.
         if (!$this->uid) {
             $this->uid = StringHelper::UUID();
+            $this->_generatedUid = true;
         }
 
         // Convert custom fields from using their handles to the fieldLayoutUid's

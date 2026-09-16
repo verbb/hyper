@@ -32,6 +32,19 @@ it('retains configured missing classes through input and object rebinding', func
     expect($f->serializeValue(new LinkCollection($f, $c->getLinks()))[0])->toBe($raw);
 });
 
+it('adopts one-sided and pre-serialized legacy UIDs without losing translations', function () {
+    $f = F::hyperField(['multipleLinks' => true, 'linkTypes' => [Url::class]]);
+    foreach ([[null, 'known'], ['known', null], [null, null]] as [$sourceUid, $targetUid]) {
+        $mk = fn($uid, $text) => ['handle' => 'url', 'uid' => $uid, 'linkValue' => 'https://example.test', 'linkText' => $text];
+        $source = new LinkCollection($f, [$mk($sourceUid, 'Source')]);
+        $target = new LinkCollection($f, [$mk($targetUid, 'Translated')]);
+        $source->serializeValues();
+        $merged = Hyper::$plugin->multisiteLinks->mergeStructuralLinks($f, $source, $target, 1, 2)->serializeValues();
+        expect($merged[0]['linkText'])->toBe('Translated');
+        expect($merged[0]['uid'])->toBe($source->getLinks()[0]->uid);
+    }
+});
+
 it('preserves unavailable custom fields and does not reinterpret orphaned shared configs', function () {
     $f = F::hyperField(['linkTypes' => [Url::class]]);
     $raw = ['handle' => 'url', 'linkValue' => 'https://example.test', 'fields' => ['unavailable' => '00123']];
