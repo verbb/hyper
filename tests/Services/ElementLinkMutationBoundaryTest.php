@@ -38,3 +38,35 @@ it('uses the owner site for selected element cards without changing the content 
     expect($link->getElements()[0]->siteId ?? null)->toBe($secondary->id);
     expect($link->getSerializedValues())->toBe($before);
 });
+
+it('resolves custom relation fields in the owning site after loading and copying links', function(bool $copy) {
+    [$primary, $secondary] = F::ensureSites(2);
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($url)]);
+    $section = F::translatableEntrySection($field, 2);
+    $target = F::plainEntry($section, 'Related target', [], $primary);
+    $payload = ['linkTypeHandle' => 'url', 'linkValue' => 'https://example.test', 'fields' => [$related->handle => [$target->id]]];
+    $source = F::plainEntry($section, 'Source', [$field->handle => [$payload]], $primary);
+    $owner = F::plainEntry($section, 'Owner', [], $secondary);
+    if ($copy) {
+        $value = $source->getFieldValue($field->handle);
+        expect($value->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($primary->id);
+        $owner->setFieldValue($field->handle, $value);
+    } else {
+        $owner->setFieldValue($field->handle, [$payload]);
+    }
+    $assertSite = function($element) use ($field, $related, $secondary) {
+        expect($element->getFieldValue($field->handle)->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($secondary->id);
+    };
+    $assertSite($owner);
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    $assertSite(Entry::find()->id($owner->id)->siteId($secondary->id)->one());
+    if ($copy) {
+        expect($value->first()->getFieldValue($related->handle)->one()?->siteId)->toBe($primary->id);
+    }
+})->with([false, true]);

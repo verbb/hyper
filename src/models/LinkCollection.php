@@ -33,29 +33,7 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
         $this->_element = $element;
         $this->_field = $field;
 
-        // Convert serialized data / Link objects to destination-bound links.
-        foreach ($links as $data) {
-            if ($data instanceof LinkInterface) {
-                $this->_links[] = $this->_rebindLinkObject($field, $data, $element);
-                continue;
-            }
-
-            if (!is_array($data)) {
-                continue;
-            }
-
-            $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($field, $data);
-
-            if ($link) {
-                if ($element) {
-                    $link->ownerSiteId = $element->siteId;
-                }
-
-                $this->_links[] = $link;
-            }
-        }
-
-        $this->_syncFirstLink();
+        $this->setLinks($links);
     }
 
     public function __toString(): string
@@ -135,6 +113,12 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
+        $value = $this->_createLink($value);
+
+        if (!$value) {
+            return;
+        }
+
         if ($offset === null) {
             $this->_links[] = $value;
         } else {
@@ -228,7 +212,15 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
 
     public function setLinks(array $value): void
     {
-        $this->_links = $value;
+        $links = [];
+
+        foreach ($value as $data) {
+            if ($link = $this->_createLink($data)) {
+                $links[] = $link;
+            }
+        }
+
+        $this->_links = $links;
         $this->_syncFirstLink();
     }
 
@@ -238,6 +230,17 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
         $collection->setLinks($links);
 
         return $collection;
+    }
+
+    public function withFieldContext(HyperField $field, ?ElementInterface $element = null): self
+    {
+        if ($this->_field === $field && $this->_element === $element) {
+            return $this;
+        }
+
+        // Normalized values can be assigned to a different field or owner. Their
+        // links must use the receiving settings without changing the source value.
+        return new self($field, $this->_links, $element);
     }
 
     public function serializeValues(?ElementInterface $element = null): array
@@ -257,12 +260,35 @@ class LinkCollection implements LinkCollectionInterface, IteratorAggregate, Coun
     // Private Methods
     // =========================================================================
 
+    private function _createLink(mixed $data): ?LinkInterface
+    {
+        // Every insertion path applies the destination layout and settings.
+        if ($data instanceof LinkInterface) {
+            $link = $this->_rebindLinkObject($this->_field, $data, $this->_element);
+        } elseif (is_array($data)) {
+            $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($this->_field, $data);
+        } else {
+            return null;
+        }
+
+        if ($link && $this->_element) {
+            $link->ownerSiteId = $this->_element->siteId;
+            $link->siteId = $this->_element->siteId;
+        }
+
+        return $link;
+    }
+
     /**
      * Rebind a bare Link object onto this field’s configured prototype/layout so
      * programmatic `new Url(); $link->fields = […]` examples work (Astra H3-A17).
      */
     private function _rebindLinkObject(HyperField $field, LinkInterface $link, ?ElementInterface $element): LinkInterface
     {
+        if ($link instanceof \verbb\hyper\links\MissingLink) {
+            return Hyper::$plugin->getLinks()->createLinkFromSerialized($field, $link->getSerializedValues());
+        }
+
         if ($link instanceof Link) {
             // Build an instance without calling getSerializedValues() — bare objects may
             // lack a field layout and that path would NPE on custom fields (A17).

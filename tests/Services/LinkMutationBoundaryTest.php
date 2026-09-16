@@ -60,6 +60,28 @@ it('keeps custom-field state consistent when clearing or cloning a link', functi
     }
 })->with(['clear', 'clone', 'safe attributes']);
 
+it('applies destination settings to links inserted through collection mutation APIs', function(string $method) {
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig(new Url([
+        'defaultLinkValue' => 'https://example.test/fixed', 'fixedLinkValue' => true,
+    ]))]);
+    $owner = F::plainEntry(F::entrySection($field), 'Collection edits');
+    $links = new LinkCollection($field, [], $owner);
+    $incoming = new Url(['handle' => 'url', 'linkValue' => 'https://example.test/changed', 'linkText' => 'Inserted']);
+    if ($method === 'append') {
+        $links[] = $incoming;
+    } elseif ($method === 'setLinks') {
+        $links->setLinks([$incoming]);
+    } else {
+        $links = $links->withLinks([$incoming]);
+    }
+    expect($links->getUrl())->toBe('https://example.test/fixed');
+    expect($links->first()->ownerSiteId)->toBe($owner->siteId);
+    $owner->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->first()->linkValue)->toBe('https://example.test/fixed');
+    expect($incoming->linkValue)->toBe('https://example.test/changed');
+})->with(['append', 'setLinks', 'withLinks']);
+
 it('previews the first remaining link after an array-access removal', function() {
     $field = F::hyperField(['multipleLinks' => true, 'linkTypes' => [Url::class]]);
     $owner = F::plainEntry(F::entrySection($field), 'Preview');
@@ -67,4 +89,22 @@ it('previews the first remaining link after an array-access removal', function()
     unset($links[0]);
     expect($links->first()->getText())->toBe('Second');
     expect($field->getPreviewHtml($links, $owner))->toBe('Second');
+});
+
+it('binds a copied normalized collection to its receiving field and owner', function() {
+    $sourceField = F::hyperField(['linkTypes' => [Url::class]]);
+    $source = F::plainEntry(F::entrySection($sourceField), 'Source', [$sourceField->handle => [F::urlLinkPayload('https://example.test/source')]]);
+    $destinationField = F::hyperFieldWithLinkTypes([F::linkTypeConfig(new Url([
+        'defaultLinkValue' => 'https://example.test/destination', 'fixedLinkValue' => true,
+    ]))]);
+    $destination = F::plainEntry(F::entrySection($destinationField), 'Destination');
+    $original = $source->getFieldValue($sourceField->handle);
+    $destination->setFieldValue($destinationField->handle, $original);
+    $copied = $destination->getFieldValue($destinationField->handle);
+    expect($copied->getUrl())->toBe('https://example.test/destination');
+    expect($copied)->not->toBe($original);
+    expect($copied->first()->field->handle)->toBe($destinationField->handle);
+    expect(Craft::$app->elements->saveElement($destination))->toBeTrue();
+    expect(Entry::find()->id($destination->id)->one()->getFieldValue($destinationField->handle)->first()->linkValue)->toBe('https://example.test/destination');
+    expect($original->getUrl())->toBe('https://example.test/source');
 });

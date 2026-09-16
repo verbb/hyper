@@ -23,6 +23,15 @@ it('validates author destinations but preserves trusted template overrides', fun
     expect($l->getLinkAttributes(['href' => 'slack://trusted'])['href'])->toBe('slack://trusted');
 });
 
+it('retains configured missing classes through input and object rebinding', function () {
+    $f = F::hyperFieldWithLinkTypes([['type' => 'synthetic\MissingType', 'handle' => 'gone', 'label' => 'Gone', 'enabled' => true]]);
+    $raw = ['linkTypeHandle' => 'gone', 'uid' => 'opaque-record', 'linkValue' => 'https://example.test', 'fields' => ['keep' => '00123', 'empty' => []], 'extension' => ['empty' => null]];
+    $c = $f->normalizeValue([$raw]);
+    expect($f->serializeValue($c)[0])->toBe($raw);
+    expect($c->getLinks()[0]->getInputConfig()['unsupportedPayload'])->toBe($raw);
+    expect($f->serializeValue(new LinkCollection($f, $c->getLinks()))[0])->toBe($raw);
+});
+
 it('preserves unavailable custom fields and does not reinterpret orphaned shared configs', function () {
     $f = F::hyperField(['linkTypes' => [Url::class]]);
     $raw = ['handle' => 'url', 'linkValue' => 'https://example.test', 'fields' => ['unavailable' => '00123']];

@@ -26,6 +26,7 @@
 - Missing named link type configs retain their content as unsupported instead of substituting Default.
 
 ### Fixed
+- Fixed custom relation fields resolving in the wrong site when loading or copying links.
 - Fixed unavailable legacy link types being replaced by the default type and losing their original data on save.
 - Fixed a stored XSS vulnerability.
 - Fixed linked-element eager loading ignoring layout-specific field handles, including those inside Matrix.
@@ -52,7 +53,7 @@
 - Fixed cached element links resolving to the wrong site or returning scheduled and expired entries as live links.
 - Reverse relations no longer confuse target class with owner class; empty queries return `[]` instead of a `-1` sentinel.
 - Nested Matrix `with(['matrix.hyper.linkedElements…'])` uses Craft 5 `getEntryTypes()` (removed `getBlockTypes()`).
-- Programmatic bare `new Url()` objects rebind onto the destination field layout (documented custom-field path).
+- Fixed programmatically inserted links and copied collections retaining source settings instead of using the receiving field's layout, fixed URL and owner context.
 - Vizy migration content path skips writes during dry-run; CP migration aborts when a requested backup fails.
 - Embed CP fetch uses a generation token so out-of-order responses cannot overwrite a newer URL; URL persists immediately while metadata loads.
 - HyperInput unregisters sync callbacks and listeners when the field root is removed from the DOM.

@@ -44,6 +44,12 @@ abstract class Link extends Element implements LinkInterface
         return true;
     }
 
+    public static function isLocalized(): bool
+    {
+        // Custom relation fields use the link's owner site, just as on a saved element.
+        return true;
+    }
+
     public static function classDisplayName(): string
     {
         $classNameParts = explode('\\', static::class);

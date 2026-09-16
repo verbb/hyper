@@ -421,7 +421,13 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     public function normalizeValue(mixed $value, ElementInterface $element = null): mixed
     {
         if ($value instanceof LinkCollection) {
-            return $value;
+            // Craft copies normalized collections when creating a site's first version.
+            // Localize before returning, just as for serialized field values below.
+            if ($element && Hyper::$plugin->getMultisiteLinks()->shouldLocalizePropagatedValue($this, $element)) {
+                return Hyper::$plugin->getMultisiteLinks()->localizeLinkCollection($this, $value, $element);
+            }
+
+            return $value->withFieldContext($this, $element);
         }
 
         if (is_string($value) && !empty($value)) {
