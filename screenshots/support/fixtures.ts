@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ScreenshotSetupContext } from '@verbb/docs-screenshots/types';
+import type { ScreenshotSetupContext } from '@verbb/craft-screenshots/types';
 
 export type HyperDocsFixture = {
     fieldId: number;
@@ -14,7 +14,7 @@ export type HyperDocsFixture = {
 };
 
 const fixtureDir = dirname(fileURLToPath(import.meta.url));
-const seedScript = readFileSync(join(fixtureDir, 'seed-docs-field.php'), 'utf8');
+const seedScript = readFileSync(join(fixtureDir, 'seed', 'seed-docs-field.php'), 'utf8');
 
 /**
  * Seed the Hyper Demo field + Demo entry used by feature-tour screenshots.

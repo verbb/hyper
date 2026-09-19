@@ -1,11 +1,11 @@
-import { defineScreenshotScenario } from '@verbb/docs-screenshots/api';
-import { seedHyperDocsFixture } from '../.screenshots/hyper/fixtures';
+import { defineScreenshotScenario } from '@verbb/craft-screenshots/api';
+import { seedHyperDocsFixture } from '../../../support/fixtures';
 import {
     createHyperPromoCleanupStep,
     createHyperPromoCropStep,
     createHyperLinkInputPromoPolishStep,
     createSelectLinkLayoutTabStep,
-} from '../.screenshots/hyper/presets';
+} from '../../../support/presets';
 
 let entryEditRoute = '/admin/entries';
 
@@ -17,7 +17,7 @@ const viewport = {
 
 export default defineScreenshotScenario({
     id: 'feature-tour-overview-link-tabs',
-    output: '_screenshots/feature-tour/overview-link-tabs.png',
+    output: 'feature-tour/overview-link-tabs.png',
     route: () => entryEditRoute,
     viewport,
     async setup(context) {

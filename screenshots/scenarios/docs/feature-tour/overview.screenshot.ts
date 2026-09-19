@@ -1,10 +1,10 @@
-import { defineScreenshotScenario } from '@verbb/docs-screenshots/api';
-import { seedHyperDocsFixture } from '../.screenshots/hyper/fixtures';
+import { defineScreenshotScenario } from '@verbb/craft-screenshots/api';
+import { seedHyperDocsFixture } from '../../../support/fixtures';
 import {
     createHyperPromoCleanupStep,
     createHyperPromoCropStep,
     createSelectSettingsLinkTypeStep,
-} from '../.screenshots/hyper/presets';
+} from '../../../support/presets';
 
 let settingsRoute = '/admin/settings/fields';
 let urlHandle = 'url';
@@ -18,7 +18,7 @@ const viewport = {
 
 export default defineScreenshotScenario({
     id: 'feature-tour-overview-settings',
-    output: '_screenshots/feature-tour/overview-field-settings.png',
+    output: 'feature-tour/overview-field-settings.png',
     route: () => settingsRoute,
     viewport,
     async setup(context) {

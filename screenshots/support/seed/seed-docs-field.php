@@ -2,7 +2,7 @@
  * Seed Hyper field + entries for docs screenshots (promo-style CP crops).
  *
  * Echoes JSON: fieldId, settingsRoute, entryEditRoute, urlHandle, entryHandle.
- * Note: no opening PHP tag — @verbb/docs-screenshots injects this into a bootstrap.
+ * Note: no opening PHP tag — @verbb/craft-screenshots injects this into a bootstrap.
  */
 
 use craft\elements\Entry;

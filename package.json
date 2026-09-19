@@ -10,7 +10,7 @@
         "build": "vite build",
         "watch": "vite build --watch",
         "dev:plugin-docs": "npm run docs:dev --prefix docs",
-        "docs:screenshots": "npm --prefix docs run docs:screenshots --",
+        "screenshots": "npm --prefix screenshots run screenshots --",
         "test:browser": "node tests/Frontend/browser-boundaries.mjs"
     },
     "devDependencies": {

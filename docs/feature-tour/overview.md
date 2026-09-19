@@ -6,7 +6,7 @@ To create a field, open **Settings → Fields → New Field** and select **Hyper
 
 ## Field Settings
 
-![Hyper field settings with link types and URL field layout](/_screenshots/feature-tour/overview-field-settings.png)
+![Hyper field settings with link types and URL field layout](../../screenshots/output/feature-tour/overview-field-settings.png)
 
 Use **Default Link Type** to choose the destination type selected when an editor adds a link. For a field mainly used for external resources, choose URL. Editors can switch to another enabled type when they need it.
 
@@ -30,11 +30,11 @@ Use **Link Fields** to arrange the information editors enter for each type. Keep
 
 Add the Hyper field to the relevant entry type’s field layout, save the layout, then edit an entry of that type. In an empty field, add a link and choose its destination. Enter **Link Text** when you want your own label, then save the entry.
 
-![Multi-link Hyper field with URL and Entry rows](/_screenshots/feature-tour/overview-link-input.png)
+![Multi-link Hyper field with URL and Entry rows](../../screenshots/output/feature-tour/overview-link-input.png)
 
 When a link type has several layout tabs, editors switch between them in the link header. The tabs keep optional information accessible without showing every field at once.
 
-![Hyper link block with inline Content and Advanced tabs](/_screenshots/feature-tour/overview-link-tabs.png)
+![Hyper link block with inline Content and Advanced tabs](../../screenshots/output/feature-tour/overview-link-tabs.png)
 
 ### Copy, Cut, and Paste
 
