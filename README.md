@@ -25,6 +25,8 @@ Hyper is a Craft CMS plugin for creating links, with a focus on user experience 
 - Email
 - Embed (oembed)
 - Entry
+- Event (for [Calendar](https://plugins.craftcms.com/calendar))
+- Form (for [Formie](https://plugins.craftcms.com/formie))
 - Phone
 - Product (for [Commerce](https://plugins.craftcms.com/commerce))
 - Shopify Product (for [Shopify](https://plugins.craftcms.com/shopify))
