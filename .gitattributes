@@ -1,7 +1,6 @@
 /.github export-ignore
 /.ddev export-ignore
 **/.DS_Store export-ignore
-/.plugin-store export-ignore
 /.gitignore export-ignore
 /.gitattributes export-ignore
 /.env* export-ignore
