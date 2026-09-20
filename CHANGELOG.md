@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.13 - 2026-09-20
 
 ### Fixed
 - Fix cross-site entry links being cleared on the first save of a new Matrix entry. ([#274](https://github.com/verbb/hyper/issues/274))
