@@ -117,7 +117,7 @@ export default {
             cachedFieldHtml: {},
             cachedFieldJs: {},
             rendered: false,
-            initValue: null,
+            startupTimer: null,
             lastSerializedValue: null,
             portalLayerEl: null,
             portalScopeId: `hyper:${this.handle}:${Math.random().toString(36).slice(2, 10)}`,
@@ -216,14 +216,23 @@ export default {
 
             // Once the field has settled, take a snapshot of the value for the field. This helps us compare if anything
             // has changed, which it often does as jQuery kicks in, or Vue for other fields in Vizy blocks.
-            setTimeout(() => {
-                this.initValue = this.clone(this.proxyValue);
-                this.lastSerializedValue = this.serializeValue(this.initValue);
+            this.startupTimer = setTimeout(() => {
+                // An explicit edit may already have synchronised the store.
+                // Never replace that baseline with later passive widget setup.
+                if (this.lastSerializedValue === null) {
+                    this.lastSerializedValue = this.serializeValue(this.proxyValue);
+                }
+                this.startupTimer = null;
             }, 1000);
         });
     },
 
     beforeUnmount() {
+        clearTimeout(this.startupTimer);
+        for (const update of this.portalUpdateFns.values()) {
+            update.cancel();
+        }
+
         // Destroy all portals
         for (const [key, entry] of this.portals.entries()) {
             entry.observer?.disconnect();
@@ -356,7 +365,13 @@ export default {
                     characterData: true,
                 });
 
-                $(el).on('input change', 'input, textarea, select', () => { return emitUpdate(); });
+                // Real input must reach the submitted store before the event
+                // bubbles to Vizy/Craft or an immediate save serialises it.
+                // Only passive DOM mutations use the startup grace/debounce.
+                $(el).on('input change', 'input, textarea, select', () => {
+                    this.$events.emit(this.portalEventName(cacheKey));
+                    this.forceSyncValueToStore();
+                });
 
                 entry = { el, observer: mo, jsAppended: false };
                 this.portals.set(key, entry);
@@ -427,6 +442,7 @@ export default {
 
             // Cleanup maps
             this.portals.delete(key);
+            this.portalUpdateFns.get(key)?.cancel();
             this.portalUpdateFns.delete(key);
         },
 
