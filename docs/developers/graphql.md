@@ -50,9 +50,23 @@ The fragment `newsPost_Entry` identifies the entry type containing your custom f
 }
 ```
 
-Both `entries` and `resourceLinks` are lists. Hyper returns a list even when **Enable Multiple Links** is off. Add another link with multiple links enabled and rerun the query to see a second item in `resourceLinks`.
+Both `entries` and `resourceLinks` are lists. Hyper returns a list even when **Enable Multiple Links** is off. The collection excludes links without a resolved destination, including Passive labels and unavailable targets. Use the field’s `empty` argument to include or inspect URL-less rows. Add another link with multiple links enabled and rerun the query to see a second item in `resourceLinks`.
 
 If Craft reports an unknown field or type, check the entry type handle, field placement and active schema permissions. If the result contains no entries, check publication status and the selected site.
+
+## Include Empty Destinations
+
+The `empty` argument follows the collection’s destination rules: `false` returns links with a resolved URL and is the default, `true` returns links without one, and `null` includes either. For example, include Passive labels and URL-less User selections in an entry fragment with:
+
+```graphql
+resourceLinks(empty: null) {
+    linkText
+    url
+    isEmpty
+}
+```
+
+This is a partial selection to place inside the entry-type fragment shown above. Your client decides how to display each returned row. Selecting a URL-less link does not bypass schema permissions for its `element` or custom fields. Twig’s `where()`, ordering and limit methods are not GraphQL arguments.
 
 ## Read Custom Fields
 
@@ -94,7 +108,7 @@ Every Hyper link implements `HyperLinkInterface`. These fields can be selected d
 | `classes`| `String` | The `class` attribute for the link.
 | `element`| `ElementInterface` | The element (if provided) for the link.
 | `isElement`| `Boolean` | Whether the chosen link value is an element.
-| `isEmpty`| `Boolean` | Whether the link has no meaningful saved content.
+| `isEmpty`| `Boolean` | Whether the link has no resolved destination.
 | `link`| `String` | The HTML output for an `<a>` element.
 | `linkText`| `String` | Link Text with layout defaults and type-specific fallbacks, including element titles.
 | `customLinkText`| `String` | Only the Link Text field value, with no fallbacks. Null when blank—use for explicit defaults in your API client.

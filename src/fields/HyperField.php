@@ -354,13 +354,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function isValueEmpty(mixed $value, ElementInterface $element): bool
     {
-        $isValueEmpty = parent::isValueEmpty($value, $element);
-
-        if ($value instanceof LinkCollection) {
-            $isValueEmpty = $isValueEmpty || $value->isEmpty();
+        if (!$value instanceof LinkCollection) {
+            return parent::isValueEmpty($value, $element);
         }
 
-        return $isValueEmpty;
+        // Craft also uses this check to skip content on first save/propagation.
+        // Template emptiness must never erase labels, fields or unavailable types.
+        foreach ($value->getLinks() as $link) {
+            if ($link instanceof linkTypes\MissingLink || !$link::isInstanceEmpty($link->toInstance())) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function getSettingsHtml(): ?string
@@ -421,12 +427,13 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function getPreviewHtml(mixed $value, ElementInterface $element): string
     {
-        if (!($value instanceof LinkCollection) || $value->isEmpty()) {
+        if (!($value instanceof LinkCollection) || $value->getLinks() === []) {
             return '';
         }
 
         $links = $value->getLinks();
-        $first = $value->first();
+        // CP previews describe authored records, independently of a template selection.
+        $first = reset($links);
 
         if (!$first) {
             return '';
@@ -779,6 +786,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return [
             'name' => $this->handle,
             'type' => Type::nonNull(Type::listOf(GqlLinkInterface::getType($this))),
+            'args' => [
+                'empty' => [
+                    'type' => Type::boolean(),
+                    'defaultValue' => false,
+                    'description' => 'Select links without a destination (true), with a destination (false), or either (null).',
+                ],
+            ],
+            'resolve' => function(ElementInterface $source, array $arguments): array {
+                $links = $source->getFieldValue($this->handle);
+                $empty = array_key_exists('empty', $arguments) ? $arguments['empty'] : false;
+
+                return $links instanceof LinkCollection ? $links->empty($empty)->all() : [];
+            },
         ];
     }
 
@@ -803,7 +823,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
         $links = $element->getFieldValue($this->handle);
 
-        foreach ($links as $i => $link) {
+        foreach ($links->getLinks() as $i => $link) {
             $link->setScenario($scenario);
 
             // Set a flag whether the Hyper field itself is required
@@ -829,7 +849,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 'skipOnEmpty' => false,
             ]);
 
-            if (!$arrayValidator->validate($links, $error)) {
+            if (!$arrayValidator->validate($links->getLinks(), $error)) {
                 $element->addError($this->handle, $error);
             }
         }
@@ -1405,7 +1425,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $ownerSiteId = $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
         // For each Link element, render the fields and convert to an array
-        foreach ($links as $key => $link) {
+        foreach ($links->getLinks() as $key => $link) {
             $view->startJsBuffer();
             $view->startScriptBuffer();
 

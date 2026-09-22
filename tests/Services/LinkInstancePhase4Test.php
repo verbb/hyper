@@ -10,7 +10,7 @@ use verbb\hyper\links\Url;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
 
-it('treats links with link text but no target as non-empty', function() {
+it('treats links with link text but no target as empty', function() {
     $field = HyperFixtureFactory::hyperField();
     $section = HyperFixtureFactory::entrySection($field);
     $target = HyperFixtureFactory::entryWithLinks(
@@ -27,7 +27,7 @@ it('treats links with link text but no target as non-empty', function() {
     ]);
 
     expect($link)->not->toBeNull();
-    expect($link->isEmpty())->toBeFalse();
+    expect($link->isEmpty())->toBeTrue();
     expect($field->isValueEmpty(new LinkCollection($field, [[
         'type' => verbb\hyper\links\Entry::class,
         'handle' => 'default-verbb-hyper-links-entry',

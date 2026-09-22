@@ -108,7 +108,7 @@ Resolve the type’s label, including appropriate defaults.
 
 **Purpose:** Static check for meaningful saved content.
 
-Static check for meaningful saved content.
+Use this storage and authoring check to recognise entered destinations, labels, attributes or custom fields without requiring a resolvable URL. It is separate from a Link’s public `isEmpty()`, which checks its resolved destination. Preserve that separation when extending a link type so temporarily unavailable destinations do not discard authored content.
 :::
 
 ::: reference

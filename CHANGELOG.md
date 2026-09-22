@@ -4,6 +4,7 @@
 
 ### Added
 - Added named **Link Type Configs** in project config, with dedicated settings screens and support for field-owned custom configurations. Configurations are stored by UID so fields remain attached when a handle changes. ([#52](https://github.com/verbb/hyper/issues/52))
+- Added link collection filtering by type handle, native attributes and custom fields, with Boolean conditions, ordering, limits and explicit empty-link selection.
 - Added opt-in **Bulk Add** for multi-link fields, with element selection and one-value-per-line entry for supported link types. ([#158](https://github.com/verbb/hyper/issues/158), [D#37](https://github.com/verbb/hyper/discussions/37))
 - Added per-field block and card view modes for multi-link fields. ([#246](https://github.com/verbb/hyper/issues/246), [D#36](https://github.com/verbb/hyper/discussions/36))
 - Added selectable-element conditions and field-layout visibility and editability conditions across link types. ([#225](https://github.com/verbb/hyper/issues/225))
@@ -23,6 +24,7 @@
 - Added a raw content API for safely updating custom fields inside links, including links nested in Vizy content.
 - Added `LinkCollectionInterface` and immutable `LinkCollection::withLinks()` collection updates.
 - Added a GraphQL `fields` bag for custom link layout values. ([D#68](https://github.com/verbb/hyper/discussions/68))
+- Added a GraphQL `empty` argument for including or selecting links without destinations.
 - Added native Craft Link field and content migrators, with raw-content conversion, relation syncing and dry-run support.
 - Expanded Typed Link migration support for Vizy content, orphaned elements, encoded URLs and relation syncing. ([#244](https://github.com/verbb/hyper/issues/244), [#226](https://github.com/verbb/hyper/issues/226), [#191](https://github.com/verbb/hyper/issues/191))
 - Added wrav/oEmbed field and content migrators. ([#124](https://github.com/verbb/hyper/issues/124))
@@ -30,6 +32,8 @@
 
 ### Changed
 - Hyper now requires Craft 5.9 or later and Embed 4.
+- Link collections now exclude links without a resolved URL by default, with consistent iteration, counting, array access and first-link rendering in single-link and multi-link fields. Use `empty(null)` to include all stored links.
+- Link `isEmpty()` now consistently checks the resolved URL across all link types, including element links.
 - Link content now uses stable, author-owned type handles and writes the v3 `linkTypeHandle` content shape while continuing to read v2 payloads. ([#255](https://github.com/verbb/hyper/issues/255))
 - Link destinations now use literal values. Existing environment-variable and alias references must be updated before upgrading.
 - Link block headers now use the link type as a compact title and menu, with additional layout tab labels shown alongside it.
@@ -49,7 +53,6 @@
 ### Fixed
 - Fixed a stored XSS vulnerability.
 - Fixed an information disclosure vulnerability.
-- Fixed links with meaningful attributes but no destination being treated as non-empty. ([#262](https://github.com/verbb/hyper/issues/262))
 - Fixed cleared element selections continuing to resolve a cached target. ([#259](https://github.com/verbb/hyper/issues/259))
 - Fixed empty-string link values preventing attribute-only links from persisting when set programmatically. ([#238](https://github.com/verbb/hyper/issues/238))
 - Fixed field-level `target` and `newWindow` defaults and per-link New Window overrides not being applied consistently. ([#146](https://github.com/verbb/hyper/issues/146))
@@ -63,6 +66,7 @@
 - Fixed migration of Link content nested in Matrix and Super Table fields. ([#253](https://github.com/verbb/hyper/issues/253))
 
 ### Removed
+- Removed arbitrary collection forwarding to the first link. Read custom fields, edit attributes and call type-specific methods on a Link obtained through `first()` or iteration. Explicit rendering conveniences such as `getLink()`, `getUrl()` and `getText()` remain available.
 - Removed the legacy element cache, page-template preload and cache utility after migrating reverse lookups to `hyper_links`.
 - Removed the unused field cache and its legacy database table.
 

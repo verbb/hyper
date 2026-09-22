@@ -40,14 +40,15 @@ If nothing appears, confirm that the entry is saved, you are viewing the correct
 
 Return to the field’s settings, enable **Enable Multiple Links** and save. Reopen the entry and add a second URL link to `https://craftcms.com`, with Link Text `Craft CMS`.
 
-Add a Passive link with Link Text `Useful Websites` and move it above the two URL links. Save the entry. A Passive item has no destination, so `getLink()` alone cannot display it.
+Add a Passive link with Link Text `Useful Websites` and move it above the two URL links. Save the entry. A Passive item has no destination, so the normal collection loop excludes it and `getLink()` cannot display it. Use `empty(null)` to include labels in this list.
 
 Replace the earlier single-line Twig example with this complete list:
 
 ```twig
-{% if not entry.resourceLinks.isEmpty() %}
+{% set items = entry.resourceLinks.empty(null) %}
+{% if items.exists() %}
     <ul class="resource-links">
-        {% for link in entry.resourceLinks %}
+        {% for link in items %}
             {% if link.url %}
                 <li>{{ link.getLink() }}</li>
             {% elseif link.type == 'verbb\\hyper\\links\\Passive' and link.text %}
@@ -58,7 +59,7 @@ Replace the earlier single-line Twig example with this complete list:
 {% endif %}
 ```
 
-The loop visits each link in the order you saved. Links with destinations render as anchors. The Passive item renders as a span, so “Useful Websites” appears as text. The outer check omits the list when the field has no meaningful content.
+The loop visits each link in the order you saved. Links with destinations render as anchors. The Passive item renders as a span, so “Useful Websites” appears as text. The outer check omits the list when there are no stored rows. If only unfinished URL rows remain, the list has no visible items. For a list containing only clickable links, iterate `entry.resourceLinks` directly; Hyper filters out empty destinations automatically.
 
 ## Check the Finished List
 

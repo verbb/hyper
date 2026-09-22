@@ -18,7 +18,7 @@ For a URL of `https://example.test/contact` and Link Text of `Contact us`, the r
 
 `getLink()` includes the saved classes, custom attributes, URL suffix and other native link attributes. When the link opens in a new window, it also adds the corresponding target and relationship attributes. If there is no usable URL, it outputs nothing.
 
-For a URL string alone, use `entry.myLinkField.url` or output `entry.myLinkField` directly. A field’s single-link shortcuts use its first link, even when multiple links are enabled. Loop over the field to display every link.
+For a URL string alone, use `entry.myLinkField.url` or output `entry.myLinkField` directly. The collection’s shortcuts use its first non-empty link, even when multiple links are enabled. Loop over the field to display every link.
 
 ## Add Attributes
 
@@ -66,13 +66,42 @@ Hyper escapes ordinary strings and preserves trusted Twig markup. Keep editor-pr
 
 ## Multiple Links
 
-For a multi-link field, iterate over each link. This example also handles Passive links, which have a label but no URL:
+Iterate the field directly to render its non-empty links in saved order:
 
 ```twig
-{% if not entry.myLinkField.isEmpty() %}
+{% if entry.myLinkField.exists() %}
     <ul>
         {% for link in entry.myLinkField %}
-            {% if link.url %}
+            <li>{{ link.getLink() }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+```
+
+A link without a resolved URL is excluded automatically, even if it has an entered label or custom fields. This also excludes links to unavailable entry targets. The loop’s indexes and length describe the links actually returned. The stored rows remain available in the editor.
+
+### Select Particular Links
+
+Filter directly on the collection. For example, if you have a custom URL type with the handle `externalResource`:
+
+```twig
+{% for link in entry.myLinkField.where({ handle: 'externalResource' }) %}
+    {{ link.getLink() }}
+{% endfor %}
+```
+
+Filters return a new selection, leaving ordinary reads of the field unchanged. Add custom-field conditions, ordering or limits when needed; the [LinkCollection reference](/reference/link-collection#filter-links) explains those options.
+
+### Passive Labels
+
+A Passive link has no destination. Include it explicitly with `empty(null)` when your design uses navigation headings:
+
+```twig
+{% set items = entry.myLinkField.empty(null) %}
+{% if items.exists() %}
+    <ul>
+        {% for link in items %}
+            {% if not link.isEmpty() %}
                 <li>{{ link.getLink() }}</li>
             {% elseif link.type == 'verbb\\hyper\\links\\Passive' and link.text %}
                 <li><span>{{ link.text }}</span></li>
@@ -82,7 +111,7 @@ For a multi-link field, iterate over each link. This example also handles Passiv
 {% endif %}
 ```
 
-A Passive label is displayed as text instead of an anchor. Other links without a usable URL are omitted. `isEmpty()` checks saved content, including labels and custom fields, so it is not interchangeable with checking whether a link can render an anchor.
+This renders Passive labels as text and omits other unfinished links. `empty(null)` includes every stored row, so a collection containing only unfinished non-Passive rows can produce an empty list wrapper in this example. Use the ordinary filtered loop when you only need clickable links.
 
 ## Custom Fields
 

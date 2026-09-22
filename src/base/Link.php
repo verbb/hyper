@@ -153,6 +153,9 @@ abstract class Link extends Element implements LinkInterface
         return $fieldLayout;
     }
 
+    /**
+     * Storage-level content check; unlike isEmpty(), this preserves authored data.
+     */
     public static function isInstanceEmpty(LinkInstance $instance): bool
     {
         return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
@@ -262,7 +265,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function isEmpty(): bool
     {
-        return static::isInstanceEmpty($this->toInstance());
+        return trim((string)$this->getUrl()) === '';
     }
 
     public function toInstance(): LinkInstance
@@ -984,8 +987,9 @@ abstract class Link extends Element implements LinkInterface
                             [$layoutElement->attribute],
                             'required',
                             'on' => [self::SCENARIO_DEFAULT, self::SCENARIO_LIVE],
+                            // Required authoring fields depend on saved content, not target availability.
                             'when' => fn(self $model): bool => $model->_isNativeFieldVisible($attribute)
-                                && ($attribute !== 'linkText' || !$model->isEmpty()),
+                                && ($attribute !== 'linkText' || !$model::isInstanceEmpty($model->toInstance())),
                         ];
                     }
 

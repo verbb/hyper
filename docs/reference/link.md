@@ -184,9 +184,9 @@ Editor-entered text only, or null when blank.
 ::: reference
 ### `isEmpty()`
 
-**Returns:** `bool` · **Return and Behaviour:** Whether saved content has no meaningful destination, native attributes or custom values according to the type’s rules. This is not a URL-validity check.
+**Returns:** `bool` · **Return and Behaviour:** Whether the link resolves to no non-blank URL. Labels, attributes and custom fields do not make a destination-less link non-empty. Unavailable targets and Passive links are empty; stored content is still retained.
 
-Whether saved content has no meaningful destination, native attributes or custom values according to the type’s rules. This is not a URL-validity check.
+Whether the link resolves to no non-blank URL. Labels, attributes and custom fields do not make a destination-less link non-empty. Unavailable targets and Passive links are empty; stored content is still retained.
 :::
 
 

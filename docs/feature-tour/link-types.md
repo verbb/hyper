@@ -38,7 +38,7 @@ You can restrict its **Allowed Domains** to suitable providers. See [Embed Domai
 
 ## Passive
 
-Use Passive for a label without a destination, such as a heading in a resource list. It can contain Link Text and custom fields, but has no URL. Render its text separately instead of calling `getLink()`; the [multiple-link example](/feature-tour/rendering-links#multiple-links) includes that case.
+Use Passive for a label without a destination, such as a heading in a resource list. It can contain Link Text and custom fields, but has no URL. Include it with `empty(null)` and render its text separately instead of calling `getLink()`; the [Passive label example](/feature-tour/rendering-links#passive-labels) includes that case.
 
 ## Site
 
@@ -46,7 +46,7 @@ Use Site to choose one of Craft’s configured sites as the destination. This is
 
 ## User
 
-Use User when your template needs a selected Craft user. Users do not inherently have frontend URLs, so selecting a user alone does not create a profile-page route. Obtain the user with `getElement()`, check that it exists, and use your site’s profile URL convention when rendering it.
+Use User when your template needs a selected Craft user. Users do not inherently have frontend URLs, so selecting a user alone does not create a profile-page route. Include URL-less links with `empty(null)`, obtain a Link through iteration or `first()`, then call its `getElement()` method, check that it exists, and use your site’s profile URL convention when rendering it.
 
 ## Destinations from Other Plugins
 

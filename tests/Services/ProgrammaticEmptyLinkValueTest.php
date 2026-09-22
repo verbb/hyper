@@ -33,7 +33,7 @@ it('persists link text when linkValue is set to an empty string programmatically
     expect($collection)->toBeInstanceOf(LinkCollection::class);
     expect($field->isValueEmpty($collection, $entry))->toBeFalse();
     expect($collection->getLinks()[0]->getCustomLinkText())->toBe('Link label');
-    expect($collection->getLinks()[0]->isEmpty())->toBeFalse();
+    expect($collection->getLinks()[0]->isEmpty())->toBeTrue();
 
     $entry = Entry::find()->id($entry->id)->status(null)->one();
     $collection = $entry->getFieldValue($field->handle);
@@ -95,5 +95,5 @@ it('normalizes an empty-string linkValue to null on hydration', function() {
     ]);
 
     expect($collection->getLinks()[0]->linkValue)->toBeNull();
-    expect($collection->isEmpty())->toBeFalse();
+    expect($collection->isEmpty())->toBeTrue();
 });

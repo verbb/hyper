@@ -18,16 +18,16 @@ it('requires labels on meaningful rows while allowing unused optional rows', fun
     $owner->setAuthorIds([User::find()->admin()->one()->id]);
     $owner->setScenario(Element::SCENARIO_LIVE);
     $owner->setFieldValue($field->handle, [$payload]);
-    expect($owner->getFieldValue($field->handle)->first()->isEmpty())->toBeFalse();
+    expect($owner->getFieldValue($field->handle)->empty(null)->first()->isEmpty())->toBe($type === Passive::class);
     expect(Craft::$app->elements->saveElement($owner))->toBeFalse();
     expect($owner->getErrors($field->handle . '[0].linkText'))->not->toBeEmpty();
-    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->first()->linkText)->toBe('Original');
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->empty(null)->first()->linkText)->toBe('Original');
 
     $owner->setFieldValue($field->handle, [$payload + ['linkText' => '0']]);
     expect(Craft::$app->elements->saveElement($owner))->toBeTrue(json_encode($owner->getErrors()));
-    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->first()->linkText)->toBe('0');
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->empty(null)->first()->linkText)->toBe('0');
 
-    $empty = $field->normalizeValue([['handle' => $prototype->handle]])->first();
+    $empty = $field->normalizeValue([['handle' => $prototype->handle]])->empty(null)->first();
     $empty->setScenario(Element::SCENARIO_LIVE);
     expect($empty->isEmpty())->toBeTrue();
     expect($empty->validate())->toBeTrue(json_encode($empty->getErrors()));

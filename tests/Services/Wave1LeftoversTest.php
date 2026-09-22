@@ -47,14 +47,14 @@ it('persists an explicit new window override on an otherwise empty link', functi
     $collection = $entry->getFieldValue($field->handle);
 
     expect($collection)->toBeInstanceOf(LinkCollection::class);
-    expect($collection->isEmpty())->toBeFalse();
+    expect($collection->isEmpty())->toBeTrue();
 
     $serialized = $field->serializeValue($collection, $entry);
     expect($serialized[0]['newWindow'] ?? null)->toBeFalse();
 
     $reloaded = Craft::$app->getElements()->getElementById($entry->id, Entry::class, $entry->siteId);
     $reloadedCollection = $reloaded->getFieldValue($field->handle);
-    $reloadedLink = $reloadedCollection->first();
+    $reloadedLink = $reloadedCollection->empty(null)->first();
 
     expect($reloadedLink)->not->toBeNull();
     expect($reloadedLink->newWindow)->toBeFalse();
@@ -123,7 +123,7 @@ it('preserves embed urls when only a url string is provided on save', function()
 
     expect($collection->isEmpty())->toBeFalse();
     expect($collection->getLinkUrl())->toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    expect($collection->getIframeSrc())->toBeNull();
+    expect($collection->first()->getIframeSrc())->toBeNull();
     // URL-only saves deliberately do not fetch remote preview metadata.
-    expect($collection->getEmbedImage())->toBeNull();
+    expect($collection->first()->getEmbedImage())->toBeNull();
 });

@@ -61,7 +61,7 @@ it('restricts linked users by schema group while allowing explicit everyone acce
             $schema = new GqlSchema(['uid' => StringHelper::UUID(), 'name' => 'User boundary', 'scope' => [
                 'sections.' . $section->uid . ':read', 'usergroups.' . $groupUid . ':read',
             ]]);
-            $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . ' { element { id } } } } }', debugMode: true);
+            $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . '(empty: null) { element { id } } } } }', debugMode: true);
             expect($result['errors'] ?? [])->toBe([], json_encode($result));
             expect($result['data']['entries'][0][$field->handle][0]['element'])->toBe($groupUid === 'everyone' ? ['id' => (string)$person->id] : null);
         }

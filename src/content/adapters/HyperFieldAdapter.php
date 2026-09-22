@@ -61,6 +61,7 @@ class HyperFieldAdapter implements JsonFieldAdapter
             return true;
         }
 
-        return $value->isEmpty();
+        // Content transformations must not discard records without a destination.
+        return $value->getLinks() === [];
     }
 }

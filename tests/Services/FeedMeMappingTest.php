@@ -133,7 +133,7 @@ it('preserves zero values when an imported link uses a default type', function(s
     expect($imported)->toHaveCount(1);
     $owner->setFieldValue($field->handle, $imported);
     expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
-    $link = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->first();
+    $link = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->empty(null)->first();
     expect($link)->not->toBeNull();
     expect($attribute === 'linkValue' ? $link->getUrl() : $link->getText())->toBe($attribute === 'linkValue' ? 'tel:0' : '0');
 })->with([

@@ -107,11 +107,6 @@ class MissingLink extends Link
         return parent::getSerializedValues();
     }
 
-    public function isEmpty(): bool
-    {
-        return $this->_opaqueSerializedPayload !== null ? $this->_opaqueSerializedPayload === [] : parent::isEmpty();
-    }
-
     public function getInputConfig(): array
     {
         return [

@@ -13,19 +13,29 @@ In the entry’s Twig template, access the custom field through the link. This e
 ```twig
 <ul>
     {% for link in entry.resources %}
-        {% if link.url %}
-            <li>
-                {{ link.getLink() }}
-                {% if link.summary %}
-                    <p>{{ link.summary }}</p>
-                {% endif %}
-            </li>
-        {% endif %}
+        <li>
+            {{ link.getLink() }}
+            {% if link.summary %}
+                <p>{{ link.summary }}</p>
+            {% endif %}
+        </li>
     {% endfor %}
 </ul>
 ```
 
 Check that the saved summary appears below the correct link. Fields on a selected destination are separate: `link.summary` reads the summary inside the link, while `link.getElement().summary` would read a field on the destination element.
+
+## Filter by Custom Fields
+
+To show only featured resources, add a Lightswitch field with the handle `featured` to the same link layouts. Enable it on the links to include, save the entry, and use this in the entry template:
+
+```twig
+{% for link in entry.resources.where({ featured: true }) %}
+    {{ link.getLink() }}
+{% endfor %}
+```
+
+Only matching links with destinations are returned. The original collection remains unchanged. Read custom fields on each Link, or on the result of `first()` after checking it exists. The collection itself exposes selection methods and a fixed set of rendering conveniences. See [Filtering Links](/reference/link-collection#filter-links) for numeric comparisons, dates and ordering.
 
 ## Arrange Tabs
 

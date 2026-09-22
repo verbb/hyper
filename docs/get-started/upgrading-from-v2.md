@@ -109,6 +109,51 @@ Custom integrations that call `getElementCache()` or use the `ElementCache` serv
 
 Search custom modules, plugins and deployment scripts for the removed service and table names. Run the affected frontend and console paths after replacing those calls. [Loading Links](/reference/loading-links) documents the supported loading API. Ordinary templates using Link objects do not need to manipulate an index or cache table.
 
+### Link Collections and Empty Destinations
+
+Hyper 3 excludes links without a resolved URL from ordinary iteration, `first()`, array access, counting and rendering shortcuts. `link.isEmpty()` now checks the resolved destination, regardless of saved text, classes or custom fields. Selected entries that are unavailable are empty too. GraphQL lists also use the collection’s default selection, so URL-less rows are omitted unless requested with `resourceLinks(empty: null)` (replace `resourceLinks` with your field handle). Stored content remains intact, including incomplete links, custom fields and unavailable link types.
+
+Templates that only render anchors can remove their manual filtering:
+
+::: code-group
+```twig [Hyper 2]
+{% for link in entry.hyperField|filter(link => not link.isEmpty()) %}
+    {{ link.getLink() }}
+{% endfor %}
+```
+
+```twig [Hyper 3]
+{% for link in entry.hyperField %}
+    {{ link.getLink() }}
+{% endfor %}
+```
+:::
+
+Templates intentionally reading URL-less links must opt in with `entry.hyperField.empty(null)`. This includes Passive headings and User or Form selections that have no frontend URL. `empty(true)` selects only empty destinations; `empty(false)` restores the default. Test these templates with an unfinished link and an unavailable entry, and check their loop indexes and empty branches.
+
+Hyper 3 keeps explicit collection conveniences such as `getLink()`, `url`, `text` and `customLinkText`, but removes arbitrary forwarding to the first link. Read custom fields and type-specific methods on the Link itself:
+
+::: code-group
+```twig [Hyper 2]
+{% set linkedEntry = entry.hyperField.getElement() %}
+{% if linkedEntry %}
+    {{ linkedEntry.title }}
+{% endif %}
+```
+
+```twig [Hyper 3]
+{% set link = entry.hyperField.first() %}
+{% set linkedEntry = link ? link.getElement() : null %}
+{% if linkedEntry %}
+    {{ linkedEntry.title }}
+{% endif %}
+```
+:::
+
+Similarly, replace collection custom-field reads such as `entry.hyperField.summary` with a guarded `first()` result or a loop. PHP code must edit a Link object directly rather than writing `$collection->linkText`. Both single and multiple field modes use the same collection rules; `getLink()` renders only the first selected link in either mode.
+
+In editing or migration code, `getLinks()` and `serializeValues()` continue to return all stored links. Use `all()` for a filtered array. Saving a filtered collection retains every stored record; deleting excluded records requires an explicit replacement, such as `$links->withLinks($links->where($condition)->all())`. See [LinkCollection](/reference/link-collection) for conditions, sorting and the complete API.
+
 ### Link Output and URI Policy
 
 Hyper 3 escapes ordinary link-label strings in `getLink()`. If your templates used HTML strings as labels, use template-authored Twig markup instead. Keep editor content escaped. [Rendering Links](/feature-tour/rendering-links#include-markup-in-the-label) shows a capture-based example.
@@ -129,7 +174,7 @@ Links whose targets have been permanently deleted retain their stored data but d
 
 The CP field no longer pre-renders a blank link for **single-link** fields. In v2 a single-link field always showed one editable link block, even before you'd entered anything. In v3 an empty field shows a clear **empty state** with an “Add link” action — you add the link explicitly, the same way multi-link fields already worked.
 
-This is a CP authoring change only. Template access is unchanged: the field value is still a `LinkCollection`, single-link fields still delegate to the first link (`entry.linkField.url`, `.getLink()`, etc.), and `isEmpty()` remains available. Review its broader content checks described below.
+The field value remains a `LinkCollection`. Its template reads now use the selected non-empty links consistently in both field modes; review the collection changes above.
 
 ### Eager Loading with `with()`
 
@@ -165,7 +210,6 @@ Hyper uses its Vizy 3 adapter when migrating content on installations running Vi
 A few smaller behaviours changed to match the new storage model:
 
 - `craft.hyper.getRelatedElements()` now resolves purely from `hyper_links` rather than the removed element cache.
-- `isEmpty()` checks link text, classes and custom field values as well as the destination. A field can therefore be non-empty without a renderable URL. Use `link.url` when deciding whether to output an anchor.
 - `target` / `newWindow` now fall back to the field-level default when they aren’t set per link, rather than sometimes ignoring it.
 - Link type definitions are stored as `LinkTypeDefinition` data in the field JSON, with the registry `Link` classes acting as prototypes — in v2 these were registry objects held in settings.
 - Deleting a site now scrubs stale site UIDs from settings, link type configs, and stored content, where v2 could leave them behind.

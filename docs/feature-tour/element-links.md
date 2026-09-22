@@ -23,7 +23,8 @@ For custom markup, read `entry.myLinkField.url` and `entry.myLinkField.text`. Th
 Use `getElement()` when you need the selected element itself. For example, to display an Entry link’s target title independently of the editor’s link label:
 
 ```twig
-{% set linkedEntry = entry.myLinkField.getElement() %}
+{% set link = entry.myLinkField.first() %}
+{% set linkedEntry = link ? link.getElement() : null %}
 {% if linkedEntry %}
     <h2>{{ linkedEntry.title }}</h2>
 {% endif %}
@@ -31,7 +32,7 @@ Use `getElement()` when you need the selected element itself. For example, to di
 
 The link’s own `title` property is its HTML title attribute. It is not the selected entry’s title.
 
-Element lookups can return nothing if the selected target is unavailable. Entry links normally resolve live entries, taking publication and expiry dates into account. Guard access to target fields, and use `link.url` when deciding whether you can display an anchor. `isEmpty()` describes stored content and can be false even when a link has no usable destination.
+Element lookups can return nothing if the selected target is unavailable. Entry links normally resolve live entries, taking publication and expiry dates into account. Ordinary collection reads exclude links without a resolved URL, and `link.isEmpty()` uses that same destination check. Guard access to target fields because the selection may have no matches. For a User, Form or another deliberately URL-less target, select it with `entry.myLinkField.empty(null).first()` before calling `getElement()` on the returned link.
 
 ## Custom Fields
 

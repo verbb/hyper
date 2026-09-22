@@ -300,7 +300,7 @@ it('treats links with attributes but no target as non-empty for propagation chec
 
     $linksB = $ownerSiteB->getFieldValue($field->handle);
     expect($field->isValueEmpty($linksB, $ownerSiteB))->toBeFalse();
-    expect($linksB->isEmpty())->toBeFalse();
+    expect($linksB->isEmpty())->toBeTrue();
     expect($linksB->getLinks()[0]->getCustomLinkText())->toBe('Label only');
 });
 

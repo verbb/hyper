@@ -7,14 +7,14 @@ use verbb\hyper\Hyper;
 use verbb\hyper\links\Passive;
 use verbb\hyper\models\LinkInstance;
 
-it('treats passive links with label-only content as non-empty', function() {
+it('keeps passive label content while treating its destination as empty', function() {
     $field = HyperFixtureFactory::hyperField([
         'linkTypes' => [Passive::class],
     ]);
 
     $link = Hyper::$plugin->getLinks()->createLinkFromSerialized($field, HyperFixtureFactory::passiveLinkPayload('Shop'));
 
-    expect($link->isEmpty())->toBeFalse();
+    expect($link->isEmpty())->toBeTrue();
     expect(Passive::isInstanceEmpty($link->toInstance()))->toBeFalse();
 });
 

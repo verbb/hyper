@@ -80,7 +80,7 @@ it('applies the required Hyper destination rule only when its input is visible',
     $destination->setElementCondition($condition);
     $url->setFieldLayout($layout);
     $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($url)]);
-    $link = $field->normalizeValue([['handle' => 'url', 'linkText' => 'Retained label']])->first();
+    $link = $field->normalizeValue([['handle' => 'url', 'linkText' => 'Retained label']])->empty(null)->first();
     $link->isFieldRequired = true;
     $link->setScenario(Element::SCENARIO_LIVE);
     $visible = array_map(fn($element) => $element->attribute(), $link->getFieldLayout()->getVisibleElementsByType(BaseNativeField::class, $link));

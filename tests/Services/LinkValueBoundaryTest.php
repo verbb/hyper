@@ -37,7 +37,7 @@ it('preserves a zero label for URL element embed site and passive links', functi
     foreach ($payloads as $payload) {
         $link = Hyper::$plugin->links->createLinkFromSerialized($field, $payload + ['linkText' => '0']);
         expect($link->getText())->toBe('0');
-        expect($link->isEmpty())->toBeFalse();
+        expect($link->isEmpty())->toBe($link instanceof Passive);
         expect($field->getPreviewHtml($field->normalizeValue([$link]), $target))->toBe('0');
     }
 });

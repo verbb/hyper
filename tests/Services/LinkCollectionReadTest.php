@@ -101,12 +101,12 @@ it('treats multi-link collections with only empty slots as empty', function() {
 
     $collection = new LinkCollection($field, [$emptyLink, $emptyLink]);
 
-    expect($collection->count())->toBe(2);
+    expect($collection->count())->toBe(0);
     expect($collection->isEmpty())->toBeTrue();
     expect($field->isValueEmpty($collection, new Entry()))->toBeTrue();
 });
 
-it('delegates property writes to the first link', function() {
+it('edits the first link explicitly', function() {
     $field = HyperFixtureFactory::hyperField();
     $link = Hyper::$plugin->getLinks()->createLinkFromSerialized(
         $field,
@@ -114,7 +114,7 @@ it('delegates property writes to the first link', function() {
     );
     $collection = new LinkCollection($field, [$link]);
 
-    $collection->linkText = 'Updated';
+    $collection->first()->linkText = 'Updated';
 
     expect($collection->getCustomLinkText())->toBe('Updated');
     expect($collection->first()?->getCustomLinkText())->toBe('Updated');
