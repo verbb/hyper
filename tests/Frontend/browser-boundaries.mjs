@@ -273,3 +273,5 @@ try {
 await import('./input-lifecycle.mjs');
 
 await import('./settings-layout.mjs');
+
+await import('./immediate-input.mjs');

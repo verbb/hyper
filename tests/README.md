@@ -71,6 +71,8 @@ Set `HYPER_CRAFT_PATH` to select another installed Craft package, or `HYPER_BROW
 to `firefox` or `webkit` after installing that Playwright browser. These boundary
 tests do not replace acceptance tests against a running Craft control panel.
 
+The immediate-input regression mounts the production `HyperInput` while Craft initialization is paused. It checks trusted input/change events, clearing and reverting a URL, same-event reads by a parent field, preservation of unrendered fields, and unchanged stores during passive initialization.
+
 CI runs `ddev test --suite=all`, including the normal performance budgets, followed
 by the Chromium boundary tests. The runtime installs the pinned Vizy development
 dependency so its nested-content conversion test runs through normal plugin

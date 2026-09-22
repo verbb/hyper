@@ -2,6 +2,8 @@
 
 ## 3.0.0 - 2026-09-
 
+> {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](docs/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.
+
 ### Added
 - Added named **Link Type Configs** in project config, with dedicated settings screens and support for field-owned custom configurations. Configurations are stored by UID so fields remain attached when a handle changes. ([#52](https://github.com/verbb/hyper/issues/52))
 - Added link collection filtering by type handle, native attributes and custom fields, with Boolean conditions, ordering, limits and explicit empty-link selection.
@@ -51,6 +53,7 @@
 - Clarified that `linkValue` should remain on the first field layout tab. ([#145](https://github.com/verbb/hyper/issues/145))
 
 ### Fixed
+- Fixed link edits being lost immediately after a field loads or when saving immediately after editing.
 - Fixed a stored XSS vulnerability.
 - Fixed an information disclosure vulnerability.
 - Fixed cleared element selections continuing to resolve a cached target. ([#259](https://github.com/verbb/hyper/issues/259))

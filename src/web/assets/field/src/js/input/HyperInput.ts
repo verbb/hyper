@@ -70,6 +70,12 @@ export class HyperInput {
         if (event.isTrusted) this.markContentTouched();
     };
 
+    private readonly syncEarlyUserEdit = (event: Event): void => {
+        // Parent fields can read the store before Craft's save hook runs. Flush real
+        // edits after child controls handle them, even while portal watches are paused.
+        if (event.isTrusted && !this.storeWritesEnabled) this.syncStore(true);
+    };
+
     constructor(container: HTMLElement) {
         this.container = container;
 
@@ -104,6 +110,8 @@ export class HyperInput {
         // real author edits immediately so a fast copy/save cannot restore the SSR value.
         this.container.addEventListener('input', this.captureUserEdit, true);
         this.container.addEventListener('change', this.captureUserEdit, true);
+        this.container.addEventListener('input', this.syncEarlyUserEdit);
+        this.container.addEventListener('change', this.syncEarlyUserEdit);
         this.unregisterSubmitSync = registerHyperInputSync(this.container, () => this.syncStore(true));
         ensureElementEditorSerializeHook(fieldRoot);
 
@@ -292,6 +300,8 @@ export class HyperInput {
     destroy(): void {
         this.container.removeEventListener('input', this.captureUserEdit, true);
         this.container.removeEventListener('change', this.captureUserEdit, true);
+        this.container.removeEventListener('input', this.syncEarlyUserEdit);
+        this.container.removeEventListener('change', this.syncEarlyUserEdit);
         this.unregisterSubmitSync?.();
         this.unregisterSubmitSync = null;
 
