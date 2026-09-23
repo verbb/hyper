@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.14 - 2026-09-23
 
 ### Fixed
 - Fix link edits being lost immediately after a field loads or when saving immediately after editing.
