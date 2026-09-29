@@ -1,22 +1,22 @@
 <p align="center"><img src="https://assets.verbb.io/plugins/hyper/hyper-icon.svg" width="100" height="100" alt="Hyper icon"></p>
 <h1 align="center">Hyper for Craft CMS</h1>
 
-Hyper is a Craft CMS plugin for creating links, with a focus on user experience and flexibility.
+Hyper is a Craft CMS plugin for building consistent, author-friendly links with one configurable field.
+
+Hyper handles simple URLs, native Craft elements and structured calls to action through the same editing experience. Choose the allowed link types, use a single or multiple-link field, and add supporting fields with Craft's field layout designer.
 
 ## Features
-- Create single or multiple links in just one field.
-- Link to elements (Entries, Categories, etc), URLs, Email, and even Embed social media links.
-- Built-in (optional) fields for link text, link title, suffix, Aria label, classes, attributes and more.
-- Add any custom field to your link type. This could be additional text, an icon - even a Matrix field.
-- Create multiple link types. e.g. a "Blog" link which can only select blog section entries, etc.
-- Enable or disable the link types you require for a given field.
-- Customise the link type field layout to include just the settings you need.
-- Intelligent caching for element-based links to save database calls.
-- Plenty of template helpers to make rendering links a breeze and extensible.
-- GraphQL support for querying links.
-- Feed Me support for importing links in elements like entries.
-- Quick migrations for [Typed Link Field](https://plugins.craftcms.com/typedlinkfield), [Linkit](https://plugins.craftcms.com/linkit) and [Link](https://plugins.craftcms.com/link) fields.
-- Events to write your own link types, or extend existing ones.
+
+- Link to entries, assets, categories, users, products and other Craft elements.
+- Link directly to Calendar events and Formie forms when those plugins are installed.
+- Support URLs, email addresses, phone numbers and embedded content.
+- Configure single or multiple links in each field.
+- Add native and custom fields to individual link types.
+- Create project-specific link types through a documented API.
+- Render links or access normalised values in Twig.
+- Use Hyper content through GraphQL and Feed Me.
+- Avoid repeated element queries with built-in link caching.
+- Migrate content from common first-party and third-party link fields.
 
 ## Link Types
 - Asset
