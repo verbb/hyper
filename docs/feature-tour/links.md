@@ -4,6 +4,8 @@ To begin, navigate to **Settings** → **Fields** → **New Field** to create a 
 ## Link Settings
 The settings for a Hyper field should be reasonably self-explanatory.
 
+![Hyper field settings](../../screenshots/hyper-field-settings.png)
+
 - Default Link Type - Select the default link type when the element is created.
 - Enable New Window - Whether to show the "Open in New Window" option for links.
 - Enable Multiple Links - Whether users can create multiple links in a single field, or just a single link.
@@ -37,6 +39,8 @@ Once your field is created, add it to the appropriate entry type (or other eleme
 The UI for a Hyper field will show the default link type with all fields in the first tab of your field layout. A settings icon will open a slide-out pane for all other fields. Users can populate the field with content.
 
 For multi-link fields, you'll be able to create new link blocks, re-order them and delete them.
+
+![A Hyper field containing multiple links](../../screenshots/hyper-field-multi.png)
 
 ## Rendering a Link
 With everything in place, you can now render a link on the front-end of your site
