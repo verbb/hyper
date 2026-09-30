@@ -22,6 +22,7 @@ class m260912_000000_rebuild_link_relations_from_content extends Migration
         foreach (Craft::$app->getFields()->getAllFields(false) as $field) {
             if ($field instanceof HyperField) {
                 Hyper::$plugin->getContent()->reconcileRelations($field);
+                (new LegacyContentRelationRebuilder())->rebuild($field);
             }
         }
 

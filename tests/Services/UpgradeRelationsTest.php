@@ -1,10 +1,67 @@
 <?php
 
+use craft\db\Migration;
 use craft\db\Query;
 use craft\fieldlayoutelements\CustomField;
+use craft\helpers\Json;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
 use verbb\hyper\migrations\m260912_000000_rebuild_link_relations_from_content as Rebuild;
 use verbb\hyper\records\LinkRelation;
+
+it('rebuilds relations from legacy nested content before host-plugin conversion', function() {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Legacy target');
+    $owner = F::plainEntry($section, 'Legacy nested owner');
+    $table = '{{%hyper_test_legacy_content}}';
+    $column = sprintf(
+        'field_%s%s',
+        $field->handle,
+        $field->columnSuffix ? '_' . $field->columnSuffix : '',
+    );
+    $migration = new class extends Migration {
+        public function safeUp(): bool
+        {
+            return true;
+        }
+
+        public function safeDown(): bool
+        {
+            return true;
+        }
+    };
+
+    $migration->createTable($table, [
+        'id' => $migration->primaryKey(),
+        'elementId' => $migration->integer()->notNull(),
+        'siteId' => $migration->integer()->notNull(),
+        $column => $migration->text(),
+    ]);
+    Craft::$app->db->getSchema()->refresh();
+
+    try {
+        Craft::$app->db->createCommand()->insert($table, [
+            'elementId' => $owner->id,
+            'siteId' => $owner->siteId,
+            $column => Json::encode([F::entryLinkPayload($target, 'Legacy nested target')]),
+        ])->execute();
+
+        expect((new Rebuild())->safeUp())->toBeTrue();
+
+        $row = LinkRelation::find()->where([
+            'fieldId' => $field->id,
+            'ownerId' => $owner->id,
+            'ownerSiteId' => $owner->siteId,
+        ])->one();
+
+        expect($row)->not->toBeNull()
+            ->and((int)$row->targetId)->toBe($target->id)
+            ->and((int)$row->sortOrder)->toBe(0);
+    } finally {
+        $migration->dropTableIfExists($table);
+        Craft::$app->db->getSchema()->refresh();
+    }
+});
 
 it('rebuilds an upgraded index from legacy JSON including duplicate and aliased links without resaving content', function() {
     $field = F::hyperField(['multipleLinks' => true]);

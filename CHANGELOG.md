@@ -68,6 +68,7 @@
 - Fixed shared link attributes being lost when changing link type. ([#108](https://github.com/verbb/hyper/issues/108))
 - Fixed multi-column fields overflowing narrow control-panel containers and flyouts. ([#180](https://github.com/verbb/hyper/issues/180))
 - Fixed migration of Link content nested in Matrix and Super Table fields. ([#253](https://github.com/verbb/hyper/issues/253))
+- Fixed relation indexes for Hyper fields nested in Neo and Super Table after a direct Craft 4 to Craft 5 upgrade.
 
 ### Removed
 - Removed arbitrary collection forwarding to the first link. Read custom fields, edit attributes and call type-specific methods on a Link obtained through `first()` or iteration. Explicit rendering conveniences such as `getLink()`, `getUrl()` and `getText()` remain available.
