@@ -2,7 +2,7 @@
 
 ## 3.0.0 - 2026-09-
 
-> {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](docs/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.
+> {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.
 
 ### Added
 - Added named **Link Type Configs** in project config, with dedicated settings screens and support for field-owned custom configurations. Configurations are stored by UID so fields remain attached when a handle changes. ([#52](https://github.com/verbb/hyper/issues/52))
@@ -34,6 +34,7 @@
 
 ### Changed
 - Hyper now requires Craft 5.9 or later and Embed 4.
+- Hyper 3 now supports upgrading directly from Hyper 1 on Craft 4 without installing Hyper 2 as an intermediate step.
 - Link collections now exclude links without a resolved URL by default, with consistent iteration, counting, array access and first-link rendering in single-link and multi-link fields. Use `empty(null)` to include all stored links.
 - Link `isEmpty()` now consistently checks the resolved URL across all link types, including element links.
 - Link content now uses stable, author-owned type handles and writes the v3 `linkTypeHandle` content shape while continuing to read v2 payloads. ([#255](https://github.com/verbb/hyper/issues/255))

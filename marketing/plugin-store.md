@@ -17,4 +17,23 @@ Hyper handles simple URLs, native Craft elements and structured calls to action 
 - Prime linked elements in batches, eager-load their fields and find elements that link back to a destination.
 - Use Hyper content through GraphQL and Feed Me.
 - Avoid repeated element queries with built-in link caching.
-- Migrate content from Craft’s native Link field and common third-party link and embed fields.
+- Migrate content from Craft's native Link field and common third-party link and embed fields.
+
+## Link Types
+
+- Asset
+- Calendar Event (for [Calendar](https://plugins.craftcms.com/calendar))
+- Category
+- Custom
+- Email
+- Embed (oEmbed)
+- Entry
+- Formie Form (for [Formie](https://plugins.craftcms.com/formie))
+- Passive
+- Phone
+- Product (for [Commerce](https://plugins.craftcms.com/commerce))
+- Shopify Product (for [Shopify](https://plugins.craftcms.com/shopify))
+- Site
+- URL
+- User
+- Variant (for [Commerce](https://plugins.craftcms.com/commerce))

@@ -4,37 +4,26 @@
 <p align="center"><img src="https://assets.verbb.io/plugins/hyper/hyper-icon.svg" width="100" height="100" alt="Hyper icon"></p>
 <h1 align="center">Hyper for Craft CMS</h1>
 
-Hyper is a Craft CMS plugin for creating links, with a focus on user experience and flexibility.
+Hyper is a Craft CMS plugin for building consistent, author-friendly links with one configurable field.
 
-## What's new in Hyper 3
-
-- **Updated Field UI** — [Plugin Kit](https://docs.verbb.io/plugin-kit/overview/) web components, blocks/cards view modes, inline layout tabs to replace slide-out, and compact link headers.
-- **Link Type Configs** — Named, reusable link type suites in project config; fields pick a shared config or Custom.
-- **Performance Improvements** — `hyper_links` replaces the element cache for FK integrity, reverse lookups, and always-on priming (including nested Matrix/Neo owners).
-- **Eager Loading & Reverse Relations** — Craft-style `with(['field.linkedElements…'])` and `craft.hyper.getRelatedElements()`.
-- **Bulk Add** — Opt-in multi-link creation from element pickers or one-value-per-line text (URL / Email / Phone).
-- **Copy / Cut / Paste** — Clipboard for moving links across entries and fields.
-- **Conditions** — Selectable-element conditions on Entry, Asset, and User; field-layout visibility/editability for every link type.
-- **Passive Links** — Label-only links with no URL target.
-- **Stable Handles & GraphQL** — Short type keys (`url`, `entry`, …), cleaner GraphQL type names, and a `fields` JSON bag on the link interface.
-- **New Migrations** — Craft 5.3+ native Link, [oEmbed](https://plugins.craftcms.com/oembed), and Category→Entry entrification.
+Hyper handles simple URLs, native Craft elements and structured calls to action through the same editing experience. Choose the allowed link types, use a single or multiple-link field, and add supporting fields with Craft's field layout designer.
 
 ## Features
 
-- Create single or multiple links in one field
-- Link to elements (Entries, Categories, Assets, Users, and more), URLs, Email, Phone, Sites, Embeds, or Passive labels
-- Built-in (optional) fields for link text, title, suffix, Aria label, classes, attributes, and New Window
-- Add any custom field to a link type — text, icons, even Matrix
-- Named Link Type Configs, or per-field Custom link type suites
-- Enable or disable the link types you need for a given field
-- Customise each link type’s field layout
-- Selectable-element and field-layout conditions for authoring control
-- Batch hydration, eager loading, and reverse relations for element links
-- Plenty of template helpers to make rendering links a breeze
-- GraphQL support for querying links
-- [Feed Me](https://plugins.craftcms.com/feed-me) support for importing links
-- Migrations from [Typed Link Field](https://plugins.craftcms.com/typedlinkfield), [Linkit](https://plugins.craftcms.com/linkit), [Link](https://plugins.craftcms.com/link), Craft Link, and [oEmbed](https://plugins.craftcms.com/oembed)
-- Events to write your own link types, or extend existing ones
+- Link to entries, assets, categories, users, products and other Craft elements.
+- Link directly to Calendar events and Formie forms when those plugins are installed.
+- Support URLs, email addresses, phone numbers and embedded content.
+- Configure single or multiple links in each field.
+- Reuse named Link Type Configs across fields or define a custom suite for one field.
+- Add native and custom fields to individual link types.
+- Control selectable elements and field-layout visibility with conditions.
+- Add many element or text links at once, then copy, cut or paste links between supported fields.
+- Create project-specific link types through a documented API.
+- Render links or access normalised values in Twig.
+- Prime linked elements in batches, eager-load their fields and find elements that link back to a destination.
+- Use Hyper content through GraphQL and Feed Me.
+- Avoid repeated element queries with built-in link caching.
+- Migrate content from Craft's native Link field and common third-party link and embed fields.
 
 ## Link Types
 

@@ -65,6 +65,13 @@ class LinkTypeConfigs extends Component
 
     public function ensureConfigsExist(): void
     {
+        // Plugins load before Craft runs its own migrations. A Craft 4 database
+        // does not have Craft 5's field-layout schema yet, so defer all config
+        // and layout writes until the core upgrade has completed.
+        if (Craft::$app->getIsInstalled() && Craft::$app->getUpdates()->getIsCraftUpdatePending()) {
+            return;
+        }
+
         $projectConfig = Craft::$app->getProjectConfig();
 
         if ($projectConfig->getIsApplyingExternalChanges()) {
