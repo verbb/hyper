@@ -32,9 +32,11 @@ final class RawContent
     {
         $this->invalidationScheduled = new WeakMap();
         $this->adapters = [];
+
         foreach (['vizy', 'hyper'] as $handle) {
             $plugin = Craft::$app->getPlugins()->getPlugin($handle);
             $service = $plugin?->getContent();
+
             if ($service && method_exists($service, 'getRawContentAdapter')) {
                 $adapter = $service->getRawContentAdapter();
                 $this->registerAdapter($adapter->fieldClass(), $adapter);
@@ -51,8 +53,11 @@ final class RawContent
     /** Capture before changing configuration; the returned array is JSON-serialisable. */
     public function captureFieldLocations(string $fieldUid): array
     {
-        if ($fieldUid === '') throw new InvalidArgumentException('A source field UID is required.');
+        if ($fieldUid === '') {
+            throw new InvalidArgumentException('A source field UID is required.');
+        }
         $schemas = [];
+
         foreach (Craft::$app->getFields()->getAllFields(false) as $field) {
             foreach ($this->adapters as $class => $adapter) {
                 if ($field instanceof $class) {
@@ -64,8 +69,10 @@ final class RawContent
         // Limit traversal to containers that can reach this target. A field's
         // own legacy value must not be interpreted while rebuilding its index.
         $reachable = [];
+
         do {
             $count = count($reachable);
+
             foreach ($schemas as $uid => $definition) {
                 foreach ($definition['schema']['types'] as $placements) {
                     foreach ($placements as $placement) {
@@ -78,9 +85,11 @@ final class RawContent
         } while (count($reachable) !== $count);
         $schemas = array_intersect_key($schemas, $reachable);
         $roots = [];
+
         foreach (Craft::$app->getFields()->getAllLayouts() as $layout) {
             foreach ($layout->getCustomFieldElements() as $placement) {
                 $uid = $placement->getFieldUid();
+
                 if (isset($schemas[$uid])) {
                     $roots[$placement->uid] = ['fieldUid' => $uid, 'layoutUid' => $layout->uid];
                 }
@@ -106,51 +115,63 @@ final class RawContent
         $this->_validateMap($map);
         $db = $options['db'] ?? Craft::$app->getDb();
         $dryRun = $options['dryRun'] ?? false;
+
         if (!$db instanceof Connection || (!$dryRun && !$db->getTransaction()?->getIsActive())) {
             throw new RuntimeException('Raw content writes require an active transaction on the supplied database connection.');
         }
         $batchSize = $options['batchSize'] ?? 100;
+
         if (!is_int($batchSize) || $batchSize < 1 || $batchSize > 1000) {
             throw new InvalidArgumentException('batchSize must be between 1 and 1000.');
         }
         $result = ['rows' => 0, 'matched' => 0, 'wouldModify' => 0, 'modified' => 0, 'lastRowId' => 0];
+
         if ($map['roots'] === []) {
             return $result;
         }
         $after = $options['afterRowId'] ?? 0;
+
         while (true) {
             $query = (new Query())->select(['s.id', 's.elementId', 's.siteId', 's.content', 'e.type', 'e.enabled', 'e.dateDeleted', 'e.draftId', 'e.revisionId'])
                 ->from(['s' => '{{%elements_sites}}'])->innerJoin(['e' => '{{%elements}}'], '[[e.id]] = [[s.elementId]]')
                 ->where(['>', 's.id', $after])->andWhere(['not', ['s.content' => null]])->orderBy(['s.id' => SORT_ASC])->limit($batchSize);
+
             foreach (['elementIds' => 's.elementId', 'siteIds' => 's.siteId'] as $option => $column) {
                 if (array_key_exists($option, $options) && $options[$option] !== null) {
                     $query->andWhere([$column => $options[$option]]);
                 }
             }
+
             foreach (['includeDrafts' => 'e.draftId', 'includeRevisions' => 'e.revisionId', 'includeTrashed' => 'e.dateDeleted'] as $option => $column) {
                 if (($options[$option] ?? true) === false) {
                     $query->andWhere([$column => null]);
                 }
             }
+
             if (($options['includeDisabled'] ?? true) === false) {
                 $query->andWhere(['e.enabled' => true, 's.enabled' => true]);
             }
             $contentContains = $options['contentContains'] ?? null;
+
             if ($contentContains !== null && $contentContains !== '') {
                 $query->andWhere(['like', new Expression('CAST([[s.content]] AS ' . ($db->getDriverName() === 'pgsql' ? 'TEXT' : 'CHAR') . ')'), $contentContains]);
             }
             $rows = $query->all($db);
+
             if (!$rows) {
                 break;
             }
+
             foreach ($rows as $row) {
                 $after = (int)$row['id'];
                 $result['lastRowId'] = $after;
                 $content = is_string($row['content']) ? Json::decode($row['content']) : $row['content'];
+
                 if (!is_array($content)) {
                     throw new RuntimeException("Malformed element content at row {$after}.");
                 }
                 $before = $content;
+
                 foreach ($map['roots'] as $placementUid => $root) {
                     if (!array_key_exists($placementUid, $content)) {
                         continue;
@@ -164,15 +185,18 @@ final class RawContent
                     $result['matched'] += $change['matched'];
                     $result['wouldModify'] += $change['changed'];
                 }
+
                 if ($before === $content) {
                     continue;
                 }
                 $result['rows']++;
+
                 if ($dryRun) {
                     continue;
                 }
                 // Lock and compare after transformation, before updating the entire row.
                 $current = $db->createCommand('SELECT [[content]] FROM {{%elements_sites}} WHERE [[id]] = :id FOR UPDATE', [':id' => $after])->queryScalar();
+
                 // Compare the stored representation: associative decoding would hide
                 // a concurrent change between an empty object and an empty array.
                 if ($current !== $row['content']) {
@@ -190,7 +214,10 @@ final class RawContent
     /** @internal Called by content writers only after a successful database update. */
     public function invalidateAfterCommit(Connection $db): void
     {
-        if (!$db->getTransaction()?->getIsActive()) throw new RuntimeException('Cache invalidation requires the writer transaction.');
+        if (!$db->getTransaction()?->getIsActive()) {
+            throw new RuntimeException('Cache invalidation requires the writer transaction.');
+        }
+
         if (isset($this->invalidationScheduled[$db])) {
             return;
         }
@@ -207,7 +234,9 @@ final class RawContent
             $cleanup();
             Craft::$app->getElements()->invalidateAllCaches();
         };
-        $rollback = function() use ($cleanup): void { $cleanup(); };
+        $rollback = function() use ($cleanup): void {
+            $cleanup();
+        };
         $db->on(Connection::EVENT_COMMIT_TRANSACTION, $commit);
         $db->on(Connection::EVENT_ROLLBACK_TRANSACTION, $rollback);
     }
@@ -229,10 +258,12 @@ final class RawContent
             throw new RuntimeException('Embedded content exceeds the migration traversal depth limit.');
         }
         $definition = $map['schemas'][$fieldUid] ?? null;
+
         if (!$definition) {
             return $value;
         }
         $adapter = $this->adapters[$definition['adapter']] ?? null;
+
         if (!$adapter) {
             throw new RuntimeException('Required raw content adapter is unavailable: ' . $definition['adapter']);
         }
@@ -242,19 +273,23 @@ final class RawContent
                 'placementUid' => $placement['placementUid'], 'layoutUid' => $placement['layoutUid'],
                 'path' => [...$context['path'], $segment], 'hasDurableOwner' => false]);
             $nested = $raw;
+
             if ($placement['fieldUid'] !== $map['fieldUid']) {
                 $nested = $this->_transform($raw, $placement['fieldUid'], $map, $transform, $childContext, $stats, $depth + 1);
                 return ['action' => 'replace', 'value' => $nested];
             }
             $stats['matched']++;
             $change = $transform($nested, $childContext);
+
             if (!is_array($change) || !in_array($change['action'] ?? null, ['unchanged', 'replace', 'remove'], true)
                 || ($change['action'] === 'replace' && !array_key_exists('value', $change))) {
                 throw new InvalidArgumentException('Return Change::unchanged(), Change::replace($value), or Change::remove().');
             }
+
             if ($change['action'] === 'unchanged') {
                 return ['action' => 'replace', 'value' => $nested];
             }
+
             if ($change['action'] === 'remove' || $change['value'] !== $nested) {
                 $stats['changed']++;
             }

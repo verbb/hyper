@@ -25,7 +25,7 @@ class Phone extends Link
         return 'text';
     }
 
-    
+
     // Properties
     // =========================================================================
 
@@ -70,7 +70,7 @@ class Phone extends Link
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
-        
+
         $rules[] = [['linkValue'], 'validatePhone'];
 
         return $rules;

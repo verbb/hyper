@@ -399,7 +399,9 @@ class LinkCollection extends Component implements LinkCollectionInterface, Itera
     {
         // Cheap attribute filters run before destination resolution. The empty
         // scope is outside the Boolean expression, so OR cannot bypass it.
-        $links = array_filter($this->_links, fn(LinkInterface $link): bool =>
+        $links = array_filter(
+            $this->_links,
+            fn(LinkInterface $link): bool =>
             (!$this->_predicate || ($this->_predicate)($link))
             && ($this->_empty === null || $link->isEmpty() === $this->_empty)
         );

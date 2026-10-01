@@ -104,4 +104,3 @@ return [
   'The placeholder text for the "Link" setting.' => 'Texte placeholder pour le paramètre "Lien".',
   'Content' => 'Contenu'
 ];
-?>

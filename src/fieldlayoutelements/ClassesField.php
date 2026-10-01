@@ -26,7 +26,7 @@ class ClassesField extends TextField
 
         parent::__construct($config);
     }
-    
+
     public function showAttribute(): bool
     {
         return true;

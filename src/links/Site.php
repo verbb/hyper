@@ -7,7 +7,7 @@ use Craft;
 use craft\errors\SiteNotFoundException;
 use craft\models\Site as SiteModel;
 
-class Site extends Link 
+class Site extends Link
 {
     // Static Methods
     // =========================================================================
@@ -17,12 +17,12 @@ class Site extends Link
         return Craft::t('hyper', 'Site');
     }
 
-    
+
     // Properties
     // =========================================================================
 
     public string|array|null $sites = '*';
-    
+
 
     // Public Methods
     // =========================================================================
@@ -97,7 +97,7 @@ class Site extends Link
         if (($text = parent::getLinkText()) !== null) {
             return $text;
         }
-        
+
         if ($site = $this->getLinkSite()) {
             return $site->name;
         }

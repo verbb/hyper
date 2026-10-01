@@ -33,7 +33,7 @@ class EmbedPreview extends BaseUiElement
 
     // Protected Methods
     // =========================================================================
-    
+
     protected function selectorLabel(): string
     {
         return Craft::t('hyper', 'Embed Preview');

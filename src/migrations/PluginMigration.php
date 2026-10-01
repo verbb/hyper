@@ -26,7 +26,6 @@ use craft\models\FieldLayoutTab;
 use yii\console\Controller;
 use yii\helpers\Markdown;
 
-
 class PluginMigration extends Migration
 {
     // Static Methods
@@ -175,11 +174,13 @@ class PluginMigration extends Migration
             }
 
             $raw = ElementContentStore::decodeStored($ref->value);
+
             if (!is_array($raw)) {
                 return false;
             }
 
             $converted = $this->convertModel($field, $raw);
+
             if (!is_array($converted)) {
                 return false;
             }
@@ -196,7 +197,7 @@ class PluginMigration extends Migration
     {
         $pluginsService = Craft::$app->getPlugins();
 
-        // Ensure that we check if initialized, installed and enabled. 
+        // Ensure that we check if initialized, installed and enabled.
         // The plugin might be installed but disabled, or installed and enabled, but missing plugin files.
         return $pluginsService->isPluginInstalled($plugin) && $pluginsService->isPluginEnabled($plugin) && $pluginsService->getPlugin($plugin);
     }
@@ -264,15 +265,15 @@ class PluginMigration extends Migration
                 foreach ($frame['args'] as $arg) {
                     if (is_string($arg)) {
                         $args[] = "'" . $arg . "'";
-                    } else if (is_array($arg)) {
+                    } elseif (is_array($arg)) {
                         $args[] = "Array";
-                    } else if (is_null($arg)) {
+                    } elseif (is_null($arg)) {
                         $args[] = 'NULL';
-                    } else if (is_bool($arg)) {
+                    } elseif (is_bool($arg)) {
                         $args[] = ($arg) ? "true" : "false";
-                    } else if (is_object($arg)) {
+                    } elseif (is_object($arg)) {
                         $args[] = get_class($arg);
-                    } else if (is_resource($arg)) {
+                    } elseif (is_resource($arg)) {
                         $args[] = get_resource_type($arg);
                     } else {
                         $args[] = $arg;
@@ -282,12 +283,14 @@ class PluginMigration extends Migration
                 $args = implode(", ", $args);
             }
 
-            $rtn .= sprintf("#%s %s(%s): %s(%s)\n",
+            $rtn .= sprintf(
+                "#%s %s(%s): %s(%s)\n",
                 $count,
                 $frame['file'] ?? '[internal function]',
                 $frame['line'] ?? '',
                 (isset($frame['class'])) ? $frame['class'] . $frame['type'] . $frame['function'] : $frame['function'],
-                $args);
+                $args
+            );
 
             $count++;
         }

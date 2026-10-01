@@ -15,7 +15,7 @@ class Custom extends Link
         return Craft::t('hyper', 'Custom');
     }
 
-    
+
     // Properties
     // =========================================================================
 

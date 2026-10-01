@@ -54,7 +54,7 @@ class TypedLinkLegacyController extends Controller
     public static function updateSettings(string $settings): string
     {
         $settings = Json::decode($settings);
-        
+
         if (!is_array($settings)) {
             $settings = [];
         }
@@ -65,7 +65,7 @@ class TypedLinkLegacyController extends Controller
 
         if (isset($settings['allowedLinkNames'])) {
             $allowedLinkNames = $settings['allowedLinkNames'];
-            
+
             if (!is_array($allowedLinkNames)) {
                 $allowedLinkNames = [$allowedLinkNames];
             }
@@ -83,7 +83,7 @@ class TypedLinkLegacyController extends Controller
 
         return Json::encode($settings);
     }
-    
+
 
     // Public Methods
     // =========================================================================

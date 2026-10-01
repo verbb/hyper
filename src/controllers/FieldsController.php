@@ -125,11 +125,13 @@ class FieldsController extends Controller
             'staticElements' => $this->request->getBodyParam('staticLayoutElements', []),
         ]);
         $missingElements = [];
+
         foreach ($form->tabs as $tab) {
             if (!$tab->getUid()) {
                 continue;
             }
             $elements = [];
+
             foreach ($tab->elements as [$layoutElement, $conditional, $html, $static]) {
                 if ($conditional) {
                     $elements[] = ['uid' => $layoutElement->uid, 'html' => $html, 'static' => $static];
@@ -449,6 +451,7 @@ class FieldsController extends Controller
         // JSON-owned blocks have no database ID to duplicate. Hydrate only their
         // field values into a fresh entry; identity/type/ownership stay server-owned.
         $entryData = $this->request->getBodyParam('entryData');
+
         if (is_array($entryData) && is_array($entryData['fields'] ?? null)) {
             $handles = array_map(static fn($customField) => $customField->handle, $entry->getFieldLayout()->getCustomFields());
             $entry->setFieldValues(array_intersect_key($entryData['fields'], array_flip($handles)));

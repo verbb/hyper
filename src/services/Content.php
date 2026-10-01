@@ -40,22 +40,26 @@ class Content extends Component
     {
         $options ??= new ModifyOptions();
         $db = $options->db ?? Craft::$app->getDb();
+
         if ($options->syncRelations && $db !== Craft::$app->getDb()) {
             throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }
         return $db->transaction(function() use ($field, $transform, $options, $db): ModifyResult {
             $result = (new ElementContentStore($db))->eachFieldValue($field, function(ContentRef $ref) use ($transform): bool {
                 $change = $transform($ref->value, $ref);
+
                 if (!is_array($change) || !in_array($change['action'] ?? null, ['unchanged', 'replace'], true)
                     || ($change['action'] === 'replace' && !array_key_exists('value', $change))) {
                     throw new RuntimeException('modifyRaw requires Change::unchanged() or Change::replace($value); use replace(null) to clear.');
                 }
+
                 if ($change['action'] === 'unchanged' || $ref->value === $change['value']) {
                     return false;
                 }
                 $ref->value = $change['value'];
                 return true;
             }, $options);
+
             if (!$options->dryRun && $options->syncRelations && $result->modified > 0) {
                 $this->reconcileRelations($field, $options);
             }
@@ -122,6 +126,7 @@ class Content extends Component
     public function reconcileRelations(HyperField $field, ?ModifyOptions $options = null): int
     {
         $options ??= new ModifyOptions();
+
         if (!$options->dryRun && $options->db && $options->db !== Craft::$app->getDb()) {
             throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }

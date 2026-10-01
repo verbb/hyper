@@ -135,7 +135,7 @@ abstract class Link extends Element implements LinkInterface
 
         $tab2 = new FieldLayoutTab(['name' => 'Advanced']);
         $tab2->setLayout($fieldLayout);
-        
+
         $tab2->setElements([
             Craft::createObject([
                 'class' => LinkTitleField::class,

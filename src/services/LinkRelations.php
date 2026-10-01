@@ -90,7 +90,9 @@ class LinkRelations extends Component
                 ->where(['id' => array_values(array_unique(array_column($rows, 'targetId')))])
                 ->indexBy('id')
                 ->all();
-            $rows = array_values(array_filter($rows, static fn(array $row): bool =>
+            $rows = array_values(array_filter(
+                $rows,
+                static fn(array $row): bool =>
                 isset($targets[$row['targetId']]) && $targets[$row['targetId']]['type'] === $row['targetType']
             ));
         }
@@ -158,6 +160,7 @@ class LinkRelations extends Component
         if (!$this->enableRequestPriming || $this->_loadingTargets) {
             return;
         }
+
         if (!$ownerId || !$ownerSiteId) {
             return;
         }

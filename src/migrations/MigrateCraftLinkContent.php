@@ -89,6 +89,7 @@ class MigrateCraftLinkContent extends PluginContentMigration
             $link->linkSiteId = $parsed['siteId'] ?? $this->contentSiteId;
         } else {
             $link->linkValue = is_scalar($value) ? (string)$value : null;
+
             // Craft persists these schemes in the value; Hyper adds them when rendering.
             if (is_string($link->linkValue)) {
                 if ($link instanceof linkTypes\Email) {

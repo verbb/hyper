@@ -24,10 +24,12 @@ class VizyNestedFieldLocator extends FieldsMapNestedFieldLocator
     public function findNestedFieldHandles(FieldInterface $hostField, HyperField $targetField): array
     {
         $keys = parent::findNestedFieldHandles($hostField, $targetField);
+
         foreach ($this->getNestedLayouts($hostField) as $layout) {
             if (!$layout) {
                 continue;
             }
+
             foreach ($layout->getCustomFields() as $field) {
                 if ($field->uid === $targetField->uid) {
                     $keys[] = $field->uid;

@@ -51,5 +51,5 @@ class HyperVariable
     {
         return Hyper::$plugin->getService()->getRelatedElementsQuery($params);
     }
-    
+
 }

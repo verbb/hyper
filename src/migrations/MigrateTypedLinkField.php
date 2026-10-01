@@ -78,7 +78,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
 
                 if ($linkType instanceof ElementLink) {
                     $linkType->sources = self::normalizeElementLinkSources($type['sources'] ?? null);
-                } else if ($linkType instanceof linkTypes\Site) {
+                } elseif ($linkType instanceof linkTypes\Site) {
                     $linkType->sites = $type['sites'] ?? null;
 
                     if (is_array($linkType->sites)) {
@@ -91,6 +91,7 @@ class MigrateTypedLinkField extends PluginFieldMigration
                 }
 
                 $fieldLayout = self::getDefaultFieldLayout($linkType, $allowCustomText, $enableTitle, $enableAriaLabel, $enableSuffix);
+
                 foreach ($fieldLayout->getTabs() as $tab) {
                     foreach ($tab->getElements() as $element) {
                         if ($element instanceof LinkTextField) {

@@ -262,12 +262,14 @@ class MigrateTypedLinkContent extends PluginContentMigration
             // (or later author edits) and mint new link UIDs on subsequent runs.
             $current = Json::decode((new Query())->select('content')->from('{{%elements_sites}}')
                 ->where(['elementId' => $elementId, 'siteId' => $siteId])->scalar() ?? '{}');
+
             foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $layoutField) {
                 if ((int)$layoutField->id !== $fieldId) {
                     continue;
                 }
                 $key = $layoutField->layoutElement->uid;
                 $existing = is_array($current) ? ($current[$key] ?? null) : null;
+
                 if (is_array($existing) && array_is_list($existing)
                     && (!$existing || isset($existing[0]['linkTypeHandle']))) {
                     $newContent[$key] = $existing;

@@ -923,9 +923,9 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $this->_linkTypeFields = [];
 
             if (!empty($linkTypes = $this->getLinkTypes())) {
-                
+
                 $fieldColumnPrefix = 'field_';
-                
+
                 foreach ($linkTypes as $linkType) {
                     $fields = $linkType->getCustomFields();
 
@@ -1181,6 +1181,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $initial = array_merge(['id' => $linkId], $serialized);
             // Portal inputs use field handles, while persistence uses layout UIDs.
             $initial['fields'] = $linkData['fields'] ?? [];
+
             if (isset($linkData['unsupportedPayload'])) {
                 $initial['unsupportedPayload'] = $linkData['unsupportedPayload'];
             }
@@ -1533,6 +1534,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             // Card/index Matrix editors require persisted nested owners. A link is a JSON
             // value, so render its Matrix fields inline without changing saved field settings.
             $matrixModes = [];
+
             foreach ($fieldLayout->getCustomFields() as $customField) {
                 if ($customField instanceof Matrix) {
                     $matrixModes[] = [$customField, $customField->viewMode];
@@ -1675,7 +1677,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $js = $view->clearJsBuffer();
 
         // Render the template again, but with no field context for the template for new links
-        $newLink = new $linkTypeClass;
+        $newLink = new $linkTypeClass();
         $newLink->label = 'New ' . $linkType::displayName();
         $newLink->isNew = true;
 
@@ -1701,7 +1703,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     private function _normalizeLayoutConfig(array $config = []): array
     {
         // This is supremely stupid. When settings for the field layout come through when editing the field
-        // they'll contain extra info. Project Config, for some bizarre reason, strips this out - which is fine - 
+        // they'll contain extra info. Project Config, for some bizarre reason, strips this out - which is fine -
         // but doesn't re-index the array. So we end up with inconsistent `__assoc__` content in project config!
         // The way to get around this is to pass it all through the PC helpers before setting on the link.
         $layoutConfig = $config['layoutConfig'] ?? [];

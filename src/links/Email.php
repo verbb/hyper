@@ -8,7 +8,7 @@ use craft\helpers\App;
 
 use yii\validators\EmailValidator;
 
-class Email extends Link 
+class Email extends Link
 {
     // Static Methods
     // =========================================================================
@@ -39,7 +39,7 @@ class Email extends Link
         return 'text';
     }
 
-    
+
     // Properties
     // =========================================================================
 
@@ -69,7 +69,7 @@ class Email extends Link
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
-        
+
         $rules[] = [['linkValue'], EmailValidator::class, 'enableIDN' => App::supportsIdn()];
 
         return $rules;

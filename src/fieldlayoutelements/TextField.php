@@ -19,7 +19,7 @@ class TextField extends CraftTextField
 
         parent::__construct($config);
     }
-    
+
     public function showAttribute(): bool
     {
         return true;

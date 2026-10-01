@@ -10,5 +10,5 @@ class ModifyMigrationLinkEvent extends CancelableEvent
 
     public ?string $oldClass = '';
     public ?string $newClass = '';
-    
+
 }

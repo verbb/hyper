@@ -119,7 +119,7 @@ class Links extends Component
         try {
             $link = ComponentHelper::createComponent($config, LinkInterface::class);
 
-            // Check if this is a registered class. While a third-party-supported class might exist, 
+            // Check if this is a registered class. While a third-party-supported class might exist,
             // the plugin could be uninstalled or the wrong version.
             if (!in_array($config['type'], $this->getAllLinkTypes())) {
                 throw new MissingComponentException("`{$config['type']}` is not a supported link type.");

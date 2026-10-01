@@ -142,14 +142,21 @@ class ElementContentStore
             $changed = $content->modifyFieldValues($map, function(mixed $raw, array $context) use ($callback, $options, $result): array {
                 $parent = [];
                 $ref = new ContentRef(
-                    rowId: $context['rowId'], elementId: $context['elementId'], siteId: $context['siteId'],
-                    layoutUid: $context['rootPlacementUid'], jsonPath: Json::encode($context['path']),
-                    value: $raw, parentContent: $parent, hasDurableOwner: false,
+                    rowId: $context['rowId'],
+                    elementId: $context['elementId'],
+                    siteId: $context['siteId'],
+                    layoutUid: $context['rootPlacementUid'],
+                    jsonPath: Json::encode($context['path']),
+                    value: $raw,
+                    parentContent: $parent,
+                    hasDurableOwner: false,
                 );
                 $result->matched++;
+
                 if (!$callback($ref, $options, $result)) {
                     return Change::unchanged();
                 }
+
                 if ($options->dryRun) {
                     $result->wouldModify++;
                 }
@@ -158,6 +165,7 @@ class ElementContentStore
                 'contentContains' => $options->contentContains]);
             $result->modified += $changed['modified'];
         };
+
         // Legacy store callers did not have to open a transaction. Preserve that
         // convenience while the raw API itself keeps explicit transaction ownership.
         if ($options->dryRun || $this->_db->getTransaction()?->getIsActive()) {

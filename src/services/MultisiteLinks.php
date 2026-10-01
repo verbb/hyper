@@ -201,6 +201,7 @@ class MultisiteLinks extends Component
                 }
 
                 $localizedElement->setFieldValue($field->handle, $merged);
+
                 if (!Craft::$app->getElements()->saveElement($localizedElement, false, false, false)) {
                     throw new \RuntimeException('Unable to propagate Hyper link structure.');
                 }

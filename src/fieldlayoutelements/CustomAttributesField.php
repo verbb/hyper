@@ -27,7 +27,7 @@ class CustomAttributesField extends BaseNativeField
 
         parent::__construct($config);
     }
-    
+
     public function showAttribute(): bool
     {
         return true;

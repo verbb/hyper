@@ -25,12 +25,14 @@ class LinkCondition extends ElementCondition
         foreach ($this->getFieldLayouts() as $fieldLayout) {
             foreach ($fieldLayout->getCustomFieldElements() as $layoutElement) {
                 $label = $layoutElement->label();
+
                 if ($label === null) {
                     continue;
                 }
 
                 $field = $layoutElement->getField();
                 $type = $field->getElementConditionRuleType();
+
                 if ($type === null) {
                     continue;
                 }

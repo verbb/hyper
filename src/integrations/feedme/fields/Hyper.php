@@ -52,23 +52,24 @@ class Hyper extends Field implements FieldInterface
         foreach ($this->feedData as $nodePath => $value) {
             // Get the field mapping info for this node in the feed
             $fieldInfo = $this->_getFieldMappingInfoForNodePath($nodePath, $fields);
-            
+
             // If this is data concerning our Super Table field and blocks
             if ($fieldInfo) {
                 $subFieldHandle = $fieldInfo['subFieldHandle'];
                 $subFieldInfo = $fieldInfo['subFieldInfo'];
                 $isComplexField = $fieldInfo['isComplexField'];
 
-                if($multipleLinks) {
+                if ($multipleLinks) {
                     $nodePathSegments = explode('/', $nodePath);
 
 
                     $blockIndex = 0;
                     $path = [];
+
                     // Parent importers retain their indexes. Stop at this link's
                     // mapped parent, before any arrays in its custom fields.
                     foreach ($nodePathSegments as $segment) {
-                        if(is_numeric($segment)) {
+                        if (is_numeric($segment)) {
                             $blockIndex = $segment;
 
                             if (!$linkPath) {
@@ -84,7 +85,7 @@ class Hyper extends Field implements FieldInterface
                     }
 
                     $key = $blockIndex . '.' . $subFieldHandle;
-                }else {
+                } else {
                     $key = $subFieldHandle;
                 }
 
@@ -145,13 +146,13 @@ class Hyper extends Field implements FieldInterface
         // New, we've got a collection of prepared data, but its formatted a little rough, due to catering for
         // sub-field data that could be arrays or single values. Let's build our Matrix-ready data
         foreach ($fieldData as $blockSubFieldHandle => $value) {
-            if($multipleLinks) {
+            if ($multipleLinks) {
                 $handles = explode('.', $blockSubFieldHandle);
                 $blockIndex = 'new' . ($handles[0] + 1);
                 $subFieldHandle = $handles[1];
 
                 $blockPrefix = $blockIndex . '.';
-            }else {
+            } else {
                 $subFieldHandle = $blockSubFieldHandle;
                 $blockPrefix = '';
             }
@@ -166,7 +167,7 @@ class Hyper extends Field implements FieldInterface
                 $allEmpty = false;
             }
         }
-        
+
         // if there's nothing in the prepped data, return null, as if mapping doesn't exist
         if (empty($preppedData)) {
             return null;
@@ -177,13 +178,14 @@ class Hyper extends Field implements FieldInterface
             return [];
         }
 
-        if($multipleLinks) {
+        if ($multipleLinks) {
             $results = Hash::expand($preppedData);
-        }else {
+        } else {
             $results = [Hash::expand($preppedData)];
         }
 
         $fullResults = [];
+
         foreach ($results as $result) {
             foreach ($fields as $handle => $info) {
                 if (in_array($handle, $customFieldHandles, true)) {
@@ -194,11 +196,11 @@ class Hyper extends Field implements FieldInterface
                     continue;
                 }
 
-                if(!isset($result[$handle])) {
+                if (!isset($result[$handle])) {
                     $result[$handle] = $info['default'] ?? '';
                 }
 
-                if($handle == 'type') {
+                if ($handle == 'type') {
                     // Convert the link type to handle
                     $typeMap = [
                         'asset' => linkTypes\Asset::class,
@@ -211,10 +213,10 @@ class Hyper extends Field implements FieldInterface
                         'url' => linkTypes\Url::class,
                         'user' => linkTypes\User::class,
                     ];
-    
+
                     $type = $result[$handle] ?? null;
                     $linkTypeClass = $typeMap[$type] ?? null;
-    
+
                     if ($linkTypeClass) {
                         $linkTypeHandle = $linkTypeClass::typeKey();
                     } else {

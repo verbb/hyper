@@ -86,7 +86,9 @@ class LinkTypeConfigs extends Component
         $this->_loadConfigs();
 
         $configs = array_values($this->_configs);
-        usort($configs, static fn(LinkTypeConfig $a, LinkTypeConfig $b): int =>
+        usort(
+            $configs,
+            static fn(LinkTypeConfig $a, LinkTypeConfig $b): int =>
             [$a->sortOrder, $a->name] <=> [$b->sortOrder, $b->name]
         );
 

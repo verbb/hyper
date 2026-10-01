@@ -74,7 +74,7 @@ class PluginFieldMigration extends PluginMigration
         $suffixField = $enableSuffix ? Craft::createObject([
             'class' => UrlSuffixField::class,
         ]) : null;
-        
+
         $tab2->setElements(array_filter([$linkTitleField, $classesField, $customAttributesField, $ariaLabelField, $suffixField]));
 
         $fieldLayout->setTabs([$tab1, $tab2]);

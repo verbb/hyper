@@ -25,9 +25,11 @@ final class RawContentAdapter
         $types = [];
         $aliases = [];
         $handleAliases = [];
+
         foreach ($field->getLinkTypes() as $type) {
             $placements = [];
             $layout = $type->getFieldLayout();
+
             foreach ($layout?->getCustomFieldElements() ?? [] as $placement) {
                 $placements[$placement->uid] = ['placementUid' => $placement->uid, 'fieldUid' => $placement->getFieldUid(), 'layoutUid' => $layout->uid];
             }
@@ -47,6 +49,7 @@ final class RawContentAdapter
         }
         $encoded = is_string($value);
         $rows = $encoded ? Json::decode($value) : $value;
+
         if (!is_array($rows) || !array_is_list($rows)) {
             // A source field converted to Hyper may still contain third-party data.
             // Its parent visitor receives that raw value; it is not yet a Hyper container.
@@ -54,34 +57,45 @@ final class RawContentAdapter
         }
         $before = $rows;
         $seen = [];
+
         foreach ($rows as $index => &$row) {
             if (!is_array($row)) {
                 throw new RuntimeException('Malformed raw Hyper link row.');
             }
+
             if (!isset($row['fields'])) {
                 continue;
             }
             $uid = $row['uid'] ?? null;
             $type = $row['linkTypeHandle'] ?? $row['handle'] ?? ($schema['aliases'][$row['type'] ?? ''] ?? null);
+
             if (is_string($type) && !isset($schema['types'][$type])) {
                 $type = $schema['handleAliases'][$type] ?? $type;
             }
+
             if (($uid !== null && (!is_string($uid) || $uid === '' || isset($seen[$uid]))) || !is_string($type) || !isset($schema['types'][$type])) {
                 throw new RuntimeException('Missing or ambiguous captured Hyper link identity.');
             }
+
             // Pre-UID Hyper content is addressed by its row index and checked
             // source snapshot; do not manufacture a link identity during a patch.
-            if ($uid !== null) $seen[$uid] = true;
+            if ($uid !== null) {
+                $seen[$uid] = true;
+            }
+
             if (!is_array($row['fields'])) {
                 throw new RuntimeException('Malformed raw Hyper custom field map.');
             }
+
             foreach ($row['fields'] as $key => $raw) {
                 $placement = $schema['types'][$type][$key] ?? null;
+
                 if (!$placement) {
                     continue;
                 }
                 $change = $visit($raw, $placement, ['kind' => 'hyper', 'linkUid' => $uid, 'linkTypeHandle' => $type,
                     'placementUid' => $key, 'index' => $index]);
+
                 if ($change['action'] === 'remove') {
                     unset($row['fields'][$key]);
                 } elseif ($change['action'] === 'replace') {
@@ -89,6 +103,7 @@ final class RawContentAdapter
                 }
             }
         }
+
         if ($rows === $before) {
             return $value;
         }

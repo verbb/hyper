@@ -154,7 +154,9 @@ class LegacyContentRelationRebuilder
                 ->where(['id' => array_values(array_unique(array_column($rows, 'targetId')))])
                 ->indexBy('id')
                 ->all($this->_db);
-            $rows = array_values(array_filter($rows, static fn(array $row): bool =>
+            $rows = array_values(array_filter(
+                $rows,
+                static fn(array $row): bool =>
                 isset($targets[$row['targetId']]) && $targets[$row['targetId']]['type'] === $row['targetType']
             ));
         }
