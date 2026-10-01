@@ -11,7 +11,8 @@
         "watch": "vite build --watch",
         "dev:plugin-docs": "npm run docs:dev --prefix docs",
         "screenshots": "npm --prefix screenshots run screenshots --",
-        "test:browser": "node tests/Frontend/browser-boundaries.mjs"
+        "test:browser": "node tests/Frontend/browser-boundaries.mjs",
+        "test:stress:matrix-add": "node tests/Frontend/matrix-add-race.mjs"
     },
     "devDependencies": {
         "@types/lodash-es": "^4.17.12",

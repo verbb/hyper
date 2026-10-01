@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.0.0 - 2026-09-
+## Unreleased
 
 > {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.
 
@@ -33,6 +33,7 @@
 - Added a Category-to-Entry entrification remapper. ([#136](https://github.com/verbb/hyper/issues/136))
 
 ### Changed
+- The default Link Type Config is now created during installation or upgrade instead of normal requests.
 - Hyper now requires Craft 5.9 or later and Embed 4.
 - Hyper 3 now supports upgrading directly from Hyper 1 on Craft 4 without installing Hyper 2 as an intermediate step.
 - Link collections now exclude links without a resolved URL by default, with consistent iteration, counting, array access and first-link rendering in single-link and multi-link fields. Use `empty(null)` to include all stored links.

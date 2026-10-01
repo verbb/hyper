@@ -62,7 +62,7 @@ class Hyper extends Plugin
     // =========================================================================
 
     public bool $hasCpSettings = true;
-    public string $schemaVersion = '1.5.0';
+    public string $schemaVersion = '1.5.1';
 
 
     // Public Methods
@@ -80,9 +80,6 @@ class Hyper extends Plugin
         $this->_registerProjectConfigEventHandlers();
         $this->_registerEventHandlers();
         $this->_registerGraphQl();
-
-        // A fresh install always starts with one editable stock config.
-        $this->getLinkTypeConfigs()->ensureConfigsExist();
 
         if (Craft::$app->getRequest()->getIsCpRequest()) {
             $this->_registerCpRoutes();
@@ -202,7 +199,7 @@ class Hyper extends Plugin
             }
         });
 
-        // Content Blocks within Vizy Blocks will try and save immediately, so we need to prevent that.
+        // Content Blocks within unsaved Hyper links will try and save immediately, so prevent that.
         Event::on(ContentBlock::class, ContentBlock::EVENT_BEFORE_SAVE, function(ModelEvent $event) {
             $contentBlock = $event->sender;
 
