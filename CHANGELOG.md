@@ -55,6 +55,7 @@
 - Clarified that `linkValue` should remain on the first field layout tab. ([#145](https://github.com/verbb/hyper/issues/145))
 
 ### Fixed
+- Fixed the Add Link button occasionally not responding immediately after adding a Matrix entry.
 - Fixed link edits being lost immediately after a field loads or when saving immediately after editing.
 - Fixed a stored XSS vulnerability.
 - Fixed an information disclosure vulnerability.

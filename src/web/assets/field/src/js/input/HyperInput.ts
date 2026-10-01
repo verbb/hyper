@@ -60,6 +60,15 @@ export class HyperInput {
 
     private initialized = false;
 
+    /** Add controls bind before deferred Craft widget init; interactions wait for the batch to settle. */
+    private interactionsReady = false;
+
+    private pendingInteractions: Array<() => void> = [];
+
+    private addLinkAbort: AbortController | null = null;
+
+    private destroyed = false;
+
     private pasting = false;
 
     private clipboardChangeHandler: (() => void) | null = null;
@@ -90,6 +99,7 @@ export class HyperInput {
     }
 
     init(): void {
+        this.destroyed = false;
         const fieldRoot = this.container.closest('.hyper-input-component') ?? this.container.parentElement;
 
         if (!(fieldRoot instanceof HTMLElement)) {
@@ -115,6 +125,10 @@ export class HyperInput {
         this.unregisterSubmitSync = registerHyperInputSync(this.container, () => this.syncStore(true));
         ensureElementEditorSerializeHook(fieldRoot);
 
+        // Matrix inserts the field HTML before Hyper's deferred ElementEditor batch mounts its
+        // widgets. Bind the add controls now so any click after discovery is captured and queued.
+        this.bindAddLink();
+
         void enqueueHyperFieldInit(fieldRoot, async () => {
             // Mount blocks + Craft widgets while ElementEditor is paused. Do not start portal
             // watches here — element selects (Category, etc.) mutate hyperData during init; a
@@ -124,12 +138,10 @@ export class HyperInput {
         }).then(() => {
             // Batch already settled + FormObserver._serialize()'d while paused, then resumed.
             // Enable store writes and portal watches only after that adopt — leave SSR store bytes alone.
-            this.storeWritesEnabled = true;
-            this.blocks.forEach((block) => block.startPortalWatch());
-        }).catch(() => {
+            this.finishInitialization();
+        }, () => {
             // Still allow store writes if init coordination fails (e.g. no ElementEditor).
-            this.storeWritesEnabled = true;
-            this.blocks.forEach((block) => block.startPortalWatch());
+            this.finishInitialization();
         });
     }
 
@@ -222,9 +234,12 @@ export class HyperInput {
     private bindAddLink(): void {
         const addRoot = this.container.querySelector('[data-hyper-add-link]');
 
-        if (!addRoot) {
+        if (!(addRoot instanceof HTMLElement) || this.addLinkAbort) {
             return;
         }
+
+        const abort = new AbortController();
+        this.addLinkAbort = abort;
 
         addRoot.addEventListener('click', (event) => {
             const target = event.target;
@@ -239,13 +254,13 @@ export class HyperInput {
 
             if (target.closest('[data-hyper-action="paste"]')) {
                 event.preventDefault();
-                this.pasteLink();
+                this.runWhenInteractionsReady(() => void this.pasteLink());
                 return;
             }
 
             if (target.closest('[data-hyper-bulk-add-open]')) {
                 event.preventDefault();
-                this.openBulkAdd();
+                this.runWhenInteractionsReady(() => this.openBulkAdd());
                 return;
             }
 
@@ -255,7 +270,7 @@ export class HyperInput {
                 event.preventDefault();
                 this.requestAddLink(handle);
             }
-        });
+        }, { signal: abort.signal });
 
         addRoot.addEventListener('pk-select', (event) => {
             if (!(event instanceof CustomEvent)) {
@@ -265,19 +280,19 @@ export class HyperInput {
             const value = event.detail?.value as string | undefined;
 
             if (value === '__paste__') {
-                this.pasteLink();
+                this.runWhenInteractionsReady(() => void this.pasteLink());
                 return;
             }
 
             if (value === '__bulk-add__') {
-                this.openBulkAdd();
+                this.runWhenInteractionsReady(() => this.openBulkAdd());
                 return;
             }
 
             if (value) {
                 this.requestAddLink(value);
             }
-        });
+        }, { signal: abort.signal });
 
         const trigger = addRoot.querySelector('[data-hyper-add-trigger]');
 
@@ -285,7 +300,6 @@ export class HyperInput {
             initMenuBtn(trigger);
         }
 
-        this.refreshPasteUi();
         this.clipboardChangeHandler = () => this.refreshPasteUi();
         this.storageHandler = (event: StorageEvent) => {
             if (event.key === 'hyper:linkClipboard') {
@@ -294,16 +308,71 @@ export class HyperInput {
         };
         window.addEventListener('hyper:clipboard-change', this.clipboardChangeHandler);
         window.addEventListener('storage', this.storageHandler);
+
+        // SSR keeps this root inert so a cold-loaded Matrix block cannot present a clickable
+        // control with no listener. Listeners are now attached; interactions can safely queue.
+        addRoot.removeAttribute('inert');
+    }
+
+    private runWhenInteractionsReady(interaction: () => void): void {
+        if (this.interactionsReady) {
+            interaction();
+            return;
+        }
+
+        this.pendingInteractions.push(interaction);
+    }
+
+    private finishInitialization(): void {
+        if (this.destroyed || !this.container.isConnected) {
+            this.pendingInteractions = [];
+            return;
+        }
+
+        // A failed callback can reject the shared batch before this field mounts. Keep its
+        // server-rendered control safely inert rather than flushing against a partial interface.
+        if (!this.initialized) {
+            const addRoot = this.container.querySelector('[data-hyper-add-link]');
+            addRoot?.setAttribute('inert', '');
+            this.pendingInteractions = [];
+            return;
+        }
+
+        this.storeWritesEnabled = true;
+        this.blocks.forEach((block) => block.startPortalWatch());
+        this.refreshPasteUi();
+        this.interactionsReady = true;
+
+        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        addRoot?.removeAttribute('aria-busy');
+        this.container.classList.add('hyper-input--interactive');
+        this.fieldRoot?.classList.add('hyper-input--interactive');
+
+        // Flush after ElementEditor has adopted its baseline and resumed, so the resulting add
+        // is observed as the author's change rather than folded into initialization.
+        const pending = this.pendingInteractions.splice(0);
+        pending.forEach((interaction) => interaction());
     }
 
     /** Tear down listeners when the field root is removed from the CP (Astra H3-A16). */
     destroy(): void {
+        this.destroyed = true;
         this.container.removeEventListener('input', this.captureUserEdit, true);
         this.container.removeEventListener('change', this.captureUserEdit, true);
         this.container.removeEventListener('input', this.syncEarlyUserEdit);
         this.container.removeEventListener('change', this.syncEarlyUserEdit);
         this.unregisterSubmitSync?.();
         this.unregisterSubmitSync = null;
+        this.addLinkAbort?.abort();
+        this.addLinkAbort = null;
+        this.pendingInteractions = [];
+        this.interactionsReady = false;
+
+        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        addRoot?.setAttribute('inert', '');
+        addRoot?.setAttribute('aria-busy', 'true');
+        this.container.classList.remove('hyper-input--interactive');
+        this.fieldRoot?.classList.remove('hyper-input--interactive');
 
         if (this.clipboardChangeHandler) {
             window.removeEventListener('hyper:clipboard-change', this.clipboardChangeHandler);
@@ -372,7 +441,7 @@ export class HyperInput {
 
     /** Clicking a link type in the Add menu always adds a single blank row). */
     private requestAddLink(handle: string): void {
-        this.addLink(handle);
+        this.runWhenInteractionsReady(() => this.addLink(handle));
     }
 
     /** Remaining capacity before hitting maxLinks, or null when unbounded. */
@@ -994,14 +1063,12 @@ export class HyperInput {
             return;
         }
 
-        this.initialized = true;
-
         this.mountExistingBlocks();
         this.reindexBlocks();
         this.initSortable();
-        this.bindAddLink();
         this.bindTypeChanges();
         this.updateEmptyChrome();
+        this.initialized = true;
         this.container.classList.add('hyper-input--ready');
         fieldRoot.classList.add('hyper-input--ready');
         // Portal watches start after ElementEditor baseline adopt (see init()) — Craft widget

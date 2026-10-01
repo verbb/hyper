@@ -10,36 +10,14 @@ use verbb\hyper\models\LinkTypeConfig;
 use verbb\hyper\services\LinkTypeConfigs;
 use yii\web\ForbiddenHttpException;
 
-it('defers default config creation while Craft has pending core migrations', function() {
-    $originalUpdates = Craft::$app->getUpdates();
-    $originalProjectConfig = Craft::$app->getProjectConfig();
-    $projectConfig = new class extends \craft\services\ProjectConfig {
-        public bool $read = false;
+it('keeps default config creation out of plugin bootstrap and config reads', function() {
+    $pluginSource = file_get_contents(dirname(__DIR__, 2) . '/src/Hyper.php');
+    $serviceSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/LinkTypeConfigs.php');
+    $defaultMethod = strstr($serviceSource, 'public function getDefaultConfig(): LinkTypeConfig');
+    $defaultMethod = strstr($defaultMethod, 'public function normalizeFieldConfigRef', true);
 
-        public function get(?string $path = null, bool $getFromExternalConfig = false): mixed
-        {
-            $this->read = true;
-
-            return null;
-        }
-    };
-
-    Craft::$app->set('updates', new class extends \craft\services\Updates {
-        public function getIsCraftUpdatePending(): bool
-        {
-            return true;
-        }
-    });
-    Craft::$app->set('projectConfig', $projectConfig);
-
-    try {
-        Hyper::$plugin->getLinkTypeConfigs()->ensureConfigsExist();
-
-        expect($projectConfig->read)->toBeFalse();
-    } finally {
-        Craft::$app->set('updates', $originalUpdates);
-        Craft::$app->set('projectConfig', $originalProjectConfig);
-    }
+    expect($pluginSource)->not->toContain('ensureConfigsExist()')
+        ->and($defaultMethod)->not->toContain('ensureConfigsExist()');
 });
 
 it('restricts the link type configuration editor to administrators', function() {

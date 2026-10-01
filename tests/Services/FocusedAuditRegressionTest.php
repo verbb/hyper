@@ -34,6 +34,7 @@ it('keeps cached entry publication status consistent with uncached resolution', 
     $link = $queried->getFieldValue($field->handle)->getLinks()[0];
     expect($link->getElement()?->id)->toBe($visible ? $target->id : null);
     expect($link->getUrl() !== null)->toBe($visible);
+    expect($link->isEmpty())->toBe(!$visible);
     expect($link->getElement(null)?->id)->toBe($target->id);
     // An unrestricted lookup must not make the next default lookup unrestricted.
     expect($link->getElement()?->id)->toBe($visible ? $target->id : null);

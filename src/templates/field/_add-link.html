@@ -1,4 +1,5 @@
-<div class="h-add-container" data-hyper-add-link{% if addLinkHidden ?? false %} hidden{% endif %}>
+{# Hyper removes `inert` only after attaching handlers; `aria-busy` remains until Craft init settles. #}
+<div class="h-add-container" data-hyper-add-link inert aria-busy="true"{% if addLinkHidden ?? false %} hidden{% endif %}>
     {% if settings.linkTypes|length > 1 %}
         <div class="hc-add-link-type-group">
             <pk-dropdown-menu

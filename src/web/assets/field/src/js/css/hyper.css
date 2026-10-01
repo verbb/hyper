@@ -770,6 +770,12 @@
     display: inline-block;
 }
 
+/* Server-rendered Matrix blocks can arrive before Hyper's asset bundle and listeners. */
+[data-hyper-add-link][inert] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
 .h-add-link-btn {
     margin: 0;
 }

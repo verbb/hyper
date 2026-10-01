@@ -73,6 +73,16 @@ tests do not replace acceptance tests against a running Craft control panel.
 
 The immediate-input regression mounts the production `HyperInput` while Craft initialization is paused. It checks trusted input/change events, clearing and reverting a URL, same-event reads by a parent field, preservation of unrendered fields, and unchanged stores during passive initialization.
 
+The Matrix add-link race stress runner uses a real, explicitly marked isolated control-panel fixture. It repeatedly inserts a server-rendered Matrix entry and probes the first 128ms after DOM insertion. A cold field must remain safely inert until Hyper discovers it; once listeners are attached, clicks during deferred Craft initialization must queue and run when the field becomes interactive. It does not save the owner, but it does add and remove unsaved Matrix entries in the supplied browser session:
+
+```sh
+HYPER_CP_BASE=https://isolated-site.ddev.site \
+HYPER_CP_FIXTURE=/absolute/path/to/fixture.json \
+npm run test:stress:matrix-add
+```
+
+The fixture uses the same `username`, `password`, `matrix.section`, `matrix.ownerId`, and optional `matrix.matrixHandle` shape as `cp-release.mjs`. For cold-load coverage, point it at an owner whose empty Matrix field is the only place Hyper occurs on the edit screen; the runner deliberately does not wait for Hyper's bundle before inserting the first entry. `HYPER_STRESS_ASSET_DELAY=250` can widen that first-load window by delaying Hyper's JavaScript responses. The target must expose `__audit_health` with `isolated-hyper-release`; override the expected marker with `HYPER_CP_HEALTH` only for another deliberately isolated app. Tune the run with `HYPER_STRESS_ITERATIONS`, `HYPER_STRESS_DELAYS` (comma-separated milliseconds), `HYPER_STRESS_READY_TIMEOUT`, `HYPER_STRESS_ASSET_DELAY`, `HYPER_BROWSER`, and `HYPER_HEADED=1`.
+
 CI runs `ddev test --suite=all`, including the normal performance budgets, followed
 by the Chromium boundary tests. The runtime installs the pinned Vizy development
 dependency so its nested-content conversion test runs through normal plugin

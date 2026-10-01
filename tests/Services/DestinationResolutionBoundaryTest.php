@@ -51,4 +51,10 @@ it('keeps disabled or scheduled selections visible in the editor without renderi
     $link = Hyper::$plugin->links->createLinkFromSerialized($field, F::entryLinkPayload($target) + ['urlSuffix' => '#section']);
     expect($link->getElements()[0]->id ?? null)->toBe($target->id);
     expect($link->getUrl())->toBeNull();
+    expect($link->isEmpty())->toBeTrue();
+
+    $template = '{{ link.isEmpty() ? "empty" : "not-empty" }}:'
+        . '{{ collect(links.empty(null)).reject(link => link.isEmpty())|length }}';
+    $links = $field->normalizeValue([F::entryLinkPayload($target)]);
+    expect(Craft::$app->view->renderString($template, ['link' => $link, 'links' => $links]))->toBe('empty:0');
 })->with(['disabled', 'scheduled']);

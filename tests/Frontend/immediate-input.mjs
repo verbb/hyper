@@ -28,6 +28,7 @@ try {
         window.samples = [];
         window.Craft = {
             initUiElements() {},
+            randomString: () => 'abcdefghij',
             expandPostArray(flat) {
                 const tree = {};
                 for (const [name, value] of Object.entries(flat)) {
@@ -60,6 +61,23 @@ try {
             });
             document.querySelector('#owner').append(field);
         }
+
+        const queued = document.createElement('section');
+        queued.className = 'hyper-input-component';
+        queued.id = 'queued';
+        queued.innerHTML = `<input type="hidden" data-hyper-store name="fields[queued]" value="[]"><div data-hyper-input><div data-hyper-links></div><div data-hyper-add-link inert aria-busy="true"><button type="button" data-hyper-add-type="url">Add URL</button></div><div data-hyper-link-templates><template data-link-type="url" data-link-label="URL" data-link-tab-count="0" data-link-show-header-new-window="1"><input class="url" name="fields[hyperData][__LINK_ID__][linkValue]" value=""></template></div></div>`;
+        queued.querySelector('[data-hyper-input]').dataset.hyperInputConfig = JSON.stringify({
+            initialValue: [],
+            settings: {
+                fieldId: 'queued',
+                handle: 'queued',
+                defaultLinkType: 'url',
+                multipleLinks: false,
+                linkTypes: [{handle: 'url', label: 'URL', type: 'url'}],
+            },
+        });
+        document.querySelector('#owner').append(queued);
+
         for (const type of ['input', 'change']) document.querySelector('#owner').addEventListener(type, event => {
             if (!event.isTrusted) return;
             const field = event.target.closest('.hyper-input-component');
@@ -67,10 +85,16 @@ try {
         });
     });
     await page.addScriptTag({content: bundle.outputFiles[0].text});
+    assert.equal(await page.locator('#queued [data-hyper-add-link]').getAttribute('inert'), '', 'SSR add control starts inert');
     await page.evaluate(() => {
         window.instances = [...document.querySelectorAll('[data-hyper-input]')].map(host => new ImmediateInput.HyperInput(host));
         instances.forEach(instance => instance.init());
     });
+    const queuedAddRoot = page.locator('#queued [data-hyper-add-link]');
+    assert.equal(await queuedAddRoot.getAttribute('inert'), null, 'Hyper enables the control only after binding it');
+    assert.equal(await queuedAddRoot.getAttribute('aria-busy'), 'true');
+    await page.locator('#queued [data-hyper-add-type]').click();
+    assert.equal(await page.locator('#queued [data-hyper-link]').count(), 0, 'Add waits for deferred initialization');
     const untouched = await page.locator('#untouched [data-hyper-store]').inputValue();
     // Widget initialization may emit synthetic changes. They must leave SSR bytes intact.
     await page.locator('#untouched .url').evaluate(input => {
@@ -86,6 +110,14 @@ try {
     // Finish real block initialization, then repeat after portal watches are attached.
     await page.evaluate(() => finishPause());
     await page.waitForFunction(() => window.resumed);
+    await page.locator('#queued [data-hyper-input].hyper-input--interactive').waitFor();
+    assert.equal(
+        await page.locator('#queued [data-hyper-link]').count(),
+        1,
+        `Queued add runs after initialization resumes (page errors: ${errors.join('; ') || 'none'})`,
+    );
+    assert.equal(await queuedAddRoot.getAttribute('aria-busy'), null);
+    assert.equal(JSON.parse(await page.locator('#queued [data-hyper-store]').inputValue()).length, 1);
     await page.locator('#edited .url').fill('https://example.test/ready');
     await page.locator('#edited .url').blur();
     const samples = await page.evaluate(() => window.samples);
@@ -97,7 +129,7 @@ try {
     assert.equal(await page.locator('#untouched [data-hyper-store]').inputValue(), untouched);
     await page.evaluate(() => instances.forEach(instance => instance.destroy()));
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained']}));
+    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'queued add during init', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained']}));
 } finally {
     await browser.close();
 }
