@@ -4,7 +4,7 @@ namespace verbb\hyper\web\assets\field;
 use craft\web\AssetBundle;
 use craft\web\assets\cp\CpAsset;
 
-use verbb\base\assetbundles\CpAsset as VerbbCpAsset;
+use verbb\base\web\assets\cp\CpAsset as VerbbCpAsset;
 
 class HyperAsset extends AssetBundle
 {

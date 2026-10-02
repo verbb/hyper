@@ -1,6 +1,6 @@
 {% extends parentLayout ?? '_layouts/cp' %}
 
-{% do view.registerAssetBundle('verbb\\hyper\\assetbundles\\HyperAsset') %}
+{% do view.registerAssetBundle('verbb\\hyper\\web\\assets\\cp\\HyperAsset') %}
 
 {% if title is not defined %}
     {% set title = 'Hyper' | t('hyper') %}
