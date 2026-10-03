@@ -57,7 +57,25 @@ return [
 
 **Type:** `array` · **Default:** `[]`
 
-HTTP headers to send with embed requests. The empty default adds no custom headers. Use this when the service you are fetching requires a particular request header.
+HTTP headers to send to specific embed service origins. The empty default adds no custom headers. Map each exact HTTPS origin to its headers so credentials are never sent to unrelated page, redirect, metadata or image hosts.
+
+For example, to authenticate requests to `media.example.com`, use this override in `config/hyper.php`:
+
+```php
+<?php
+
+use craft\helpers\App;
+
+return [
+    'embedHeaders' => [
+        'https://media.example.com' => [
+            'Authorization' => 'Bearer ' . App::env('MEDIA_TOKEN'),
+        ],
+    ],
+];
+```
+
+Origins match the scheme, hostname and port exactly. Subdomains do not inherit headers, and a service using a non-default port must include it in the origin. List every secondary origin that needs credentials separately. Origin keys must use HTTPS without credentials, paths, queries or fragments; the previous unscoped header array is not accepted.
 :::
 
 ::: reference

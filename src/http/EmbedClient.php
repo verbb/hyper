@@ -4,7 +4,9 @@ namespace verbb\hyper\http;
 use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\models\Settings;
 
+use InvalidArgumentException;
 use RuntimeException;
+use Stringable;
 
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Uri;
@@ -12,6 +14,7 @@ use GuzzleHttp\Psr7\UriResolver;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\UriInterface;
 
 /** One guarded transport for initial pages, redirects and detector/oEmbed requests. */
 class EmbedClient implements ClientInterface
@@ -22,13 +25,19 @@ class EmbedClient implements ClientInterface
     private int $_requests = 0;
     private int $_bytes = 0;
     private float $_deadline;
+    private array $_domains;
+    private array $_settings;
+    private array $_headerRules;
 
 
     // Public Methods
     // =========================================================================
 
-    public function __construct(private array $_domains = [], private array $_settings = [])
+    public function __construct(array $domains = [], array $settings = [], array $headerRules = [])
     {
+        $this->_domains = $domains;
+        $this->_settings = $settings;
+        $this->_headerRules = $this->_normalizeHeaderRules($headerRules);
         $this->_deadline = microtime(true) + 30;
     }
 
@@ -62,7 +71,7 @@ class EmbedClient implements ClientInterface
 
             // Use exactly a validated address. Curl never gets a second DNS decision,
             // even if the public answer changes before this connection is made.
-            $response = $this->requestPinned($request, $ips[0]);
+            $response = $this->requestPinned($this->_withOriginHeaders($request), $ips[0]);
             $status = $response->getStatusCode();
 
             if (!in_array($status, [301, 302, 303, 307, 308], true)) {
@@ -190,5 +199,80 @@ class EmbedClient implements ClientInterface
         } finally {
             curl_close($ch);
         }
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _withOriginHeaders(RequestInterface $request): RequestInterface
+    {
+        $headers = $this->_headerRules[$this->_getOrigin($request->getUri())] ?? [];
+
+        foreach ($headers as $name => $value) {
+            // Provider adapters can attach their own short-lived credentials.
+            if (strtolower($name) === 'authorization' && $request->hasHeader($name)) {
+                continue;
+            }
+
+            $request = $request->withHeader($name, $value);
+        }
+
+        return $request;
+    }
+
+    private function _normalizeHeaderRules(array $headerRules): array
+    {
+        $normalized = [];
+
+        foreach ($headerRules as $origin => $headers) {
+            if (!is_string($origin) || !is_array($headers) || $headers === [] || array_is_list($headers)) {
+                throw new InvalidArgumentException('The embedHeaders setting must map exact HTTPS origins to non-empty header arrays.');
+            }
+
+            try {
+                $uri = new Uri(trim($origin));
+            } catch (\Throwable) {
+                throw new InvalidArgumentException('The embedHeaders setting contains an invalid origin.');
+            }
+
+            if (strtolower($uri->getScheme()) !== 'https' || $uri->getHost() === '' || $uri->getUserInfo() !== '' || !in_array($uri->getPath(), ['', '/'], true) || $uri->getQuery() !== '' || $uri->getFragment() !== '') {
+                throw new InvalidArgumentException('The embedHeaders setting must use exact HTTPS origins without credentials, paths, queries or fragments.');
+            }
+
+            $normalizedOrigin = $this->_getOrigin($uri);
+
+            if (isset($normalized[$normalizedOrigin])) {
+                throw new InvalidArgumentException('The embedHeaders setting contains duplicate origins.');
+            }
+
+            foreach ($headers as $name => $value) {
+                if (!is_string($name) || !preg_match('/^[!#$%&\'*+\-.^_`|~0-9A-Za-z]+$/D', $name) || strtolower($name) === 'host') {
+                    throw new InvalidArgumentException('The embedHeaders setting contains an invalid header name.');
+                }
+
+                if (!is_string($value) && !$value instanceof Stringable) {
+                    throw new InvalidArgumentException('The embedHeaders setting contains an invalid header value.');
+                }
+
+                $value = (string)$value;
+
+                if (str_contains($value, "\r") || str_contains($value, "\n")) {
+                    throw new InvalidArgumentException('The embedHeaders setting contains an invalid header value.');
+                }
+
+                $normalized[$normalizedOrigin][$name] = $value;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function _getOrigin(UriInterface $uri): string
+    {
+        return (string)(new Uri())
+            ->withScheme(strtolower($uri->getScheme()))
+            ->withHost(strtolower($uri->getHost()))
+            ->withPort($uri->getPort());
     }
 }

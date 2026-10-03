@@ -9,6 +9,24 @@ Hyper 3 treats stored link destinations as literal text. If your links use envir
 
 This also applies to URL link type defaults and fixed values. Craft's configured site base URLs continue to work through Site links.
 
+### Scoped Embed Headers
+
+The `embedHeaders` setting now maps exact HTTPS origins to their headers. Replace a flat header array with an origin-keyed map, and list every page, API, metadata or image origin that requires credentials separately:
+
+```php
+<?php
+
+return [
+    'embedHeaders' => [
+        'https://media.example.com' => [
+            'Authorization' => 'Bearer private-api-token',
+        ],
+    ],
+];
+```
+
+The legacy flat format is rejected because it would send the same credentials to every embed request. Origins must use HTTPS and match the scheme, hostname and port exactly; subdomains do not inherit headers.
+
 ### Link Content Shape
 
 Saved link content now identifies its link type with a stable **`linkTypeHandle`** only. In v2 each stored link carried both a `type` (the PHP class FQCN) and a duplicate `handle`; v3 drops the FQCN entirely. Hyper still dual-reads legacy v2 payloads (falling back to `handle`, then `type`) so existing content keeps working, but every new save writes the v3-only shape.

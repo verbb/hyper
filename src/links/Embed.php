@@ -55,9 +55,8 @@ class Embed extends Link
         }
 
         try {
-            $client = new EmbedClient($allowedDomains ?? $settings->embedAllowedDomains, $settings->getEmbedClientSettings());
+            $client = new EmbedClient($allowedDomains ?? $settings->embedAllowedDomains, $settings->getEmbedClientSettings(), $settings->embedHeaders);
             $crawler = new Crawler($client);
-            $crawler->addDefaultHeaders($settings->embedHeaders);
 
             $embed = new \Embed\Embed($crawler);
             $embed->setSettings($settings->embedDetectorsSettings);

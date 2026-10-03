@@ -46,6 +46,7 @@
 - Embed `html`, `iframeSrc`, `embedImage` and `providerName` values are now available on the GraphQL `HyperLinkInterface`. ([#194](https://github.com/verbb/hyper/issues/194))
 - Deleting a site now removes its UID from Hyper settings, defaults and stored link content. ([#264](https://github.com/verbb/hyper/issues/264))
 - YouTube embeds now prefer `maxresdefault` thumbnails when available. ([#243](https://github.com/verbb/hyper/issues/243))
+- Embed request headers must now be configured per exact HTTPS origin.
 - Unsupported or unavailable link types and missing named configurations now retain their original content instead of falling back to the default type.
 - URL values now allow only safe built-in schemes by default, with additional schemes configurable through `allowedUriSchemes`; dangerous schemes remain blocked.
 - Embed requests now enforce exact-domain allowlists, public-IP redirect checks, response limits and TLS verification, and control-panel previews use sandboxed frames.
@@ -57,6 +58,7 @@
 ### Fixed
 - Fixed the Add Link button occasionally not responding immediately after adding a Matrix entry.
 - Fixed link edits being lost immediately after a field loads or when saving immediately after editing.
+- Fixed a high-severity information disclosure vulnerability in Embed requests.
 - Fixed a high-severity stored cross-site scripting vulnerability in Embed links.
 - Fixed a stored XSS vulnerability.
 - Fixed an information disclosure vulnerability.
