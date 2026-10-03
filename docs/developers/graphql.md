@@ -66,7 +66,7 @@ resourceLinks(empty: null) {
 }
 ```
 
-This is a partial selection to place inside the entry-type fragment shown above. Your client decides how to display each returned row. Selecting a URL-less link does not bypass schema permissions for its `element` or custom fields. Twig’s `where()`, ordering and limit methods are not GraphQL arguments.
+This is a partial selection to place inside the entry-type fragment shown above. Your client decides how to display each returned row. Element links whose destinations are unavailable or outside the active schema appear as null list items, including when `empty: null` is used, and none of their link fields are resolved. Twig’s `where()`, ordering and limit methods are not GraphQL arguments.
 
 ## Read Custom Fields
 

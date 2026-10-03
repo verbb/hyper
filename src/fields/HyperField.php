@@ -7,6 +7,7 @@ use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\base\LinkTypeSettings;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
+use verbb\hyper\gql\resolvers\LinkedElement;
 use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\helpers\Plugin;
 use verbb\hyper\helpers\StringHelper;
@@ -45,6 +46,7 @@ use yii\db\Schema;
 use Exception;
 use Throwable;
 
+use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Definition\Type;
 
 class HyperField extends Field implements ThumbableFieldInterface, MergeableFieldInterface, PreviewableFieldInterface, EagerLoadingFieldInterface
@@ -793,11 +795,18 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                     'description' => 'Select links without a destination (true), with a destination (false), or either (null).',
                 ],
             ],
-            'resolve' => function(ElementInterface $source, array $arguments): array {
+            'resolve' => function(ElementInterface $source, array $arguments, mixed $_context, ResolveInfo $resolveInfo): array {
                 $links = $source->getFieldValue($this->handle);
                 $empty = array_key_exists('empty', $arguments) ? $arguments['empty'] : false;
 
-                return $links instanceof LinkCollection ? $links->empty($empty)->all() : [];
+                if (!$links instanceof LinkCollection) {
+                    return [];
+                }
+
+                return array_map(
+                    static fn(Link $link): ?Link => LinkedElement::isLinkAllowed($link, $resolveInfo) ? $link : null,
+                    $links->empty($empty)->all(),
+                );
             },
         ];
     }

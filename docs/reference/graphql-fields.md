@@ -16,6 +16,6 @@ Names listed in `HyperLinkInterface`, such as `text` and `url`, always return Hy
 
 If a saved link's type is unavailable, it returns the concrete type `HyperMissingLink`. Include `__typename` in your query to identify these items. Its saved label remains available through `linkText`, while `url`, `text` and `link` return null and `fields` returns the JSON string `[]`. Hyper retains the original content so restoring the type can make the link usable again.
 
-`element` also respects the schema’s permissions for the destination. A stored link does not grant access to a restricted entry, site or user group. It can return null even when the owner entry is readable.
+Element links whose destinations are unavailable or outside the active schema are returned as null list items. Hyper does not resolve any interface or concrete-type fields for those items, so access to an owner entry does not grant access to its linked entry, category, asset, site, user or other element. Keep null items when list positions are significant to your client.
 
 `linkValue` is JSON encoded, including scalar values. Embed links expose `html`, `iframeSrc`, `embedImage` and `providerName` so clients do not need to parse metadata for these common values. Those fields return null when the corresponding embed value is unavailable.

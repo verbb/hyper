@@ -9,6 +9,7 @@ use craft\models\GqlSchema;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
 use verbb\hyper\links\Url;
 use verbb\hyper\links\Embed;
+use verbb\hyper\links\Category as CategoryLink;
 use verbb\hyper\links\Entry as EntryLink;
 
 it('does not expose linked elements from sections outside the active schema', function() {
@@ -20,6 +21,9 @@ it('does not expose linked elements from sections outside the active schema', fu
     $private->setEntryTypes([$type]);
     expect(Craft::$app->entries->saveSection($private))->toBeTrue();
     $target = F::plainEntry($private, 'Private destination');
+    $targetId = $target->id;
+    $targetUrl = $target->getUrl();
+    $targetUri = $target->uri;
     $owner = F::plainEntry($public, 'Public owner', [$field->handle => [F::entryLinkPayload($target)]]);
     $gql = new \craft\services\Gql();
     $original = Craft::$app->gql;
@@ -33,14 +37,106 @@ it('does not expose linked elements from sections outside the active schema', fu
             $schema = new GqlSchema(['uid' => StringHelper::UUID(), 'name' => 'Section boundary', 'scope' => [
                 'sections.' . $public->uid . ':read', ...($allowPrivate ? ['sections.' . $private->uid . ':read'] : []),
             ]]);
-            $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . ' { element { id } } } } }', debugMode: true);
+            $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . ' { element { id title } linkValue linkUrl url linkText text link linkUri } } } }', debugMode: true);
             expect($result['errors'] ?? [])->toBe([], json_encode($result));
-            expect($result['data']['entries'][0][$field->handle][0]['element'])->toBe($allowPrivate ? ['id' => (string)$target->id] : null);
+            $link = $result['data']['entries'][0][$field->handle][0];
+
+            if (!$allowPrivate) {
+                expect($link)->toBeNull();
+                continue;
+            }
+
+            expect($link['element']['id'])->toBe((string)$targetId);
+            expect(json_decode($link['linkValue'], true))->toBe([$targetId]);
+            expect($link['linkUrl'])->toBe($targetUrl);
+            expect($link['url'])->toBe($targetUrl);
+            expect($link['linkText'])->not->toBeEmpty();
+            expect($link['text'])->toBe($link['linkText']);
+            expect($link['link'])->toContain($targetUrl, $link['linkText']);
+            expect($link['linkUri'])->toBe($targetUri);
         }
     } finally {
         $gql->flushCaches();
         Craft::$app->set('gql', $original);
         $original->flushCaches();
+    }
+});
+
+it('does not expose stored fields for unavailable element destinations', function() {
+    $field = F::hyperField(['linkTypes' => [EntryLink::class]]);
+    $public = F::entrySection($field);
+    $private = F::entrySection();
+    $target = F::plainEntry($private, 'Unavailable destination');
+    $owner = F::plainEntry($public, 'Public owner', [$field->handle => [F::entryLinkPayload($target, 'Saved private label')]]);
+    $target->enabled = false;
+    expect(Craft::$app->elements->saveElement($target))->toBeTrue();
+    $type = Craft::$app->entries->getEntryTypesBySectionId($public->id)[0];
+    $schema = new GqlSchema(['uid' => StringHelper::UUID(), 'name' => 'Unavailable boundary', 'scope' => [
+        'sections.' . $public->uid . ':read',
+    ]]);
+    $result = Craft::$app->gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . '(empty: null) { linkValue linkText text } } } }', debugMode: true);
+
+    expect($result['errors'] ?? [])->toBe([], json_encode($result));
+    expect($result['data']['entries'][0][$field->handle])->toBe([null]);
+});
+
+it('does not expose category links when their concrete type is outside the active schema', function() {
+    $field = F::hyperField(['linkTypes' => [CategoryLink::class]]);
+    $section = F::entrySection($field);
+    $group = new \craft\models\CategoryGroup([
+        'name' => 'API categories',
+        'handle' => F::handle('apiCategories'),
+    ]);
+    $group->setSiteSettings(array_map(static fn($site) => new \craft\models\CategoryGroup_SiteSettings([
+        'siteId' => $site->id,
+        'hasUrls' => true,
+        'uriFormat' => 'api-categories/{slug}',
+        'template' => '_hyper-test/entry',
+    ]), Craft::$app->sites->getAllSites()));
+    expect(Craft::$app->categories->saveGroup($group))->toBeTrue();
+
+    try {
+        $category = new \craft\elements\Category([
+            'groupId' => $group->id,
+            'siteId' => Craft::$app->sites->getPrimarySite()->id,
+            'title' => 'Private category',
+            'slug' => F::handle('privateCategory'),
+        ]);
+        expect(Craft::$app->elements->saveElement($category))->toBeTrue();
+        $owner = F::plainEntry($section, 'Category link owner', [$field->handle => [[
+            'handle' => 'category',
+            'linkValue' => [$category->id],
+        ]]]);
+        $type = Craft::$app->entries->getEntryTypesBySectionId($section->id)[0];
+        $original = Craft::$app->gql;
+
+        foreach ([false, true] as $allowCategory) {
+            Craft::$app->gql->flushCaches();
+            $gql = new \craft\services\Gql();
+            Craft::$app->set('gql', $gql);
+            $schema = new GqlSchema(['uid' => StringHelper::UUID(), 'name' => 'Category boundary', 'scope' => [
+                'sections.' . $section->uid . ':read',
+                ...($allowCategory ? ['categorygroups.' . $group->uid . ':read'] : []),
+            ]]);
+            $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . ' { element { id } linkValue url text linkUri } } } }', debugMode: true);
+            expect($result['errors'] ?? [])->toBe([], json_encode($result));
+            $link = $result['data']['entries'][0][$field->handle][0];
+
+            if (!$allowCategory) {
+                expect($link)->toBeNull();
+                continue;
+            }
+
+            expect($link['element'])->toBe(['id' => (string)$category->id]);
+            expect(json_decode($link['linkValue'], true))->toBe([$category->id]);
+            expect($link['url'])->toBe($category->getUrl());
+            expect($link['text'])->toBe('Private category');
+            expect($link['linkUri'])->toBe($category->uri);
+        }
+    } finally {
+        Craft::$app->gql->flushCaches();
+        Craft::$app->set('gql', $original ?? Craft::$app->gql);
+        Craft::$app->categories->deleteGroup($group);
     }
 });
 
@@ -63,7 +159,8 @@ it('restricts linked users by schema group while allowing explicit everyone acce
             ]]);
             $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . '(empty: null) { element { id } } } } }', debugMode: true);
             expect($result['errors'] ?? [])->toBe([], json_encode($result));
-            expect($result['data']['entries'][0][$field->handle][0]['element'])->toBe($groupUid === 'everyone' ? ['id' => (string)$person->id] : null);
+            $link = $result['data']['entries'][0][$field->handle][0];
+            expect($link)->toBe($groupUid === 'everyone' ? ['element' => ['id' => (string)$person->id]] : null);
         }
     } finally {
         Craft::$app->gql->flushCaches();

@@ -6,7 +6,12 @@ use verbb\hyper\base\LinkInterface;
 use craft\base\ElementInterface;
 use craft\elements\Entry;
 use craft\elements\User;
+use craft\gql\GqlEntityRegistry;
 use craft\helpers\Gql;
+
+use Throwable;
+
+use GraphQL\Type\Definition\ResolveInfo;
 
 class LinkedElement
 {
@@ -54,5 +59,26 @@ class LinkedElement
 
         // Other element types use container-specific GraphQL types and Craft's type gate.
         return $element;
+    }
+
+    public static function isLinkAllowed(LinkInterface $link, ResolveInfo $resolveInfo): bool
+    {
+        if (!$link->isElement()) {
+            return true;
+        }
+
+        $element = self::resolve($link);
+
+        if (!$element) {
+            return false;
+        }
+
+        try {
+            $typeName = GqlEntityRegistry::prefixTypeName($element->getGqlTypeName());
+
+            return $resolveInfo->schema->getType($typeName) !== null;
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

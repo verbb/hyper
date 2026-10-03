@@ -28,7 +28,8 @@ it('respects explicit schema site restrictions on linked elements', function() {
             ]]);
             $result = $gql->executeQuery($schema, '{ entries(id: ' . $owner->id . ', siteId: ' . $site->id . ') { ... on ' . $type->handle . '_Entry { ' . $field->handle . ' { element { id } } } } }', debugMode: true);
             expect($result['errors'] ?? [])->toBe([], json_encode($result));
-            expect($result['data']['entries'][0][$field->handle][0]['element'])->toBe($allowOther ? ['id' => (string)$target->id] : null);
+            $link = $result['data']['entries'][0][$field->handle][0];
+            expect($link)->toBe($allowOther ? ['element' => ['id' => (string)$target->id]] : null);
         }
     } finally {
         Craft::$app->gql->flushCaches();
