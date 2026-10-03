@@ -53,7 +53,7 @@ it('finalizes a temporary custom-field upload when its Hyper owner is saved', fu
     expect(Craft::$app->fs->saveFilesystem($fs))->toBeTrue();
     $volume = new craft\models\Volume(['name' => $handle, 'handle' => $handle, 'fsHandle' => $handle]);
     expect(Craft::$app->volumes->saveVolume($volume))->toBeTrue();
-    $assetField = new Assets(['name' => 'Upload', 'handle' => F::handle('hyperTestUpload'), 'defaultUploadLocationSource' => 'volume:' . $volume->uid]);
+    $assetField = new Assets(['name' => 'Upload', 'handle' => F::handle('hyperTestUpload'), 'defaultUploadLocationSource' => 'volume:' . $volume->uid, 'defaultUploadLocationSubpath' => '{uid}']);
     expect(Craft::$app->fields->saveField($assetField))->toBeTrue();
     $url = new Url();
     $layout = Url::getDefaultFieldLayout();

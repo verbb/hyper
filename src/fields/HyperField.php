@@ -608,6 +608,27 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
     }
 
+    public function beforeElementSave(ElementInterface $element, bool $isNew): bool
+    {
+        if (!$element->propagating && !$element->getIsRevision()) {
+            $value = $element->getFieldValue($this->handle);
+
+            if ($value instanceof LinkCollection) {
+                foreach ($value->getLinks() as $link) {
+                    if ($link instanceof Link && !$link->uid) {
+                        $link->uid = StringHelper::UUID();
+                    }
+
+                    CpInputContext::assertVisibleSelections($link);
+                }
+
+                LinkFieldLifecycle::validateUploads($value, $element);
+            }
+        }
+
+        return parent::beforeElementSave($element, $isNew);
+    }
+
     public function afterElementSave(ElementInterface $element, bool $isNew): void
     {
         $value = $element->getFieldValue($this->handle);

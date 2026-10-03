@@ -8,6 +8,7 @@ use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\db\ElementQueryInterface;
 use craft\fields\BaseRelationField;
 use craft\fields\ContentBlock;
 use craft\fields\Matrix;
@@ -57,7 +58,18 @@ class CpInputContext
             $nestedQuery = $field instanceof Matrix || (class_exists(\benf\neo\Field::class) && $field instanceof \benf\neo\Field);
 
             if ($field instanceof BaseRelationField || $nestedQuery) {
-                foreach ($element->getFieldValue($field->handle)->all() as $selected) {
+                $related = $element->getFieldValue($field->handle);
+
+                if ($field instanceof BaseRelationField && $related instanceof ElementQueryInterface) {
+                    $related = (clone $related)
+                        ->drafts(null)
+                        ->status(null)
+                        ->limit(null)
+                        ->unique()
+                        ->eagerly(false);
+                }
+
+                foreach ($related->all() as $selected) {
                     if (!$nestedQuery || $selected->id) {
                         self::_assertVisible($selected);
                     }

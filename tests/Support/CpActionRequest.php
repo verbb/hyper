@@ -13,6 +13,33 @@ use verbb\hyper\Hyper;
 /** Exercise public actions with Craft's authentication, CSRF and permission checks intact. */
 final class CpActionRequest
 {
+    public static function asUser(?User $identity, callable $callback): mixed
+    {
+        $app = Craft::$app;
+        $original = ['request' => $app->request, 'user' => $app->user];
+
+        try {
+            $request = new Request(['isCpRequest' => true, 'isConsoleRequest' => false, 'enableCookieValidation' => false]);
+            $request->setScriptUrl('/index.php');
+            $request->setHostInfo('https://hyper-tests.example.test');
+            $request->setScriptFile(CRAFT_WEB_ROOT . '/index.php');
+            $request->setUrl('/index.php?p=admin/entries');
+            $app->set('request', $request);
+
+            $user = new class extends \craft\console\User {
+                public string $idParam = '__id';
+            };
+            $user->setIdentity($identity);
+            $app->set('user', $user);
+
+            return $callback();
+        } finally {
+            foreach ($original as $id => $component) {
+                $app->set($id, $component);
+            }
+        }
+    }
+
     public static function run(string $action, ?User $identity, array $body, bool $validCsrf = true, array $query = [], string $controllerClass = FieldsController::class): Response
     {
         $app = Craft::$app;

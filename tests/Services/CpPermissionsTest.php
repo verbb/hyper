@@ -1,7 +1,13 @@
 <?php
 
+use craft\elements\Asset;
+use craft\elements\Entry;
 use craft\elements\User;
+use craft\elements\conditions\assets\SavableConditionRule;
+use craft\fieldlayoutelements\CustomField;
+use craft\fields\Assets;
 use craft\helpers\Json;
+use craft\helpers\StringHelper;
 use Tests\Support\CpActionRequest;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
 use verbb\hyper\links\Url;
@@ -35,6 +41,127 @@ beforeEach(function() {
         $users[$role] = User::find()->id($user->id)->status(null)->one();
     }
     $this->cpFixture = compact('field', 'owner', 'otherOwner', 'site', 'otherSite', 'users');
+});
+
+it('finalizes only temporary uploads owned by the current control-panel user', function() {
+    $f = $this->cpFixture;
+    $handle = F::handle('hyperPermissionFs');
+    $path = sys_get_temp_dir() . '/' . $handle;
+    $fs = new craft\fs\Local(['name' => $handle, 'handle' => $handle, 'path' => $path]);
+    expect(Craft::$app->fs->saveFilesystem($fs))->toBeTrue();
+    $volume = new craft\models\Volume(['name' => $handle, 'handle' => $handle, 'fsHandle' => $handle]);
+    expect(Craft::$app->volumes->saveVolume($volume))->toBeTrue();
+    $assetField = new Assets([
+        'name' => 'Upload',
+        'handle' => F::handle('hyperPermissionUpload'),
+        'defaultUploadLocationSource' => 'volume:' . $volume->uid,
+        'restrictFiles' => true,
+        'allowedKinds' => [Asset::KIND_TEXT],
+    ]);
+    $condition = Asset::createCondition();
+    $condition->setConditionRules([$condition->createConditionRule([
+        'class' => SavableConditionRule::class,
+        'value' => true,
+    ])]);
+    $assetField->setSelectionCondition($condition);
+    expect(Craft::$app->fields->saveField($assetField))->toBeTrue();
+
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($assetField, ['uid' => StringHelper::UUID()])]);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig($url)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+
+    Craft::$app->set('userPermissions', new \craft\services\UserPermissions());
+    $current = $f['users']['editor'];
+    $permissions = Craft::$app->userPermissions->getPermissionsByUserId($current->id);
+    expect(Craft::$app->userPermissions->saveUserPermissions($current->id, [
+        ...$permissions,
+        'viewAssets:' . $volume->uid,
+        'saveAssets:' . $volume->uid,
+    ]))->toBeTrue();
+
+    $admin = User::find()->admin()->one();
+    $foreignPath = tempnam(sys_get_temp_dir(), 'hyper-foreign-upload-');
+    file_put_contents($foreignPath, 'Foreign temporary upload');
+    $foreignFolder = Craft::$app->assets->getUserTemporaryUploadFolder($f['users']['otherEditor']);
+    $foreign = new Asset([
+        'tempFilePath' => $foreignPath,
+        'filename' => $handle . '-foreign.txt',
+        'newFolderId' => $foreignFolder->id,
+        'uploaderId' => $f['users']['otherEditor']->id,
+    ]);
+    $foreign->setScenario(Asset::SCENARIO_CREATE);
+    expect(Craft::$app->elements->saveElement($foreign))->toBeTrue();
+
+    $ownPath = tempnam(sys_get_temp_dir(), 'hyper-own-upload-');
+    file_put_contents($ownPath, 'Current user temporary upload');
+    $ownFolder = Craft::$app->assets->getUserTemporaryUploadFolder($current);
+    $own = new Asset([
+        'tempFilePath' => $ownPath,
+        'filename' => $handle . '-own.txt',
+        'newFolderId' => $ownFolder->id,
+        'uploaderId' => $current->id,
+    ]);
+    $own->setScenario(Asset::SCENARIO_CREATE);
+    expect(Craft::$app->elements->saveElement($own))->toBeTrue();
+
+    $disallowedPath = tempnam(sys_get_temp_dir(), 'hyper-disallowed-upload-');
+    file_put_contents($disallowedPath, '{}');
+    $disallowed = new Asset([
+        'tempFilePath' => $disallowedPath,
+        'filename' => $handle . '-disallowed.json',
+        'newFolderId' => $ownFolder->id,
+        'uploaderId' => $current->id,
+    ]);
+    $disallowed->setScenario(Asset::SCENARIO_CREATE);
+    expect(Craft::$app->elements->saveElement($disallowed))->toBeTrue();
+
+    try {
+        $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/foreign-upload',
+            'fields' => [$assetField->handle => [$foreign->id]],
+        ]]);
+        expect(fn() => CpActionRequest::asUser($admin, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to finalize a selected temporary asset.');
+        expect(Asset::find()->id($foreign->id)->one()->volumeId)->toBeNull();
+
+        $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/disallowed-upload',
+            'fields' => [$assetField->handle => [$disallowed->id]],
+        ]]);
+        expect(fn() => CpActionRequest::asUser($current, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'The selected temporary asset is not permitted by this Assets field.');
+        expect(Asset::find()->id($disallowed->id)->one()->volumeId)->toBeNull();
+
+        $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/own-upload',
+            'fields' => [$assetField->handle => [$own->id]],
+        ]]);
+        expect(CpActionRequest::asUser($current, fn() => Craft::$app->elements->saveElement($owner, false)))->toBeTrue();
+        expect(Asset::find()->id($own->id)->one()->volumeId)->toBe($volume->id);
+    } finally {
+        foreach ([$foreign, $own, $disallowed] as $asset) {
+            if (Asset::find()->id($asset->id)->status(null)->one()) {
+                Craft::$app->elements->deleteElementById($asset->id, Asset::class, hardDelete: true);
+            }
+        }
+        Craft::$app->fields->deleteField($assetField);
+        Craft::$app->volumes->deleteVolume($volume);
+        Craft::$app->fs->removeFilesystem($fs);
+        @unlink($foreignPath);
+        @unlink($ownPath);
+        @unlink($disallowedPath);
+        @rmdir($path);
+    }
 });
 
 afterEach(function() {
@@ -159,6 +286,56 @@ it('rejects inaccessible main and custom-field selections while rendering permit
                 'data' => ['handle' => $type] + $seed($f['otherOwner']->id),
             ])))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
         }
+    } finally {
+        Craft::$app->fields->deleteField($related);
+    }
+});
+
+it('rejects inaccessible selections before saving an owner while permitting visible targets', function() {
+    $f = $this->cpFixture;
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+
+    $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+    $user = $f['users']['editor'];
+
+    try {
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'entry',
+            'linkValue' => [$f['otherOwner']->id],
+        ]]);
+        expect(fn() => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/nested',
+            'fields' => [$related->handle => [$f['otherOwner']->id]],
+        ]]);
+        expect(fn() => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+
+        $f['otherOwner']->enabled = false;
+        expect(Craft::$app->elements->saveElement($f['otherOwner']))->toBeTrue();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/disabled-nested',
+            'fields' => [$related->handle => [$f['otherOwner']->id]],
+        ]]);
+        expect(fn() => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'entry',
+            'linkValue' => [$f['owner']->id],
+        ]]);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))->toBeTrue();
     } finally {
         Craft::$app->fields->deleteField($related);
     }

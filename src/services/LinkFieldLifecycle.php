@@ -7,53 +7,94 @@ use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\Asset;
+use craft\elements\conditions\ElementCondition;
 use craft\fields\Assets;
 use craft\fields\Matrix;
 
 use RuntimeException;
+use yii\web\ForbiddenHttpException;
 
 class LinkFieldLifecycle
 {
     // Static Methods
     // =========================================================================
 
-    public static function finalizeUploads(LinkCollectionInterface $links, ElementInterface $owner): void
+    public static function validateUploads(LinkCollectionInterface $links, ElementInterface $owner): void
     {
-        if ($owner->getIsRevision() || $owner->propagating) {
+        $request = Craft::$app->getRequest();
+
+        if ($request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
             return;
         }
 
-        foreach ($links->getLinks() as $link) {
-            if ($link instanceof LinkInterface) {
-                self::_finalizeElementUploads($link, $owner);
+        self::_pendingUploads($links, $owner);
+    }
+
+    public static function finalizeUploads(LinkCollectionInterface $links, ElementInterface $owner): void
+    {
+        $pending = self::_pendingUploads($links, $owner);
+
+        foreach ($pending as [$asset, , , $folder]) {
+            if (!$folder) {
+                continue;
+            }
+
+            $asset->avoidFilenameConflicts = true;
+
+            if (!Craft::$app->getAssets()->moveAsset($asset, $folder)) {
+                throw new RuntimeException('Unable to finalize a Hyper asset upload.');
             }
         }
     }
 
-    private static function _finalizeElementUploads(ElementInterface $element, ElementInterface $owner): void
+    private static function _pendingUploads(LinkCollectionInterface $links, ElementInterface $owner): array
+    {
+        if ($owner->getIsRevision() || $owner->propagating) {
+            return [];
+        }
+
+        $pending = [];
+
+        foreach ($links->getLinks() as $link) {
+            if ($link instanceof LinkInterface) {
+                self::_collectElementUploads($link, $owner, $pending);
+            }
+        }
+
+        self::_assertUploadsAllowed($pending);
+
+        return $pending;
+    }
+
+    private static function _collectElementUploads(ElementInterface $element, ElementInterface $owner, array &$pending): void
     {
         $assets = Craft::$app->getAssets();
 
         foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
             if ($field instanceof Matrix) {
                 foreach ($element->getFieldValue($field->handle)->all() as $nested) {
-                    self::_finalizeElementUploads($nested, $owner);
+                    self::_collectElementUploads($nested, $owner, $pending);
                 }
             } elseif ($field instanceof HyperField) {
                 $nested = $element->getFieldValue($field->handle);
 
                 if ($nested instanceof LinkCollectionInterface) {
-                    self::finalizeUploads($nested, $owner);
+                    foreach ($nested->getLinks() as $link) {
+                        if ($link instanceof LinkInterface) {
+                            self::_collectElementUploads($link, $owner, $pending);
+                        }
+                    }
                 }
             } elseif (class_exists(\verbb\vizy\fields\VizyField::class) && $field instanceof \verbb\vizy\fields\VizyField) {
                 $nodes = $element->getFieldValue($field->handle);
 
                 if ($nodes instanceof \verbb\vizy\models\NodeCollection) {
-                    self::_finalizeVizyUploads($nodes->getNodes(), $element, $owner);
+                    self::_collectVizyUploads($nodes->getNodes(), $element, $owner, $pending);
                 }
             } elseif ($field instanceof Assets) {
                 $selected = $element->getFieldValue($field->handle)->all();
-                $temporary = array_filter($selected, static fn($asset) => $asset->volumeId === null);
+                $temporary = array_filter($selected, static fn($asset) => $asset instanceof Asset && $asset->volumeId === null);
 
                 if (!$temporary) {
                     continue;
@@ -66,6 +107,10 @@ class LinkFieldLifecycle
 
                 if (!$folder?->volumeId) {
                     if ($owner->getIsDraft()) {
+                        foreach ($temporary as $asset) {
+                            $pending[] = [$asset, $field, $element, null];
+                        }
+
                         continue;
                     }
 
@@ -73,17 +118,63 @@ class LinkFieldLifecycle
                 }
 
                 foreach ($temporary as $asset) {
-                    $asset->avoidFilenameConflicts = true;
-
-                    if (!$assets->moveAsset($asset, $folder)) {
-                        throw new RuntimeException('Unable to finalize a Hyper asset upload.');
-                    }
+                    $pending[] = [$asset, $field, $element, $folder];
                 }
             }
         }
     }
 
-    private static function _finalizeVizyUploads(array $nodes, ElementInterface $element, ElementInterface $owner): void
+    private static function _assertUploadsAllowed(array $pending): void
+    {
+        $request = Craft::$app->getRequest();
+
+        if ($request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
+            return;
+        }
+
+        $userSession = Craft::$app->getUser();
+        $identity = $userSession->getIdentity();
+
+        if (!$identity) {
+            throw new ForbiddenHttpException('User is not authorized to finalize a selected temporary asset.');
+        }
+
+        $temporaryFolder = Craft::$app->getAssets()->getUserTemporaryUploadFolder($identity);
+
+        foreach ($pending as [$asset, $field, $element, $folder]) {
+            if ($asset->folderId !== $temporaryFolder->id || $asset->uploaderId !== $identity->id) {
+                throw new ForbiddenHttpException('User is not authorized to finalize a selected temporary asset.');
+            }
+
+            if (!$field->allowUploads
+                || ($field->restrictFiles && !in_array($asset->kind, $field->allowedKinds ?? [], true))) {
+                throw new ForbiddenHttpException('The selected temporary asset is not permitted by this Assets field.');
+            }
+
+            $selectionCondition = $field->getSelectionCondition();
+
+            if ($selectionCondition && $folder) {
+                $selectionCondition = clone $selectionCondition;
+                $prospectiveAsset = clone $asset;
+                $prospectiveAsset->setVolumeId($folder->volumeId);
+                $prospectiveAsset->folderId = $folder->id;
+
+                if ($selectionCondition instanceof ElementCondition) {
+                    $selectionCondition->referenceElement = $element;
+                }
+
+                if (!$selectionCondition->matchElement($prospectiveAsset)) {
+                    throw new ForbiddenHttpException('The selected temporary asset is not permitted by this Assets field.');
+                }
+            }
+
+            if ($folder && !$userSession->checkPermission('saveAssets:' . $folder->getVolume()->uid)) {
+                throw new ForbiddenHttpException('User is not authorized to save an asset to the resolved upload location.');
+            }
+        }
+    }
+
+    private static function _collectVizyUploads(array $nodes, ElementInterface $element, ElementInterface $owner, array &$pending): void
     {
         foreach ($nodes as $node) {
             if ($node instanceof \verbb\vizy\nodes\VizyBlock) {
@@ -97,10 +188,10 @@ class LinkFieldLifecycle
                     }
                 }
 
-                self::_finalizeElementUploads($block, $owner);
+                self::_collectElementUploads($block, $owner, $pending);
             }
 
-            self::_finalizeVizyUploads($node->getContent(), $element, $owner);
+            self::_collectVizyUploads($node->getContent(), $element, $owner, $pending);
         }
     }
 
