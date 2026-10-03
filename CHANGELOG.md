@@ -57,6 +57,7 @@
 ### Fixed
 - Fixed the Add Link button occasionally not responding immediately after adding a Matrix entry.
 - Fixed link edits being lost immediately after a field loads or when saving immediately after editing.
+- Fixed a high-severity stored cross-site scripting vulnerability in Embed links.
 - Fixed a stored XSS vulnerability.
 - Fixed an information disclosure vulnerability.
 - Fixed cleared element selections continuing to resolve a cached target. ([#259](https://github.com/verbb/hyper/issues/259))

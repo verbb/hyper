@@ -87,7 +87,9 @@ it('executes link fragments and enforces schema restrictions in both typed field
     $section = F::entrySection($field);
     $target = F::plainEntry($section, 'Destination');
     $person = User::find()->admin()->one();
-    $metadata = ['url' => 'https://video.example.test/watch', 'code' => '<iframe src="https://video.example.test/embed"></iframe>', 'providerName' => 'Example Video', 'image' => 'https://video.example.test/thumb.jpg'];
+    $metadata = Embed::prepareEmbedData(['url' => 'https://video.example.test/watch', 'code' => '<iframe src="https://video.example.test/embed"></iframe>', 'providerName' => 'Example Video', 'image' => 'https://video.example.test/thumb.jpg']);
+    $publicMetadata = $metadata;
+    unset($publicMetadata['_hyperEmbedSignature']);
     $owner = F::plainEntry($section, 'API owner', [$field->handle => [
         ['handle' => 'url', 'linkValue' => 'https://example.test/url', 'linkText' => 'URL caption', 'fields' => [$text->handle => 'Public value', $users->handle => [$person->id]]],
         F::entryLinkPayload($target, 'Entry caption'),
@@ -130,7 +132,7 @@ it('executes link fragments and enforces schema restrictions in both typed field
             expect($links[2]['iframeSrc'])->toBe('https://video.example.test/embed');
             expect($links[2]['providerName'])->toBe($metadata['providerName']);
             expect($links[2]['embedImage'])->toBe($metadata['image']);
-            expect(json_decode($links[2]['linkValue'], true))->toEqual($metadata);
+            expect(json_decode($links[2]['linkValue'], true))->toEqual($publicMetadata);
         }
 
         $typedUsers = '... on ' . $linkType . ' { ' . $users->handle . ' { id } }';

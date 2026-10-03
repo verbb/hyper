@@ -10,6 +10,7 @@ use verbb\hyper\models\Settings;
 
 use Craft;
 use craft\helpers\Html;
+use craft\helpers\HtmlPurifier;
 use craft\helpers\Json;
 use craft\helpers\Template;
 
@@ -21,6 +22,9 @@ use Twig\Markup;
 
 class Embed extends Link
 {
+    private const SIGNATURE_KEY = '_hyperEmbedSignature';
+
+
     // Static Methods
     // =========================================================================
 
@@ -88,7 +92,7 @@ class Embed extends Link
                 $data['code'] = '<iframe src="' . Html::encode($info->url) . '"></iframe>';
             }
 
-            return $data;
+            return self::prepareEmbedData($data);
         } catch (Throwable $e) {
             $error = Craft::t('hyper', 'Unable to fetch embed data for “{url}”: “{message}” {file}:{line}', [
                 'url' => $url,
@@ -106,6 +110,27 @@ class Embed extends Link
         }
 
         return [];
+    }
+
+    /**
+     * Sanitize server-fetched metadata and make client-side tampering detectable.
+     *
+     * Programmatic integrations that provide their own server-fetched metadata
+     * should call this before assigning the data to linkValue.
+     */
+    public static function prepareEmbedData(array $data): array
+    {
+        unset($data[self::SIGNATURE_KEY]);
+
+        if (isset($data['code']) && (is_scalar($data['code']) || $data['code'] instanceof \Stringable)) {
+            $data['code'] = self::_sanitizeEmbedCode((string)$data['code']);
+        } else {
+            unset($data['code']);
+        }
+
+        $data[self::SIGNATURE_KEY] = Craft::$app->getSecurity()->hashData(self::_canonicalJson($data));
+
+        return $data;
     }
 
     /**
@@ -311,18 +336,18 @@ class Embed extends Link
 
     public function getHtml(): ?Markup
     {
-        $code = $this->linkValue['code'] ?? '';
+        $code = $this->_trustedEmbedCode();
 
-        if ($code === '' || $code === null) {
+        if ($code === null || $code === '') {
             return null;
         }
 
-        return Template::raw((string)$code);
+        return Template::raw($code);
     }
 
     public function getIframeSrc(): ?string
     {
-        $code = trim((string)($this->linkValue['code'] ?? ''));
+        $code = trim($this->_trustedEmbedCode() ?? '');
 
         if ($code === '') {
             return null;
@@ -351,6 +376,126 @@ class Embed extends Link
 
     public function getData(): ?array
     {
-        return $this->linkValue;
+        if (!is_array($this->linkValue)) {
+            return null;
+        }
+
+        return $this->_safeEmbedData($this->linkValue);
+    }
+
+    public function getPublicData(): ?array
+    {
+        $data = $this->getData();
+
+        if ($data === null) {
+            return null;
+        }
+
+        unset($data[self::SIGNATURE_KEY]);
+
+        return $data;
+    }
+
+    public function getSerializedValues(): array
+    {
+        $values = parent::getSerializedValues();
+
+        if (isset($values['linkValue']) && is_array($values['linkValue'])) {
+            $values['linkValue'] = $this->_safeEmbedData($values['linkValue']);
+        }
+
+        return $values;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private static function _sanitizeEmbedCode(string $code): string
+    {
+        return HtmlPurifier::process($code, function(\HTMLPurifier_Config $config) {
+            $config->set('HTML.SafeIframe', true);
+            $config->set('URI.SafeIframeRegexp', '%^https?://%i');
+            $config->set('URI.AllowedSchemes', [
+                'http' => true,
+                'https' => true,
+            ]);
+            $config->set('Attr.AllowedFrameTargets', ['_blank']);
+
+            $definition = $config->getHTMLDefinition(true);
+            $definition->addAttribute('iframe', 'allow', 'Text');
+            $definition->addAttribute('iframe', 'allowfullscreen', 'Bool#allowfullscreen');
+            $definition->addAttribute('iframe', 'loading', 'Enum#eager,lazy');
+            $definition->addAttribute('iframe', 'referrerpolicy', 'Text');
+            $definition->addAttribute('iframe', 'sandbox', 'Text');
+            $definition->addAttribute('iframe', 'title', 'Text');
+        });
+    }
+
+    private static function _canonicalJson(array $data): string
+    {
+        return Json::encode(self::_canonicalize($data));
+    }
+
+    private static function _canonicalize(array $data): array
+    {
+        if (!array_is_list($data)) {
+            ksort($data, SORT_STRING);
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = self::_canonicalize($value);
+            }
+        }
+
+        return $data;
+    }
+
+    private function _safeEmbedData(array $data): array
+    {
+        if ($this->_trustedEmbedData($data) !== null) {
+            return $data;
+        }
+
+        unset($data['code'], $data[self::SIGNATURE_KEY]);
+
+        return $data;
+    }
+
+    private function _trustedEmbedCode(): ?string
+    {
+        if (!is_array($this->linkValue)) {
+            return null;
+        }
+
+        $data = $this->_trustedEmbedData($this->linkValue);
+        $code = $data['code'] ?? null;
+
+        return is_string($code) ? $code : null;
+    }
+
+    private function _trustedEmbedData(array $data): ?array
+    {
+        $signature = $data[self::SIGNATURE_KEY] ?? null;
+        unset($data[self::SIGNATURE_KEY]);
+
+        if (!is_string($signature)) {
+            return null;
+        }
+
+        $signedJson = Craft::$app->getSecurity()->validateData($signature);
+
+        if (!is_string($signedJson) || !hash_equals($signedJson, self::_canonicalJson($data))) {
+            return null;
+        }
+
+        $url = trim((string)($data['url'] ?? ''));
+
+        if ($url === '' || !$this->isEmbedUrlAllowed($url)) {
+            return null;
+        }
+
+        return $data;
     }
 }

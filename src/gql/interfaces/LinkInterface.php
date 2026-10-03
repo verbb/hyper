@@ -5,6 +5,7 @@ use verbb\hyper\base\Link;
 use verbb\hyper\gql\resolvers\LinkedElement;
 use verbb\hyper\gql\types\generators\LinkTypeGenerator;
 use verbb\hyper\gql\types\ArrayType;
+use verbb\hyper\links\Embed;
 
 use Craft;
 use craft\gql\base\InterfaceType as BaseInterfaceType;
@@ -113,7 +114,9 @@ class LinkInterface extends BaseInterfaceType
                 'description' => 'The raw link data as a JSON string (full embed metadata for Embed links).',
                 'type' => Type::string(),
                 'resolve' => function($link) {
-                    return Json::encode($link->linkValue);
+                    $value = $link instanceof Embed ? $link->getPublicData() : $link->linkValue;
+
+                    return Json::encode($value);
                 },
             ],
             'html' => [
