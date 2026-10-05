@@ -29,7 +29,7 @@
         "craftcms/cms": "^5.0.0",
         "embed/embed": "^3.0.0 || ^4.0.0",
         "nystudio107/craft-plugin-vite": "^5.0.0",
-        "verbb/base": "^3.0.19"
+        "verbb/base": "^3.0.20"
     },
     "autoload": {
         "psr-4": {
