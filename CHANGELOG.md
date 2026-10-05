@@ -33,6 +33,7 @@
 - Added a Category-to-Entry entrification remapper. ([#136](https://github.com/verbb/hyper/issues/136))
 
 ### Changed
+- Require Verbb Base 3.0.19 or later for the current control-panel asset bundle namespace.
 - The default Link Type Config is now created during installation or upgrade instead of normal requests.
 - Hyper now requires Craft 5.9 or later and Embed 4.
 - Hyper 3 now supports upgrading directly from Hyper 1 on Craft 4 without installing Hyper 2 as an intermediate step.
@@ -56,6 +57,7 @@
 - Clarified that `linkValue` should remain on the first field layout tab. ([#145](https://github.com/verbb/hyper/issues/145))
 
 ### Fixed
+- Avoid Verbb Base deprecation warnings by using its current control-panel asset bundle namespace. ([verbb-base#3](https://github.com/verbb/verbb-base/issues/3))
 - Fixed a medium-severity authorization vulnerability affecting saved link selections and temporary uploads.
 - Fixed a medium-severity information disclosure vulnerability in GraphQL link responses.
 - Fixed the Add Link button occasionally not responding immediately after adding a Matrix entry.
