@@ -2,7 +2,7 @@
     "name": "verbb/hyper",
     "description": "A Craft CMS field for creating consistent links and calls to action.",
     "type": "craft-plugin",
-    "version": "2.3.15",
+    "version": "2.3.16",
     "keywords": [
         "craft",
         "cms",
