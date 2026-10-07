@@ -1051,6 +1051,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             $link->isNew = true;
             $link->id = rand();
+            $link->setOwner($element);
             // A selected destination can use another site; layout fields still
             // belong to the owner, including when hydrating a pasted block.
             $link->siteId = $ownerSiteId;
@@ -1394,6 +1395,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $linkType->id = rand();
+            $linkType->setOwner($element);
             // Relation fields on the layout resolve site from the Link element.
             $linkType->siteId = $ownerSiteId;
 
@@ -1462,6 +1464,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             // Create a fake link ID so that some fields like Matrix will work with this fake element
             $link->id = rand();
+            $link->setOwner($element);
             $link->siteId = $ownerSiteId;
 
             // Disregard the namespace of parent fields, or even using `fields`. This keeps our field data separate to Craft

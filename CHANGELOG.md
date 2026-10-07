@@ -58,6 +58,7 @@
 - Clarified that `linkValue` should remain on the first field layout tab. ([#145](https://github.com/verbb/hyper/issues/145))
 
 ### Fixed
+- Fixed fields in link layouts being unable to resolve the element that owns the Hyper field. ([#276](https://github.com/verbb/hyper/issues/276))
 - Avoid Verbb Base deprecation warnings by using its current control-panel asset bundle namespace. ([verbb-base#3](https://github.com/verbb/verbb-base/issues/3))
 - Fixed a medium-severity authorization vulnerability affecting saved link selections and temporary uploads.
 - Fixed a medium-severity information disclosure vulnerability in GraphQL link responses.

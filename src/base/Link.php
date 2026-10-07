@@ -214,6 +214,7 @@ abstract class Link extends Element implements LinkInterface
     private bool $_generatedUid = false;
     private ?FieldLayout $_fieldLayout = null;
     private bool $_hydratingFromInstance = false;
+    private ?ElementInterface $_owner = null;
 
 
     // Public Methods
@@ -622,6 +623,19 @@ abstract class Link extends Element implements LinkInterface
     public function getElement(mixed $status = null): ?ElementInterface
     {
         return null;
+    }
+
+    /**
+     * Returns the element whose Hyper field is rendering this transient Link.
+     */
+    public function getOwner(): ?ElementInterface
+    {
+        return $this->_owner;
+    }
+
+    public function setOwner(?ElementInterface $owner): void
+    {
+        $this->_owner = $owner;
     }
 
     public function hasElement(mixed $status = null): bool
