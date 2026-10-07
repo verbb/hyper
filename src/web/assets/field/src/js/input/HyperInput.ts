@@ -1,4 +1,5 @@
 import type { HyperBulkConfig, HyperInputConfig, HyperLinkTypeConfig, HyperSeededBlock, LinkInstance } from '../types';
+import { createStatePanel, getErrorDetail } from '../ui/feedback';
 import { getId, parseLinkIdHtml } from '../utils/string';
 import {
     ensureElementEditorSerializeHook,
@@ -1319,9 +1320,25 @@ function buildBulkAddDialog(options: {
 
                 updateAddState();
             })
-            .catch(() => {
+            .catch((error: unknown) => {
                 if (token === elementLoadToken) {
-                    wrap.innerHTML = `<p class="error">${escapeAttr(Craft.t('hyper', 'Couldn’t add links.'))}</p>`;
+                    const retry = document.createElement('button');
+                    retry.type = 'button';
+                    retry.className = 'btn submit';
+                    retry.textContent = Craft.t('hyper', 'Try again');
+                    retry.addEventListener('click', renderRegion);
+
+                    wrap.replaceChildren(createStatePanel({
+                        variant: 'error',
+                        heading: Craft.t('hyper', 'Link selector unavailable'),
+                        message: Craft.t('hyper', 'Hyper couldn’t load the element selector. Try again.'),
+                        details: getErrorDetail(error),
+                        detailsLabel: Craft.t('hyper', 'Technical details'),
+                        copyLabel: Craft.t('hyper', 'Copy details'),
+                        copiedLabel: Craft.t('hyper', 'Details copied.'),
+                        action: retry,
+                        announce: 'assertive',
+                    }));
                 }
             });
 

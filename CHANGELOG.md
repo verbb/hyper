@@ -33,7 +33,8 @@
 - Added a Category-to-Entry entrification remapper. ([#136](https://github.com/verbb/hyper/issues/136))
 
 ### Changed
-- Require Verbb Base 3.0.19 or later for the current control-panel asset bundle namespace.
+- Require Verbb Base 3.0.20 or later so shared control-panel layouts use the current asset bundle namespace. ([verbb-base#3](https://github.com/verbb/verbb-base/issues/3))
+- Improved control-panel loading, empty, warning and failure states with consistent guidance, diagnostic details and recovery actions.
 - The default Link Type Config is now created during installation or upgrade instead of normal requests.
 - Hyper now requires Craft 5.9 or later and Embed 4.
 - Hyper 3 now supports upgrading directly from Hyper 1 on Craft 4 without installing Hyper 2 as an intermediate step.

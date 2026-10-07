@@ -1,4 +1,5 @@
 import { debounce } from 'lodash-es';
+import { createAlert, getErrorDetail } from '../ui/feedback';
 
 const widgets = new Map<HTMLElement, { sync: () => void; destroy: () => void }>();
 let observing = false;
@@ -50,13 +51,18 @@ export function mountEmbed(container: HTMLElement): void {
                 // Metadata completion must reach the owner model/autosave as well.
                 data.dispatchEvent(new Event('change', { bubbles: true }));
             }
-        }).catch(({ response }) => {
+        }).catch((error: unknown) => {
             if (destroyed || !container.isConnected || revision !== generation || input.value !== url) return;
-            if (responseEl && response?.data?.message) {
-                const error = document.createElement('div');
-                error.className = 'error';
-                error.textContent = String(response.data.message);
-                responseEl.replaceChildren(error);
+            if (responseEl) {
+                responseEl.replaceChildren(createAlert({
+                    variant: 'error',
+                    heading: Craft.t('hyper', 'Preview unavailable'),
+                    message: Craft.t('hyper', 'Hyper couldn’t generate a preview for this URL. You can keep the link, or try another URL.'),
+                    details: getErrorDetail(error),
+                    detailsLabel: Craft.t('hyper', 'Provider response'),
+                    copyLabel: Craft.t('hyper', 'Copy details'),
+                    copiedLabel: Craft.t('hyper', 'Details copied.'),
+                }));
             }
         }).finally(() => {
             if (!destroyed && revision === generation) spinner?.classList.add('hidden');

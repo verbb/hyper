@@ -45,6 +45,7 @@ export class HyperSettings {
         this.bindDelete();
         this.bindLabelFields();
         this.initDesigners();
+        this.syncEmptyState();
         this.container.classList.add('hyper-settings--ready');
     }
 
@@ -273,6 +274,7 @@ export class HyperSettings {
         this.bindLabelField(pane, sidebarItem);
         this.registerDesigner(handle, pane, template);
         this.sortable?.refresh();
+        this.syncEmptyState();
         this.selectItem(sidebarItem);
     }
 
@@ -533,6 +535,7 @@ export class HyperSettings {
             pane?.remove();
             this.syncSidebarOrder();
             this.sortable?.refresh();
+            this.syncEmptyState();
 
             const next = this.container.querySelector('[data-hyper-settings-item]');
 
@@ -540,6 +543,14 @@ export class HyperSettings {
                 this.selectItem(next);
             }
         });
+    }
+
+    private syncEmptyState(): void {
+        const empty = this.container.querySelector('[data-hyper-settings-empty]');
+
+        if (empty instanceof HTMLElement) {
+            empty.hidden = !!this.container.querySelector('[data-hyper-settings-item]');
+        }
     }
 
     private bindLabelFields(): void {

@@ -30,7 +30,7 @@ try {
     await page.addScriptTag({path:path.join(craftPath,'src/web/assets/jquery/dist/jquery.js')});
     await page.evaluate(()=>{
         window.pending=[];window.posted={fields:{main:'edited'}};
-        window.Craft={randomString:()=>crypto.randomUUID(),getActionUrl:(a,p)=>p,sendActionRequest:(m,p)=>new Promise((r,j)=>pending.push({p,r,j})),expandPostArray:()=>({hyperData:{row:posted}})};
+        window.Craft={randomString:()=>crypto.randomUUID(),t:(_category,message)=>message,getActionUrl:(a,p)=>p,sendActionRequest:(m,p)=>new Promise((r,j)=>pending.push({p,r,j})),expandPostArray:()=>({hyperData:{row:posted}})};
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
@@ -113,7 +113,9 @@ try {
     assert.equal(await page.locator('.hyper-embed-response iframe').count(),0);
     await page.waitForFunction(()=>pending.length===3);
     await page.evaluate(()=>pending[2].j({response:{data:{message:'Provider unavailable'}}}));
-    await page.waitForFunction(()=>document.querySelector('.hyper-embed-response .error')?.textContent==='Provider unavailable');
+    await page.waitForFunction(()=>document.querySelector('.hyper-embed-response pk-alert')?.getAttribute('heading')==='Preview unavailable');
+    assert.equal(await page.locator('.hyper-embed-response pk-alert').textContent(),'Hyper couldn’t generate a preview for this URL. You can keep the link, or try another URL.Provider unavailable');
+    assert.equal(await page.locator('.hyper-embed-response [slot="details"]').textContent(),'Provider unavailable');
     await page.locator('.visible').fill('https://example.test/retry');
     await page.waitForFunction(()=>pending.length===4);
     await page.evaluate(()=>pending[3].r({data:{data:{url:'https://example.test/retry'},preview:'<iframe title="Retry preview"></iframe>'}}));

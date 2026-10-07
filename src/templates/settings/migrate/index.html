@@ -20,9 +20,14 @@
         source: source.label,
     }) }}</p>
 
-    {{ 'This will **permanently** modify all your {source} fields and cannot be reverted. Keep **Create backup** enabled if you need a database restore point from before the migration.' | t('hyper', {
-        source: source.label,
-    }) | md }}
+    <pk-alert
+        variant="warning"
+        heading="{{ 'Before you migrate' | t('hyper') }}"
+    >
+        {{ 'This will **permanently** modify all your {source} fields and cannot be reverted. Keep **Create backup** enabled if you need a database restore point from before the migration.' | t('hyper', {
+            source: source.label,
+        }) | md }}
+    </pk-alert>
 
     {% if source.steps | length == 3 %}
         {{ 'This is a 3-step process. First, update legacy fields. Second, migrate your fields. Third, migrate your content.' | t('hyper') | md }}

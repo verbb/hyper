@@ -5,5 +5,10 @@
 {% set pageTitle = 'General Settings' | t('hyper') %}
 
 {% block settingsContent %}
-    <p class="zilch">{{ 'No settings available.' | t('app') }}</p>
+    <pk-state-panel
+        variant="empty"
+        heading="{{ 'No settings available.' | t('app') }}"
+    >
+        <p>{{ 'Hyper does not currently have any general settings.' | t('hyper') }}</p>
+    </pk-state-panel>
 {% endblock %}

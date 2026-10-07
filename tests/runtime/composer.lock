@@ -11366,16 +11366,16 @@
         },
         {
             "name": "verbb/base",
-            "version": "3.0.14",
+            "version": "3.0.20",
             "source": {
                 "type": "git",
                 "url": "https://github.com/verbb/verbb-base.git",
-                "reference": "c847f893fa7278413b6554324447137b815e7d3e"
+                "reference": "0b60c166a79e2762aa968e062dc84ca6c0a9406e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/verbb/verbb-base/zipball/c847f893fa7278413b6554324447137b815e7d3e",
-                "reference": "c847f893fa7278413b6554324447137b815e7d3e",
+                "url": "https://api.github.com/repos/verbb/verbb-base/zipball/0b60c166a79e2762aa968e062dc84ca6c0a9406e",
+                "reference": "0b60c166a79e2762aa968e062dc84ca6c0a9406e",
                 "shasum": ""
             },
             "require": {
@@ -11412,22 +11412,22 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-14T11:53:23+00:00"
+            "time": "2026-10-04T21:22:12+00:00"
         },
         {
             "name": "verbb/hyper",
-            "version": "3.0.0-beta.1",
+            "version": "3.0.0",
             "dist": {
                 "type": "path",
                 "url": "../../..",
-                "reference": "ebe7e94fba6bee071dd7aed8aed8370e187917cc"
+                "reference": "9e8f27fda84f1e6e0794ae231186ad3394b257b9"
             },
             "require": {
                 "craftcms/cms": "^5.9",
                 "embed/embed": "^4.0.0",
                 "nystudio107/craft-plugin-vite": "^5.0.0",
                 "php": "^8.2",
-                "verbb/base": "^3.0.0"
+                "verbb/base": "^3.0.20"
             },
             "require-dev": {
                 "craftcms/cms": "^5.9",
@@ -11443,7 +11443,7 @@
             "extra": {
                 "name": "Hyper",
                 "handle": "hyper",
-                "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/craft-5/CHANGELOG.md",
+                "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/beta/CHANGELOG.md",
                 "class": "verbb\\hyper\\Hyper"
             },
             "autoload": {
@@ -11504,7 +11504,7 @@
                 "issues": "https://github.com/verbb/hyper/issues?state=open",
                 "source": "https://github.com/verbb/hyper",
                 "docs": "https://github.com/verbb/hyper",
-                "rss": "https://github.com/verbb/hyper/commits/v2.atom"
+                "rss": "https://github.com/verbb/hyper/commits/beta.atom"
             },
             "transport-options": {
                 "symlink": true,

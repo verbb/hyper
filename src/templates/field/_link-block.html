@@ -196,20 +196,18 @@
         {% endif %}
 
         {% if isUnsupported %}
-            <div class="hyper-unsupported-banner" role="status">
-                <p class="hyper-unsupported-banner__title">
-                    {{ 'Unsupported link type' | t('hyper') }}
-                    {% if link.unsupportedHandle %}
-                        <span class="hyper-unsupported-banner__handle">({{ link.unsupportedHandle }})</span>
-                    {% endif %}
-                </p>
-                <p class="hyper-unsupported-banner__body">
-                    {{ 'This link’s data is retained. Delete it, or restore the link type and resave.' | t('hyper') }}
-                </p>
+            <pk-alert
+                variant="warning"
+                size="sm"
+                heading="{{ 'Unsupported link type' | t('hyper') }}"
+                announce="polite"
+                {% if link.unsupportedSummary %}details-label="{{ 'Retained value' | t('hyper') }}"{% endif %}
+            >
+                <p>{{ 'This link’s data is retained. Delete it, or restore the link type and resave.' | t('hyper') }}</p>
                 {% if link.unsupportedSummary %}
-                    <p class="hyper-unsupported-banner__summary">{{ link.unsupportedSummary }}</p>
+                    <pre slot="details">{{ link.unsupportedSummary }}</pre>
                 {% endif %}
-            </div>
+            </pk-alert>
         {% endif %}
 
         <div class="hyper-body-wrapper" data-hyper-body>

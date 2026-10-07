@@ -26,6 +26,7 @@ class PluginController extends Controller
     {
         /* @var Settings $settings */
         $settings = Hyper::$plugin->getSettings();
+        Plugin::registerAsset('field/src/js/plugin-kit-register.ts');
 
         return $this->renderTemplate('hyper/settings', [
             'settings' => $settings,

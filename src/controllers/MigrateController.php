@@ -2,6 +2,7 @@
 namespace verbb\hyper\controllers;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\helpers\Plugin;
 use verbb\hyper\migrations\plugins\Line;
 use verbb\hyper\migrations\plugins\MigrationResult;
 
@@ -34,6 +35,7 @@ class MigrateController extends Controller
     public function actionIndex(string $sourceId): Response
     {
         $this->requireAdmin(false);
+        Plugin::registerAsset('field/src/js/plugin-kit-register.ts');
 
         $source = $this->_requireSource($sourceId, requireReady: false);
 

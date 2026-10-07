@@ -69,7 +69,35 @@ try {
     assert.equal(switched, 'changed field width');
     await page.waitForTimeout(300);
     assert.deepEqual(await page.evaluate(() => changes), ['layout without Link Text', 'changed field width']);
-    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes']}));
+
+    await page.evaluate(() => {
+        const errorRoot = document.createElement('div');
+        errorRoot.id = 'error-designer';
+        document.body.append(errorRoot);
+        let attempts = 0;
+        Craft.sendActionRequest = async () => {
+            attempts++;
+
+            if (attempts === 1) {
+                throw {response: {data: {message: 'Layout service unavailable'}}};
+            }
+
+            return {data: {html: '<input data-config-input value="recovered layout">'}};
+        };
+        window.retryDesigner = new LayoutTest.FieldLayoutDesigner(errorRoot, {
+            fieldId: null, type: 'url', value: 'saved layout', onChange() {},
+        });
+        retryDesigner.load();
+    });
+    await page.locator('#error-designer pk-state-panel').waitFor({state: 'attached'});
+    assert.equal(await page.locator('#error-designer pk-state-panel').getAttribute('heading'), 'Field layout unavailable');
+    assert.equal(await page.locator('#error-designer [slot="details"]').textContent(), 'Layout service unavailable');
+    await page.locator('#error-designer button').click();
+    await page.locator('#error-designer input[data-config-input]').waitFor({state: 'attached'});
+    assert.equal(await page.locator('#error-designer input[data-config-input]').inputValue(), 'recovered layout');
+    assert.equal(await page.locator('#error-designer .hyper-fld-stage').getAttribute('class'), 'hyper-fld-stage');
+
+    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes', 'field layout error retry']}));
 } finally {
     await browser.close();
 }

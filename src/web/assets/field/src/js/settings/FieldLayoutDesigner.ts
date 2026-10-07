@@ -1,4 +1,5 @@
 import { createSpinner } from '../ui/Spinner';
+import { createStatePanel, getErrorDetail } from '../ui/feedback';
 
 type FieldLayoutDesignerOptions = {
     fieldId: number | string | null;
@@ -104,6 +105,7 @@ export class FieldLayoutDesigner {
     }
 
     private showLoading(): void {
+        this.stageEl.classList.remove('has-error');
         this.workspaceEl.classList.add('is-active');
         this.workspaceEl.classList.remove('is-leaving');
         this.workspaceEl.innerHTML = '';
@@ -117,6 +119,7 @@ export class FieldLayoutDesigner {
     }
 
     private showContent(instant = false): void {
+        this.stageEl.classList.remove('has-error');
         this.workspaceEl.classList.remove('is-active');
         this.contentEl.classList.add('is-visible');
 
@@ -140,19 +143,38 @@ export class FieldLayoutDesigner {
         }, { once: true });
     }
 
-    private showError(message: string): void {
+    private showError(error: unknown): void {
         this.loading = false;
+        this.stageEl.classList.add('has-error');
         this.workspaceEl.classList.add('is-active');
         this.workspaceEl.classList.remove('is-leaving');
         this.contentEl.classList.remove('is-visible');
-        this.workspaceEl.innerHTML = (
-            '<div class="hyper-error-pane error">'
-            + '<div class="hyper-error-content">'
-            + '<span data-icon="alert"></span>'
-            + `<span class="error">${this.escapeHtml(message)}</span>`
-            + '</div>'
-            + '</div>'
-        );
+        this.workspaceEl.innerHTML = '';
+
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn submit';
+        retry.textContent = Craft.t('hyper', 'Try again');
+        retry.addEventListener('click', () => {
+            if (this.loading) {
+                return;
+            }
+
+            this.showLoading();
+            this.fetchLayout();
+        });
+
+        this.workspaceEl.append(createStatePanel({
+            variant: 'error',
+            heading: Craft.t('hyper', 'Field layout unavailable'),
+            message: Craft.t('hyper', 'Hyper couldn’t load the layout. Retry the request or reload the page.'),
+            details: getErrorDetail(error) ?? Craft.t('app', 'An error occurred.'),
+            detailsLabel: Craft.t('hyper', 'Technical details'),
+            copyLabel: Craft.t('hyper', 'Copy details'),
+            copiedLabel: Craft.t('hyper', 'Details copied.'),
+            action: retry,
+            announce: 'assertive',
+        }));
     }
 
     private fetchLayout(): void {
@@ -193,7 +215,7 @@ export class FieldLayoutDesigner {
                 this.renderLayout();
             })
             .catch((error: unknown) => {
-                this.showError(this.formatError(error));
+                this.showError(error);
             });
     }
 
@@ -348,23 +370,4 @@ export class FieldLayoutDesigner {
         return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
-    private formatError(error: unknown): string {
-        if (error instanceof Error && error.message) {
-            return error.message;
-        }
-
-        if (typeof error === 'string' && error.trim()) {
-            return error;
-        }
-
-        return Craft.t('app', 'An error occurred.');
-    }
-
-    private escapeHtml(value: string): string {
-        return value
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
 }

@@ -1,5 +1,6 @@
 /** Tags Hyper waits on via `allDefined` after the register entry runs. */
 export const HYPER_PK_COMPONENTS = [
+    'pk-alert',
     'pk-button',
     'pk-copy-button',
     'pk-dialog',
@@ -9,6 +10,7 @@ export const HYPER_PK_COMPONENTS = [
     'pk-icon',
     'pk-input-group',
     'pk-input-group-addon',
+    'pk-state-panel',
 ] as const;
 
 export type HyperPkComponentTag = (typeof HYPER_PK_COMPONENTS)[number];

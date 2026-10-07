@@ -1534,21 +1534,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     private function _getBlockHtml(View $view, LinkInterface $link): string
     {
         if ($link instanceof linkTypes\MissingLink) {
-            $handle = $link->handle ?: ($link->expectedType ?: 'unknown');
-            $error = $link->errorMessage ?: Craft::t(
-                'hyper',
-                'This link type (“{handle}”) is unavailable. Content is retained — delete the link or restore the type, then resave.',
-                ['handle' => $handle],
-            );
-
-            return Html::tag('div', Html::encode($error), ['class' => 'error']);
+            // The surrounding block owns the unavailable-type warning and recovery controls.
+            return '';
         }
 
         try {
             $linkFieldLayout = $link->getFieldLayout();
 
             if (!$linkFieldLayout) {
-                return Html::tag('div', Craft::t('hyper', 'Unable to render field. Please resave the field settings.'), ['class' => 'error']);
+                return $this->_getBlockStatePanelHtml(
+                    Craft::t('hyper', 'Link fields unavailable'),
+                    Craft::t('hyper', 'Hyper could not render this link’s fields. Resave the field settings or reload the page.'),
+                    Craft::t('hyper', 'No field layout was returned for this link type.'),
+                );
             }
 
             // Clone so we can stamp LinkField without mutating the cached layout.
@@ -1581,16 +1579,40 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 }
             }
         } catch (Throwable $e) {
-            $error = Craft::t('hyper', 'Unable to render field - {message} {file}:{line}', [
+            $details = Craft::t('hyper', 'Unable to render field - {message} {file}:{line}', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
-            Hyper::error($error);
+            Hyper::error($details);
 
-            return Html::tag('div', $error, ['class' => 'error']);
+            return $this->_getBlockStatePanelHtml(
+                Craft::t('hyper', 'Link fields unavailable'),
+                Craft::t('hyper', 'Hyper could not render this link’s fields. Reload the page, then check the field settings if the problem continues.'),
+                $details,
+            );
         }
+    }
+
+    private function _getBlockStatePanelHtml(string $heading, string $message, ?string $details = null): string
+    {
+        $content = Html::tag('p', Html::encode($message));
+
+        if ($details) {
+            $content .= Html::tag('pre', Html::encode($details), ['slot' => 'details']);
+        }
+
+        return Html::tag('pk-state-panel', $content, [
+            'variant' => 'error',
+            'size' => 'sm',
+            'heading' => $heading,
+            'announce' => 'polite',
+            'details-label' => Craft::t('hyper', 'Technical details'),
+            'copy-label' => Craft::t('hyper', 'Copy details'),
+            'copied-label' => Craft::t('hyper', 'Details copied.'),
+            'copyable' => (bool)$details,
+        ]);
     }
 
     private function _getLinkTypeSettings(): array

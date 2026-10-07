@@ -49,8 +49,14 @@
 
     <div class="hc-pane" data-hyper-settings-pane>
         {% if not linkTypes %}
-            <div class="hc-pane-empty">
-                <div class="hc-pane-empty-placeholder">{{ 'Select a link type to edit.' | t('hyper') }}</div>
+            <div class="hc-pane-empty" data-hyper-settings-empty>
+                <pk-state-panel
+                    variant="empty"
+                    size="sm"
+                    heading="{{ 'No link types configured' | t('hyper') }}"
+                >
+                    <p>{{ 'Add a link type to configure the links authors can create.' | t('hyper') }}</p>
+                </pk-state-panel>
             </div>
         {% endif %}
 
@@ -63,9 +69,18 @@
                 data-hyper-settings-link-pane
                 data-link-type-handle="{{ linkType.handle }}"
             >
-                {{ linkType.html | raw }}
+                {% if isMissing %}
+                    <pk-state-panel
+                        variant="warning"
+                        size="sm"
+                        heading="{{ 'Link type unavailable' | t('hyper') }}"
+                    >
+                        <p>{{ 'Hyper cannot load this link type. Remove it or restore its plugin before saving.' | t('hyper') }}</p>
+                        <pre slot="details">{{ linkType.handle }}</pre>
+                    </pk-state-panel>
+                {% else %}
+                    {{ linkType.html | raw }}
 
-                {% if not isMissing %}
                     <div class="field">
                         <div class="heading">
                             <label class="required">{{ 'Link Fields' | t('hyper') }}</label>
@@ -91,11 +106,12 @@
                         </div>
                     </div>
 
-                    {% if canDelete %}
-                        <button type="button" class="btn delete icon" data-hyper-settings-delete>
-                            {{ 'Delete' | t('app') }}
-                        </button>
-                    {% endif %}
+                {% endif %}
+
+                {% if canDelete %}
+                    <button type="button" class="btn delete icon" data-hyper-settings-delete>
+                        {{ 'Delete' | t('app') }}
+                    </button>
                 {% endif %}
             </div>
         {% endfor %}

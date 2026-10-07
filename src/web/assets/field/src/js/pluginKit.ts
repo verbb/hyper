@@ -3,6 +3,7 @@ import '@verbb/plugin-kit-web/plugin-kit.css';
 // Named deep imports — family barrels only re-export `dist/chunks/*` (outside
 // package sideEffects), so bare side-effect imports get dropped by Vite/Rollup.
 // Referencing the classes inside the called registrar keeps the decorator modules.
+import { PkAlert } from '@verbb/plugin-kit-web/components/alert/pk-alert.js';
 import { PkButton } from '@verbb/plugin-kit-web/components/button/pk-button.js';
 import { PkCopyButton } from '@verbb/plugin-kit-web/components/copy-button/pk-copy-button.js';
 import { PkDialog } from '@verbb/plugin-kit-web/components/dialog/pk-dialog.js';
@@ -12,6 +13,7 @@ import { PkDropdownSeparator } from '@verbb/plugin-kit-web/components/dropdown-m
 import { PkIcon } from '@verbb/plugin-kit-web/components/icon/pk-icon.js';
 import { PkInputGroup } from '@verbb/plugin-kit-web/components/input-group/pk-input-group.js';
 import { PkInputGroupAddon } from '@verbb/plugin-kit-web/components/input-group/pk-input-group-addon.js';
+import { PkStatePanel } from '@verbb/plugin-kit-web/components/state-panel/pk-state-panel.js';
 
 // Opt-in glyphs for Twig `<pk-icon icon="…">` (JS camelCase keys → kebab lookup names).
 // Kit has no synonym aliases — register only canonical curated names (or custom glyphs below).
@@ -55,6 +57,7 @@ import { HYPER_PK_COMPONENTS } from './hyperPkComponents.js';
 
 /** Constructors whose modules run `@customElement` — must stay reachable from the registrar. */
 const HYPER_PK_CTORS = [
+    PkAlert,
     PkButton,
     PkCopyButton,
     PkDialog,
@@ -64,6 +67,7 @@ const HYPER_PK_CTORS = [
     PkIcon,
     PkInputGroup,
     PkInputGroupAddon,
+    PkStatePanel,
 ] as const;
 
 let registered = false;
