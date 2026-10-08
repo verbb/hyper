@@ -22,4 +22,4 @@ The [Link](/reference/link), [LinkCollection](/reference/link-collection), and [
 
 ## Moving an Existing Site
 
-Use [Migrations](/guides/migrations-upgrades/) when replacing another link plugin. If the site already uses Hyper, read [Upgrading from v2](/get-started/upgrading-from-v2) for the changes to review.
+Use [Migrations](/guides/migrations-upgrades/) when replacing another link plugin. If the site already uses Hyper, follow [Upgrading from v1](/get-started/upgrading-from-v1) for a Craft 4 site, or [Upgrading from v2](/get-started/upgrading-from-v2) for a Craft 5 site.

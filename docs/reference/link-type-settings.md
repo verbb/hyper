@@ -11,7 +11,7 @@ Editors see the layout when creating a link in the control panel. In templates, 
 
 **Type:** `string|null`
 
-CP label for this link type in the type switcher.
+The label editors see when choosing a link type.
 :::
 
 ::: reference
@@ -19,7 +19,7 @@ CP label for this link type in the type switcher.
 
 **Type:** `string|null`
 
-Stable identifier. Used in content JSON (`linkTypeHandle`), GraphQL type names, and multisite propagation. Built-in types use a short, read-only **type key** (`url`, `entry`, …). Custom instances generate an editable handle from their label. The settings builder includes a copy button for programmatic saves.
+The name used to identify this type in saved content (`linkTypeHandle`), GraphQL queries and links shared across sites. Built-in types use a short, read-only **type key** (`url`, `entry`, …). Custom instances generate an editable handle from their label. The settings builder includes a copy button for programmatic saves.
 :::
 
 ::: reference
@@ -75,10 +75,10 @@ When a layout has more than one tab, editors switch between those tabs in the li
 
 ### Where to Put `linkValue`
 
-Keep the primary **Link** (`linkValue`) field on the **first tab**. That is the main authoring surface. Moving `linkValue` to a later tab makes empty or incomplete links easy to miss.
+Keep the primary **Link** (`linkValue`) field on the **first tab**. Editors need to see the destination when they open a link. Moving `linkValue` to a later tab makes empty or incomplete links easy to miss.
 
 Use additional tabs for secondary attributes (URL Suffix, classes, custom fields), not for the core target value.
 
 ::: tip
-Shared link type suites live in [Link Type Configs](/feature-tour/link-type-configs). Fields pick a named config or **Custom** for field-owned link types.
+Manage shared link types in [Link Type Configs](/feature-tour/link-type-configs). Choose a named config to share settings, or **Custom** to keep settings on one field.
 :::

@@ -90,7 +90,7 @@ query ResourceSummaries {
 
 For the built-in URL handle `url`, the type name ends in `Url_LinkType`. A custom link type uses its handle converted to PascalCase. Inspect the schema in GraphiQL to find the exact name.
 
-The result includes `summary` on matching URL links. If your frontend needs a common representation across different layouts, request `fields` to receive permitted custom values as a JSON string instead. See [GraphQL Fields](/reference/graphql-fields) for that contract.
+The result includes `summary` on matching URL links. If your frontend needs a common representation across different layouts, request `fields` to receive permitted custom values as a JSON string instead. See [GraphQL Fields](/reference/graphql-fields) for the returned format.
 
 ## Read Embed Metadata
 

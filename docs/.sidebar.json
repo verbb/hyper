@@ -7,7 +7,8 @@
             "get-started/creating-your-first-link",
             "get-started/requirements",
             "get-started/configuration",
-            "get-started/upgrading-from-v2"
+            "get-started/upgrading-from-v2",
+            "get-started/upgrading-from-v1"
         ]
     },
     {

@@ -1,8 +1,8 @@
 # Managing Embedded Content
 
-Hyper links store their custom fields inside a link value. A link is not an independently persisted Craft element. Use the Content API when a migration or module needs to inspect or replace those embedded values without opening the editor or interpreting them through the current field type.
+Hyper links store their custom fields inside a link value. A link is saved inside its owner’s field value, rather than as a separate Craft element. Use the Content API when a migration or module needs to inspect or replace those embedded values without opening the editor or interpreting them through the current field type.
 
-The API reads raw serialised field values and identifies each occurrence by its placement in a field layout. It can follow Vizy documents inside Hyper links and Hyper links inside Vizy blocks when both plugins expose their content adapters. You can also use it with either plugin on its own.
+The API reads values in their saved format and identifies each occurrence by where the field sits in a layout. It can follow Vizy documents inside Hyper links and Hyper links inside Vizy blocks when both plugins expose their content adapters. You can also use it with either plugin on its own.
 
 ## Choose the Right Operation
 
@@ -30,9 +30,9 @@ $locations = $content->captureFieldLocations($field->uid);
 $snapshot = Json::encode($locations);
 ```
 
-Keep `$snapshot` with your migration's source metadata if configuration and content run in separate deployments. Reload it with `Json::decode($snapshot)`. The map records root field placements, container layouts and child field placements. It describes the schema, so it does not load every document or link into memory.
+Keep `$snapshot` with your migration's source metadata if configuration and content run in separate deployments. Reload it with `Json::decode($snapshot)`. The map records root field placements, container layouts and child field placements. It records the field structure without loading every document or link into memory.
 
-If only settings or a field type changed while all UIDs remained intact, you can still capture the map from the current configuration. Once placements or container definitions have been removed, capture from the original configuration instead. The API cannot infer missing historical identities from a matching handle. Keep source value conversion and source-to-destination field placement relocation as separate migrations; replacing a value does not move its storage key.
+If only settings or a field type changed while all UIDs remained intact, you can still capture the map from the current configuration. Once placements or container definitions have been removed, capture from the original configuration instead. A matching handle is not enough to recover a removed placement. Use separate migrations to change a value and to move it to a different field placement. Replacing a value does not change where it is stored.
 
 ## Inspect and Replace Values
 
@@ -59,7 +59,7 @@ Inspect `$preview['matched']` and `$preview['wouldModify']` before applying the 
 
 Return `Change::replace(null)`, `Change::replace('')`, `Change::replace([])`, `Change::replace(false)` or `Change::replace(0)` to store that value explicitly. `Change::remove()` removes the embedded field's key. `Change::unchanged()` preserves it, including an existing empty value. Present null values reach the callback; missing keys do not. An identical replacement causes no write.
 
-A selected field's value is opaque to the traversal. If that field is itself a container, your callback receives the whole value; it is not independently transformed again as part of that same selection. Fields on other container paths still recurse through their own adapters. Ordinary custom-field JSON is never searched just because it resembles a document.
+The API passes a selected field’s complete value to your callback without searching inside it. If that field is itself a container, your callback receives the whole value; it is not independently transformed again as part of that same selection. It continues checking other container fields through their registered adapters. Ordinary custom-field JSON is never searched just because it resembles a document.
 
 ## Apply Within a Transaction
 
@@ -91,7 +91,7 @@ The callback's `$location` contains `rowId`, `elementId`, `elementType`, `siteId
 
 Stored scans include all sites, disabled owners and blocks, drafts, revisions and recoverable trash by default. Context includes `enabled`, `trashed`, `draftId` and `revisionId`. Use `elementIds` and `siteIds` to narrow the scan; an empty array selects nothing. Set `includeDisabled`, `includeDrafts`, `includeRevisions` or `includeTrashed` to false to exclude those owners. The disabled option checks both the element and its site row. Deleted rows that no longer exist cannot be inspected.
 
-Owner IDs select exact persisted elements. Matrix child Entries are separate durable owners; include their IDs explicitly when narrowing a scan. The API does not automatically expand a parent ID into its descendants. A Vizy field stored on a Matrix Entry is discovered like any other persisted Vizy field, and its embedded fields still have no independent durable owner.
+Owner IDs select exact persisted elements. Matrix child Entries are saved as separate elements; include their IDs explicitly when narrowing a scan. The API does not automatically expand a parent ID into its descendants. A Vizy field stored on a Matrix Entry is discovered like any other persisted Vizy field, and its embedded fields are still stored inside it.
 
 ## Work with an Unsaved Value
 
@@ -113,15 +113,15 @@ The result also includes `matched` and `changed`. Optional context can provide a
 
 For another container field, obtain `$engine = $content->rawContent()` and register an adapter with `$engine->registerAdapter(MyField::class, $adapter)`. Use that same engine to capture and execute the map. The adapter must expose `fieldClass()`, `captureSchema($field)` and `transform($raw, $schema, $visit)`.
 
-Adapters exchange JSON-serialisable arrays across plugin boundaries. `captureSchema()` returns a `types` map; each container type maps stored placement keys to `fieldUid`, `placementUid` and `layoutUid`. Additional adapter-specific provenance may accompany `types`. `transform()` visits only fields its captured schema identifies, calling `$visit($rawFieldValue, $placement, $pathSegment)`, applies the returned Change operation and returns the updated container value. It must preserve unrelated data and its original container encoding. Registered adapters are required again when executing a saved map; unavailable required adapters cause an exception.
+Adapters exchange JSON-serialisable arrays across plugin boundaries. `captureSchema()` returns a `types` map; each container type maps stored placement keys to `fieldUid`, `placementUid` and `layoutUid`. Adapters can include extra information about the source alongside `types`. `transform()` visits only fields its captured schema identifies, calling `$visit($rawFieldValue, $placement, $pathSegment)`, applies the returned Change operation and returns the updated container value. It must preserve unrelated data and its original container encoding. Registered adapters are required again when executing a saved map; unavailable required adapters cause an exception.
 
 Vizy and Hyper register their available adapters automatically, so you only need to register an adapter when integrating another container field type.
 
 ## Hyper Field Values and Normal Link Editing
 
-Hyper also exposes `modifyRaw($field, $transform, $options)` for converting a Hyper field's complete stored value, both on durable owners and inside supported containers. It invokes your callback before constructing a LinkCollection. The callback receives the raw value and a ContentRef, and returns `Change::unchanged()` or `Change::replace($serialisedValue)`. Use `replace(null)` to clear the field; removing the whole top-level field key is not supported by this convenience method.
+Hyper also exposes `modifyRaw($field, $transform, $options)` for converting a Hyper field's complete stored value, both on saved Craft elements and inside supported containers. It invokes your callback before constructing a LinkCollection. The callback receives the raw value and a ContentRef, and returns `Change::unchanged()` or `Change::replace($serialisedValue)`. Use `replace(null)` to clear the field; removing the whole top-level field key is not supported by this convenience method.
 
-Pass a `verbb\hyper\content\ModifyOptions` object to select dry-run behaviour, element IDs, nested content and relation synchronisation. This method opens a transaction or participates in the caller's transaction. When requested, it reconciles Hyper's derived relation index after a changed write, only for eligible durable owners. Embedded values never gain parent-owned relation rows. Third-party conversions use this raw path so source payloads are not interpreted through the destination Hyper field first.
+Pass a `verbb\hyper\content\ModifyOptions` object to select dry-run behaviour, element IDs, nested content and relation synchronisation. This method opens a transaction or participates in the caller's transaction. When requested, it reconciles Hyper's derived relation index after a changed write, only for eligible saved Craft elements. Embedded fields do not receive relation rows under their parent’s ID. Third-party conversions use this raw path so source payloads are not interpreted through the destination Hyper field first.
 
 Use `modify()` when you want to transform normalised LinkCollections, or `modifyLinkInstances()` when you want to work with Hyper LinkInstances. Those are editing conveniences and deliberately have different value semantics from the raw API.
 

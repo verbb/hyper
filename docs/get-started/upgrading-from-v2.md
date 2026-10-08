@@ -1,6 +1,14 @@
 # Upgrading from v2
 Hyper 3 is a major release with storage, performance, and API changes. Use this page to identify the template, configuration and integration changes needed when moving from Hyper 2.
 
+Coming from Hyper 1 on Craft 4? Follow [Upgrading from v1](/get-started/upgrading-from-v1) for the direct upgrade, then review the changes below.
+
+## Before You Update
+
+Back up your database and Project Config, and test on a copy of your site. Update the `verbb/hyper` Composer requirement to `^3.0@beta` during the beta, or `^3.0` after the stable release. Hyper requires Craft 5.9 or later and PHP 8.2 or later. Once Composer has installed compatible versions, run `php craft up` from the Craft project directory.
+
+Check representative links in the editor, save and reopen them, then test their frontend output and any GraphQL queries. Hyper rebuilds its link relations during the update; a bulk resave is not required.
+
 ## Breaking Changes
 
 ### Literal Link Destinations
@@ -29,9 +37,9 @@ The legacy flat format is rejected because it would send the same credentials to
 
 ### Link Content Shape
 
-Saved link content now identifies its link type with a stable **`linkTypeHandle`** only. In v2 each stored link carried both a `type` (the PHP class FQCN) and a duplicate `handle`; v3 drops the FQCN entirely. Hyper still dual-reads legacy v2 payloads (falling back to `handle`, then `type`) so existing content keeps working, but every new save writes the v3-only shape.
+Saved link content now identifies its link type with a stable **`linkTypeHandle`** only. Hyper 2 saved a PHP class name in `type` alongside a `handle`. Hyper 3 reads these older values when loading existing content, but new saves identify the type with `linkTypeHandle`.
 
-This only affects you if you read the raw field content JSON directly or depend on the `type` FQCN — normal Twig and PHP model access is unchanged.
+This only affects you if you read the raw field content JSON directly or depend on the class name in `type` — normal Twig and PHP model access is unchanged.
 
 A stored URL link — `type` is gone in v3 and `handle` becomes `linkTypeHandle`:
 
@@ -172,7 +180,7 @@ Similarly, replace collection custom-field reads such as `entry.hyperField.summa
 
 In editing or migration code, `getLinks()` and `serializeValues()` continue to return all stored links. Use `all()` for a filtered array. Saving a filtered collection retains every stored record; deleting excluded records requires an explicit replacement, such as `$links->withLinks($links->where($condition)->all())`. See [LinkCollection](/reference/link-collection) for conditions, sorting and the complete API.
 
-### Link Output and URI Policy
+### Link Output and Allowed Addresses {#link-output-and-uri-policy}
 
 Hyper 3 escapes ordinary link-label strings in `getLink()`. If your templates used HTML strings as labels, use template-authored Twig markup instead. Keep editor content escaped. [Rendering Links](/feature-tour/rendering-links#include-markup-in-the-label) shows a capture-based example.
 
@@ -217,11 +225,11 @@ For multi-link fields on entries using **Translate for each site**, editing the 
 
 ### Removed Twig Page Preload
 
-Hyper no longer preloads element cache on `BEFORE_RENDER_PAGE_TEMPLATE`. Front-end requests rely on always-on batch priming during owner element query populate instead. Template output is unchanged; this is an internal performance change.
+Hyper no longer preloads element cache on `BEFORE_RENDER_PAGE_TEMPLATE`. Hyper loads linked destinations together when a frontend query loads the elements containing them. Template output is unchanged; this is an internal performance change.
 
 ### Vizy Content Migrations
 
-Hyper uses its Vizy 3 adapter when migrating content on installations running Vizy 3. With Vizy 4, it delegates document traversal to Vizy's Content API. See [Managing Embedded Content](/developers/managing-embedded-content) for capturing field locations and transforming nested values.
+Hyper uses its Vizy 3 adapter when migrating content on installations running Vizy 3. With Vizy 4, it uses Vizy's Content API to find and update nested fields. See [Managing Embedded Content](/developers/managing-embedded-content) for capturing field locations and transforming nested values.
 
 ### Other Behaviour Changes
 
@@ -229,7 +237,7 @@ A few smaller behaviours changed to match the new storage model:
 
 - `craft.hyper.getRelatedElements()` now resolves purely from `hyper_links` rather than the removed element cache.
 - `target` / `newWindow` now fall back to the field-level default when they aren’t set per link, rather than sometimes ignoring it.
-- Link type definitions are stored as `LinkTypeDefinition` data in the field JSON, with the registry `Link` classes acting as prototypes — in v2 these were registry objects held in settings.
+- Link type settings use `LinkTypeDefinition` objects. Custom integrations that previously treated settings as Link objects must use the definition API.
 - Deleting a site now scrubs stale site UIDs from settings, link type configs, and stored content, where v2 could leave them behind.
 
 ## Deprecated Changes

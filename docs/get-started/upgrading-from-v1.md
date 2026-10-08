@@ -1,0 +1,33 @@
+# Upgrading from v1
+
+You can upgrade directly from Hyper 1 on Craft 4 to Hyper 3 on Craft 5. You do not need to install Hyper 2 first. Craft applies its own updates and Hyper’s pending migrations during the same upgrade.
+
+## Prepare Your Site
+
+Try the upgrade on a copy of your site before updating production. Keep a backup of the database, Project Config and the application files needed to restore the previous version together.
+
+Start from the latest Craft 4 and Hyper 1 releases. Follow Craft’s [Craft 5 upgrade guide](https://craftcms.com/docs/5.x/upgrade.html) for the required preparation, dependency changes and deployment steps. Hyper requires Craft 5.9 or later and PHP 8.2 or later. Update other plugins to compatible Craft 5 versions too, including any that contain Hyper fields, such as Neo, Super Table and Vizy.
+
+Read [Upgrading from v2](/get-started/upgrading-from-v2) for Hyper 3’s template, configuration and API changes. Those changes also apply when you skip Hyper 2. Pay particular attention to links using environment variables or Craft aliases, Passive labels, custom link types and GraphQL fragments.
+
+## Upgrade Craft and Hyper Together
+
+When updating your project’s Composer requirements for Craft 5, select Hyper 3 rather than Hyper 2. During the beta, use `^3.0@beta` for `verbb/hyper`; after the stable release, use `^3.0`. Resolve the Craft and plugin dependencies together as described in Craft’s guide.
+
+After Composer finishes, run the pending updates from your Craft project directory:
+
+```shell
+php craft up
+```
+
+Hyper keeps the saved link content and rebuilds the records used to load linked elements and find incoming links. You do not need to run Hyper’s third-party conversion commands or resave every entry to complete this upgrade.
+
+If an update fails, keep the error output and resolve the reported cause before trying again. To return to Craft 4, restore the matching application files, configuration and database backup together.
+
+## Check the Upgraded Site
+
+Open entries containing Hyper fields and confirm their destinations, order, labels and custom fields. Include fields inside Matrix, Neo, Super Table or Vizy if your site uses them. Save a representative entry, reopen it and check that the links remain intact.
+
+Visit the corresponding frontend pages and follow their links. Check translated entries on each site, lists with Passive headings, links to unavailable content, and any GraphQL queries or custom modules that read Hyper values. Drafts and revisions should retain their saved links too.
+
+Once the copy passes these checks, deploy the tested dependency, configuration and template changes using Craft’s upgrade instructions. Run `php craft up` in each environment; upgrading your local database does not upgrade production’s content.

@@ -21,7 +21,7 @@ Link class name, such as `verbb\hyper\links\Entry`.
 
 **Type:** `verbb\hyper\base\LinkInterface|null`
 
-Settings prototype for the link’s configured handle.
+The link type object that supplies settings for this link.
 :::
 
 ::: reference
@@ -144,7 +144,7 @@ Custom layout fields are accessible by their handles. Values on the selected des
 ::: reference
 ### `getElement($status)`
 
-**Returns:** `craft\base\ElementInterface|null` · **Return and Behaviour:** Selected Craft element or null. Entry links default to live entries; other element types use their applicable enabled status.
+**Returns:** `craft\base\ElementInterface|null`
 
 Selected Craft element or null. Entry links default to live entries; other element types use their applicable enabled status.
 :::
@@ -152,7 +152,7 @@ Selected Craft element or null. Entry links default to live entries; other eleme
 ::: reference
 ### `hasElement($status)`
 
-**Returns:** `bool` · **Return and Behaviour:** Whether the selected element can be resolved with the requested status.
+**Returns:** `bool`
 
 Whether the selected element can be resolved with the requested status.
 :::
@@ -160,7 +160,7 @@ Whether the selected element can be resolved with the requested status.
 ::: reference
 ### `getLink(array $attributes = [])`
 
-**Returns:** `Twig\Markup|null` · **Return and Behaviour:** Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
+**Returns:** `Twig\Markup|null`
 
 Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
 :::
@@ -168,7 +168,7 @@ Twig markup for an anchor, or null without a usable URL. The special `text` key 
 ::: reference
 ### `getLinkAttributes(array $attributes = [], bool $asString = false)`
 
-**Returns:** `Twig\Markup|array` · **Return and Behaviour:** Attribute array, or Twig markup containing the attribute string when `asString` is true.
+**Returns:** `Twig\Markup|array`
 
 Attribute array, or Twig markup containing the attribute string when `asString` is true.
 :::
@@ -176,7 +176,7 @@ Attribute array, or Twig markup containing the attribute string when `asString` 
 ::: reference
 ### `getCustomLinkText()`
 
-**Returns:** `string|null` · **Return and Behaviour:** Editor-entered text only, or null when blank.
+**Returns:** `string|null`
 
 Editor-entered text only, or null when blank.
 :::
@@ -184,7 +184,7 @@ Editor-entered text only, or null when blank.
 ::: reference
 ### `isEmpty()`
 
-**Returns:** `bool` · **Return and Behaviour:** Whether the link resolves to no non-blank URL. Labels, attributes and custom fields do not make a destination-less link non-empty. Unavailable targets and Passive links are empty; stored content is still retained.
+**Returns:** `bool`
 
 Whether the link resolves to no non-blank URL. Labels, attributes and custom fields do not make a destination-less link non-empty. Unavailable targets and Passive links are empty; stored content is still retained.
 :::
@@ -197,7 +197,7 @@ Element links also expose `linkSiteId`, the selected destination’s site ID. Fo
 ::: reference
 ### `getHtml()`
 
-**Returns:** `Twig\Markup|null` · **Return and Behaviour:** Stored embed HTML as Twig markup, or null.
+**Returns:** `Twig\Markup|null`
 
 Stored embed HTML as Twig markup, or null.
 :::
@@ -205,7 +205,7 @@ Stored embed HTML as Twig markup, or null.
 ::: reference
 ### `getIframeSrc()`
 
-**Returns:** `string|null` · **Return and Behaviour:** First iframe source in stored embed HTML, or null.
+**Returns:** `string|null`
 
 First iframe source in stored embed HTML, or null.
 :::
@@ -213,7 +213,7 @@ First iframe source in stored embed HTML, or null.
 ::: reference
 ### `getEmbedImage()`
 
-**Returns:** `string|null` · **Return and Behaviour:** Stored thumbnail/image URL, or null.
+**Returns:** `string|null`
 
 Stored thumbnail/image URL, or null.
 :::
@@ -221,7 +221,7 @@ Stored thumbnail/image URL, or null.
 ::: reference
 ### `getEmbedProviderName()`
 
-**Returns:** `string|null` · **Return and Behaviour:** Stored provider name, or null.
+**Returns:** `string|null`
 
 Stored provider name, or null.
 :::
@@ -232,8 +232,6 @@ Stored provider name, or null.
 **Returns:** `array|null`
 
 Available on Embed links.
-
-**Return and Behaviour:** Embed metadata on an Embed link.
 
 Embed metadata on an Embed link.
 :::
@@ -247,7 +245,7 @@ Hyper stores each link’s content on its owner rather than saving a Craft eleme
 
 The supported content includes `linkTypeHandle`, `uid`, `linkValue`, `linkSiteId`, `newWindow`, `linkText`, `ariaLabel`, `urlSuffix`, `linkTitle`, `classes`, `customAttributes` and `fields`. Empty optional values may be omitted. Custom field values are stored by their layout placement UID; normal programmatic input can supply them by handle.
 
-Use `linkTypeHandle` when selecting an exact configured type in a content array. Input also accepts `handle`, or `type` containing a registered class name or built-in type key. Field settings and the content type identifier are separate contracts; do not put a complete type definition into each content row.
+Use `linkTypeHandle` when selecting an exact configured type in a content array. Input also accepts `handle`, or `type` containing a registered class name or built-in type key. Keep field settings separate from saved link values; each saved link only needs to identify its configured type.
 
 For conversions of raw values, use [Managing Embedded Content](/developers/managing-embedded-content). For normal element saves, follow [Creating Links Programmatically](/guides/developers/creating-links-programmatically).
 

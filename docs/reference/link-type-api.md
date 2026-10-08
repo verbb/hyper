@@ -7,31 +7,23 @@ Registered link classes define destination behaviour and provide settings and in
 ::: reference
 ### `displayName(): string`
 
-**Purpose:** Name shown for the type.
-
-Name shown for the type.
+Static method returning the name shown to editors.
 :::
 
 ::: reference
 ### `getSettingsConfig(): array`
 
-**Purpose:** Settings to retain on the link type definition.
-
-Settings to retain on the link type definition.
+Return the settings Hyper should save for this link type. Start with the parent method’s values when adding your own settings.
 :::
 
 ::: reference
 ### `getInputConfig(): array`
 
-**Purpose:** Configuration and current values supplied to the input.
-
-Configuration and current values supplied to the input.
+Return the configuration and current values needed by the browser input.
 :::
 
 ::: reference
 ### `getSettingsHtmlVariables(): array`
-
-**Purpose:** Template variables including `linkType`.
 
 Template variables including `linkType`.
 :::
@@ -39,23 +31,17 @@ Template variables including `linkType`.
 ::: reference
 ### `getInputHtmlVariables(LinkField $layoutField, HyperField $field): array`
 
-**Purpose:** Input context including `link`, `layoutField` and `field`.
-
 Input context including `link`, `layoutField` and `field`.
 :::
 
 ::: reference
 ### `getSettingsHtml(): ?string`
 
-**Purpose:** Type-specific settings controls.
-
 Type-specific settings controls.
 :::
 
 ::: reference
 ### `getInputHtml(LinkField $layoutField, HyperField $field): ?string`
-
-**Purpose:** The destination input inside the Link layout field.
 
 The destination input inside the Link layout field.
 :::
@@ -90,15 +76,11 @@ public function getInputConfig(): array
 ::: reference
 ### `getLinkUrl(): ?string`
 
-**Purpose:** Resolve the type-specific destination before prefix, suffix and URL-policy checks.
-
 Resolve the type-specific destination before prefix, suffix and URL-policy checks.
 :::
 
 ::: reference
 ### `getLinkText(): ?string`
-
-**Purpose:** Resolve the type’s label, including appropriate defaults.
 
 Resolve the type’s label, including appropriate defaults.
 :::
@@ -106,15 +88,11 @@ Resolve the type’s label, including appropriate defaults.
 ::: reference
 ### `isInstanceEmpty(LinkInstance $instance): bool`
 
-**Purpose:** Static check for meaningful saved content.
-
 Use this storage and authoring check to recognise entered destinations, labels, attributes or custom fields without requiring a resolvable URL. It is separate from a Link’s public `isEmpty()`, which checks its resolved destination. Preserve that separation when extending a link type so temporarily unavailable destinations do not discard authored content.
 :::
 
 ::: reference
 ### `getRequiredPlugins(): array`
-
-**Purpose:** Static list of plugins needed for this type to be available.
 
 Static list of plugins needed for this type to be available.
 :::
@@ -122,17 +100,13 @@ Static list of plugins needed for this type to be available.
 ::: reference
 ### `supportsBulkCreation(): bool`
 
-**Purpose:** Static opt-in to bulk creation.
-
-Static opt-in to bulk creation.
+Return `true` to allow editors to add several links of this type at once. This is a static method.
 :::
 
 ::: reference
 ### `bulkCreationMode(): ?string`
 
-**Purpose:** Static bulk input mode for an opted-in type.
-
-Static bulk input mode for an opted-in type.
+Return the bulk input mode, such as `text` or `elements`, when bulk creation is enabled. This is a static method.
 :::
 
 

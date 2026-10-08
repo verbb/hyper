@@ -75,7 +75,7 @@ return [
 ];
 ```
 
-Origins match the scheme, hostname and port exactly. Subdomains do not inherit headers, and a service using a non-default port must include it in the origin. List every secondary origin that needs credentials separately. Origin keys must use HTTPS without credentials, paths, queries or fragments; the previous unscoped header array is not accepted.
+Origins match the scheme, hostname and port exactly. Subdomains do not inherit headers, and a service using a non-default port must include it in the origin. List every secondary origin that needs credentials separately. Origin keys must use HTTPS without credentials, paths, queries or fragments; each header map must belong to a specific origin.
 :::
 
 ::: reference

@@ -38,15 +38,11 @@ The field and config are saved, but the field still needs adding to the relevant
 ::: reference
 ### `enableCustomLinkTypes()`
 
-**Behaviour:** Select Custom and copy the currently selected shared definitions into the field.
-
 Select Custom and copy the currently selected shared definitions into the field.
 :::
 
 ::: reference
 ### `useLinkTypeConfig($uidOrHandle)`
-
-**Behaviour:** Select a named config by UID or handle.
 
 Select a named config by UID or handle.
 :::
@@ -54,15 +50,13 @@ Select a named config by UID or handle.
 ::: reference
 ### `getLinkTypeDefinitions()`
 
-**Returns:** `array` · **Behaviour:** Read the field’s resolved definitions.
+**Returns:** `array`
 
 Read the field’s resolved definitions.
 :::
 
 ::: reference
 ### `hasCustomLinkTypes()`
-
-**Behaviour:** Check whether the field manages its own types.
 
 Check whether the field manages its own types.
 :::

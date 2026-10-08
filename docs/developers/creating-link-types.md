@@ -81,7 +81,7 @@ Settings configure a type across its links. Content describes one editor-created
 
 For an additional setting, override `getSettingsConfig()` and merge it into `parent::getSettingsConfig()`. If the browser input needs additional configuration, override `getInputConfig()` and start from `parent::getInputConfig()`. The [Link Type API](/reference/link-type-api) shows these extension points.
 
-Store a custom destination’s value inside `linkValue`, and use custom layout fields for additional editor content. Adding an arbitrary top-level property in `getSerializedValues()` alone does not make that property part of Hyper’s LinkInstance contract. See [Saved Content](/reference/link#saved-content) before designing a custom payload.
+Store a custom destination’s value inside `linkValue`, and use custom layout fields for additional editor content. Adding another top-level property in `getSerializedValues()` does not make Hyper save and reload it. See [Saved Content](/reference/link#saved-content) before choosing how to store your values.
 
 ## Element Link Types
 
