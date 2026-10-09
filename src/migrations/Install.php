@@ -1,8 +1,6 @@
 <?php
 namespace verbb\hyper\migrations;
 
-use verbb\hyper\Hyper;
-
 use craft\db\Migration;
 use craft\db\Table;
 
@@ -39,8 +37,6 @@ class Install extends Migration
             $this->addForeignKey(null, '{{%hyper_links}}', ['targetId'], Table::ELEMENTS, ['id'], 'SET NULL', 'CASCADE');
             $this->addForeignKey(null, '{{%hyper_links}}', ['targetSiteId'], Table::SITES, ['id'], 'SET NULL', 'CASCADE');
         }
-
-        Hyper::$plugin->getLinkTypeConfigs()->ensureConfigsExist();
 
         return true;
     }

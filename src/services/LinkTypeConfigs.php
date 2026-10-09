@@ -12,6 +12,7 @@ use verbb\hyper\models\LinkTypeDefinition;
 use Craft;
 use craft\base\Component;
 use craft\events\ConfigEvent;
+use craft\events\PluginEvent;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 class LinkTypeConfigs extends Component
@@ -72,6 +73,14 @@ class LinkTypeConfigs extends Component
             return;
         }
 
+        // Pending YAML (for example, during `craft up` on another environment) brings its
+        // own configs. Wait for it to be applied rather than creating a competing UID.
+        $incoming = $projectConfig->get(self::PROJECT_CONFIG_PATH, true);
+
+        if (is_array($incoming) && $incoming !== []) {
+            return;
+        }
+
         $config = new LinkTypeConfig([
             'name' => Craft::t('hyper', 'Default'),
             'handle' => self::DEFAULT_HANDLE,
@@ -79,6 +88,15 @@ class LinkTypeConfigs extends Component
         ]);
 
         $this->saveConfig($config);
+    }
+
+    public function handlePluginInstalled(PluginEvent $event): void
+    {
+        if ($event->plugin instanceof Hyper) {
+            // Craft writes the plugin's root config after its install migration.
+            // Seed nested configs afterwards so that write cannot remove them.
+            $this->ensureConfigsExist();
+        }
     }
 
     public function getAllConfigs(): array
@@ -351,6 +369,8 @@ class LinkTypeConfigs extends Component
             'linkTypes' => $normalized,
         ]);
         $field->validateLinkTypes();
+        $savedLinkTypes = Craft::$app->getProjectConfig()->get(self::PROJECT_CONFIG_PATH . '.' . ($uid ?: $config->uid) . '.linkTypes');
+        $field->validateLinkTypeHandles(is_array($savedLinkTypes) ? $savedLinkTypes : []);
 
         foreach ($field->getErrors('linkTypes') as $error) {
             $config->addError('linkTypes', $error);

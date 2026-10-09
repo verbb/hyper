@@ -27,6 +27,7 @@ use craft\base\Field;
 use craft\base\MergeableFieldInterface;
 use craft\base\PreviewableFieldInterface;
 use craft\base\ThumbableFieldInterface;
+use craft\db\Query;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\fields\Matrix;
@@ -354,6 +355,29 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
     }
 
+    /**
+     * @internal Validates persisted type identities for fields and shared configs.
+     */
+    public function validateLinkTypeHandles(array $savedLinkTypes): bool
+    {
+        $valid = true;
+        $savedLinkTypes = ProjectConfig::unpackAssociativeArrays($savedLinkTypes);
+        $savedHandles = array_column(LinkTypeConfigs::normalizeLegacyStockHandles($savedLinkTypes), 'handle', 'layoutUid');
+
+        foreach ($this->getLinkTypes() as $linkType) {
+            $savedHandle = $savedHandles[$linkType->layoutUid ?? ''] ?? null;
+
+            if ($savedHandle !== null && $savedHandle !== $linkType->handle) {
+                $valid = false;
+                $this->addError('linkTypes', Craft::t('hyper', 'The saved link type handle “{handle}” cannot be changed because existing links use it. Change its label instead.', [
+                    'handle' => $savedHandle,
+                ]));
+            }
+        }
+
+        return $valid;
+    }
+
     public function isValueEmpty(mixed $value, ElementInterface $element): bool
     {
         if (!$value instanceof LinkCollection) {
@@ -586,9 +610,16 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return false;
         }
 
-        // Save each link type correctly and validate
         $hasErrors = false;
 
+        // Read persisted settings, since Craft may cache the edited field instance.
+        if (!$isNew && $this->id && $this->hasCustomLinkTypes()) {
+            $savedSettings = (new Query())->select('settings')->from('{{%fields}}')->where(['id' => $this->id])->scalar();
+            $savedSettings = Json::decodeIfJson($savedSettings);
+            $hasErrors = !$this->validateLinkTypeHandles($savedSettings['linkTypes'] ?? []);
+        }
+
+        // Save each link type correctly and validate
         foreach ($this->getLinkTypes() as $linkType) {
             // Set the correct scenario for the link type (an "element") to validate only field settings rules
             $linkType->setScenario(Link::SCENARIO_SETTINGS);

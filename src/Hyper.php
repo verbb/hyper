@@ -38,6 +38,7 @@ use craft\helpers\UrlHelper;
 use craft\models\FieldLayout;
 use craft\services\Fields;
 use craft\services\Gql;
+use craft\services\Plugins;
 use craft\services\ProjectConfig;
 use craft\services\Sites;
 use craft\web\Controller;
@@ -175,6 +176,7 @@ class Hyper extends Plugin
         $projectConfig = Craft::$app->getProjectConfig();
 
         Event::on(Fields::class, Fields::EVENT_BEFORE_APPLY_FIELD_SAVE, [$this->getService(), 'handleBeforeApplyFieldSave']);
+        Event::on(Plugins::class, Plugins::EVENT_AFTER_INSTALL_PLUGIN, [$this->getLinkTypeConfigs(), 'handlePluginInstalled']);
 
         $projectConfig
             ->onAdd(ProjectConfig::PATH_FIELDS . '.{uid}', [$this->getService(), 'handleChangedField'])

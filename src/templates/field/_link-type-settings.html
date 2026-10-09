@@ -30,8 +30,8 @@
             },
         }) }}
 
-        {# Built-in handles are read-only. Custom instances use Craft's label-to-handle
-           generator when first created, then remain author-editable on later edits.
+        {# Handles identify saved content. Custom instances use Craft's label-to-handle
+           generator when first created, then keep that identity on later edits.
            pk-input-group provides the capped input-group chrome; the native input stays
            because pk-input-group-input is not form-associated (no POST) and Craft's
            HandleGenerator drives a light-DOM input by id. #}
@@ -41,7 +41,7 @@
                     id: 'hyper-handle-__LINK_TYPE__',
                     name: 'handle',
                     value: linkType.handle,
-                    readonly: not isCustom,
+                    readonly: not isCustom or not linkType.isNew,
                     class: ['code'],
                     inputAttributes: {
                         'data-handle-field': true,
@@ -59,7 +59,7 @@
 
         {{ forms.field({
             label: 'Handle' | t('hyper'),
-            instructions: 'Reference this handle when setting link values programmatically.' | t('hyper'),
+            instructions: 'Use this handle in templates and code. It cannot be changed after saving this link type.' | t('hyper'),
             errors: linkType.getErrors('handle'),
         }, handleInput) }}
 

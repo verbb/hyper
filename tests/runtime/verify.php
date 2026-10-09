@@ -12,4 +12,8 @@ $source = (new ReflectionClass($plugin))->getFileName();
 if (!str_starts_with(realpath($source), realpath(dirname(__DIR__, 2) . '/src') . '/')) {
     throw new RuntimeException('Craft loaded a different plugin checkout.');
 }
+$defaultConfig = $plugin->getLinkTypeConfigs()->getConfigByHandle('default');
+if (!$defaultConfig?->uid || !$app->projectConfig->get(\verbb\hyper\services\LinkTypeConfigs::PROJECT_CONFIG_PATH . '.' . $defaultConfig->uid)) {
+    throw new RuntimeException('Fresh Hyper installation did not retain its Default Link Type Config.');
+}
 echo 'Verified normal Craft installation and plugin source: ' . $handle . PHP_EOL;

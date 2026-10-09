@@ -22,6 +22,8 @@ Edit an entry containing one of those fields and add a link. You should see URL 
 
 Edit the config from **Link Type Configs** to change the labels, enabled types or layouts for every field using it. These settings are stored in Craft’s Project Config, so deploy them through your site’s normal configuration workflow.
 
+Choose a custom link type’s handle when you create it. Saved links use that handle to identify their type, so it becomes read-only after saving. You can still change the label shown to editors without changing the handle used by content, templates and GraphQL.
+
 Before disabling a type or removing a custom field, check existing content that uses it. An unavailable link type cannot render normally, even though Hyper retains its stored content. Restore the type or choose a supported destination in the editor to make the link usable again.
 
 ## Use Settings for One Field
