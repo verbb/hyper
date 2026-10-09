@@ -184,6 +184,12 @@ class LinkRelations extends Component
             return;
         }
 
+        // Most populated elements (assets, users, categories) have no Hyper field.
+        // Registering them would add their IDs to every relation batch query.
+        if (!$this->_hasHyperField($element)) {
+            return;
+        }
+
         $this->registerOwner($element->id, $element->siteId);
 
         // Matrix and Neo owners register when Craft actually populates them.
@@ -499,6 +505,17 @@ class LinkRelations extends Component
 
     // Private Methods
     // =========================================================================
+
+    private function _hasHyperField(ElementInterface $element): bool
+    {
+        foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+            if ($field instanceof HyperField) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private function _getOwnerLinks(HyperField $field, ElementInterface $owner, ?LinkCollectionInterface $replacement): array
     {

@@ -71,6 +71,32 @@ it('does not expose protected link methods through magic calls', function() {
     expect(fn() => $link->exampleSecret())->toThrow(yii\base\UnknownMethodException::class);
 });
 
+it('keeps destination batching available while rendering an error page', function() {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $ownerIds = [];
+    foreach (range(1, 4) as $i) {
+        $target = F::plainEntry($section, 'Target ' . $i);
+        $ownerIds[] = F::entryWithLinks($section, [F::entryLinkPayload($target)])->id;
+    }
+    $original = Craft::$app->getResponse();
+    try {
+        $counts = [];
+        foreach ([200, 404] as $status) {
+            Craft::$app->set('response', new yii\web\Response(['statusCode' => $status]));
+            Hyper::$plugin->getLinkRelations()->resetRequestState();
+            $profile = QueryProfiler::profile(function() use ($ownerIds, $field) {
+                return array_map(fn($owner) => $owner->getFieldValue($field->handle)->getUrl(), Entry::find()->id($ownerIds)->all());
+            });
+            expect($profile['resultSize'])->toBe(4);
+            $counts[$status] = $profile['queries'];
+        }
+        expect($counts[404])->toBeLessThanOrEqual($counts[200]);
+    } finally {
+        Craft::$app->set('response', $original);
+    }
+});
+
 it('refuses renaming a saved link type handle without losing authored links', function(bool $shared) {
     $type = F::linkTypeConfig(new Url(['handle' => 'promotion', 'isCustom' => true]));
     $config = null;

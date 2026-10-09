@@ -77,6 +77,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
     public bool $limitSourcesToSectionsWithUri = false;
 
     private ?ElementInterface $_element = null;
+    private ?string $_unresolvedKey = null;
     private array|null|ElementConditionInterface $_selectionCondition = null;
 
 
@@ -110,6 +111,7 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
         $this->linkSiteId = null;
         $this->_element = null;
+        $this->_unresolvedKey = null;
     }
 
     public function setAttributes($values, $safeOnly = true): void
@@ -345,15 +347,23 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
         $this->_element = null;
 
+        $resolutionSiteId = $this->linkSiteId
+            ?? $this->ownerSiteId
+            ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        // Collections check isEmpty() on every first(), count() and url read. Remember a
+        // disabled, expired or deleted destination so each read doesn't query again.
+        $unresolvedKey = $targetId . ':' . $resolutionSiteId . ':' . json_encode($this->normalizeElementStatus($status));
+
+        if ($this->_unresolvedKey === $unresolvedKey) {
+            return null;
+        }
+
         if ($element = $this->_getPrimedElement($status)) {
             $elements->collectCacheInfoForElement($element);
 
             return $this->_element = $element;
         }
-
-        $resolutionSiteId = $this->linkSiteId
-            ?? $this->ownerSiteId
-            ?? Craft::$app->getSites()->getCurrentSite()->id;
 
         $element = Hyper::$plugin->getMultisiteLinks()->resolveElement(
             static::elementType(),
@@ -365,6 +375,8 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
         if ($element) {
             $elements->collectCacheInfoForElement($element);
+        } else {
+            $this->_unresolvedKey = $unresolvedKey;
         }
 
         return $this->_element = $element;

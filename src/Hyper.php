@@ -251,7 +251,7 @@ class Hyper extends Plugin
         Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENT, function(PopulateElementEvent $event) use ($automatic) {
             $relations = Hyper::$plugin->getLinkRelations();
 
-            if ((!$automatic && !$relations->hasRequestedEagerLoading()) || !$this->_isResponseOk() || !$event->element->id) {
+            if ((!$automatic && !$relations->hasRequestedEagerLoading()) || !$event->element->id) {
                 return;
             }
 
@@ -261,24 +261,12 @@ class Hyper extends Plugin
         Event::on(ElementQuery::class, ElementQuery::EVENT_AFTER_POPULATE_ELEMENTS, function(PopulateElementsEvent $event) use ($automatic) {
             $relations = Hyper::$plugin->getLinkRelations();
 
-            if ((!$automatic && !$relations->hasRequestedEagerLoading()) || !$this->_isResponseOk()) {
+            if (!$automatic && !$relations->hasRequestedEagerLoading()) {
                 return;
             }
 
             $relations->primePendingOwners();
         });
-    }
-
-    private function _isResponseOk(): bool
-    {
-        $response = Craft::$app->getResponse();
-
-        if ($response instanceof \yii\web\Response) {
-            return $response->getIsOk();
-        }
-
-        // Console and integration tests have no HTTP status gate.
-        return true;
     }
 
     private function _shouldPrimeLinkedElements(): bool
