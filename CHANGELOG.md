@@ -3,11 +3,13 @@
 ## Unreleased
 
 ### Changed
+- Upgrading from Hyper 1 or Hyper 2 now rebuilds link relations once instead of twice, shortening upgrades on large sites.
 - Clarified upgrade instructions, including upgrading directly from Hyper 1 on Craft 4, and simplified developer documentation.
 
 ### Fixed
 - Fixed embed DNS pinning for absolute trailing-dot hostnames on older Curl versions.
 - Fixed migration output allowing database content to emit terminal control characters.
+- Fixed upgrades from Craft 4 possibly indexing links from the wrong Super Table content table when older fields share a column name.
 - Fixed nested fields creating unsaved changes during initialization, and early edits failing to trigger autosave while field controls were loading.
 - Fixed cached links retaining old titles, URLs or visibility after their destination changes.
 - Fixed saving Vizy content and nested Matrix values inside Hyper links.

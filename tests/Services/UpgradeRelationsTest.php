@@ -5,6 +5,9 @@ use craft\db\Query;
 use craft\fieldlayoutelements\CustomField;
 use craft\helpers\Json;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
+use Tests\Support\LegacyElementCacheSeeder;
+use verbb\hyper\migrations\LegacyContentRelationRebuilder;
+use verbb\hyper\migrations\m250703_010000_backfill_hyper_links_from_element_cache as Backfill;
 use verbb\hyper\migrations\m260912_000000_rebuild_link_relations_from_content as Rebuild;
 use verbb\hyper\records\LinkRelation;
 
@@ -60,6 +63,140 @@ it('rebuilds relations from legacy nested content before host-plugin conversion'
     } finally {
         $migration->dropTableIfExists($table);
         Craft::$app->db->getSchema()->refresh();
+    }
+});
+
+it('rebuilds relations once when the backfill and rebuild migrations run in the same upgrade', function() {
+    LegacyElementCacheSeeder::ensureLegacyTable();
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $owner = F::plainEntry($section, 'Owner', [$field->handle => [F::entryLinkPayload($target, 'Target')]]);
+    $count = fn() => (int)(new Query())->from('{{%hyper_links}}')->where(['ownerId' => $owner->id])->count();
+
+    try {
+        // The backfill rebuilds before the legacy tables are dropped.
+        LinkRelation::deleteAll(['ownerId' => $owner->id]);
+        expect((new Backfill())->safeUp())->toBeTrue()
+            ->and($count())->toBe(1);
+
+        // The pending rebuild migration in the same process skips the second pass.
+        LinkRelation::deleteAll(['ownerId' => $owner->id]);
+        expect((new Rebuild())->safeUp())->toBeTrue()
+            ->and($count())->toBe(0);
+
+        // The skip is used once; a later run (or a resumed upgrade) rebuilds.
+        expect((new Rebuild())->safeUp())->toBeTrue()
+            ->and($count())->toBe(1);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+    }
+});
+
+it('reads legacy rows only from the content table that owns the field context', function() {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Shared target');
+    $globalOwner = F::plainEntry($section, 'Global owner');
+    $superTableOwner = F::plainEntry($section, 'Super Table owner');
+    $column = sprintf(
+        'field_%s%s',
+        $field->handle,
+        $field->columnSuffix ? '_' . $field->columnSuffix : '',
+    );
+    $blockTypeUid = craft\helpers\StringHelper::UUID();
+    $legacyTable = '{{%hyper_test_legacy_global}}';
+    $superTable = '{{%hyper_test_stc_links}}';
+    $blockTypesTable = '{{%supertableblocktypes}}';
+    $hadBlockTypes = Craft::$app->db->tableExists($blockTypesTable);
+    $migration = new class extends Migration {
+        public function safeUp(): bool
+        {
+            return true;
+        }
+
+        public function safeDown(): bool
+        {
+            return true;
+        }
+    };
+    $db = Craft::$app->db;
+    $superTableFieldId = null;
+
+    // Before Craft 3.7, fields had no column suffix, so both tables can share a column.
+    foreach ([$legacyTable, $superTable] as $table) {
+        $migration->createTable($table, [
+            'id' => $migration->primaryKey(),
+            'elementId' => $migration->integer()->notNull(),
+            'siteId' => $migration->integer()->notNull(),
+            $column => $migration->text(),
+        ]);
+    }
+
+    if (!$hadBlockTypes) {
+        $migration->createTable($blockTypesTable, [
+            'id' => $migration->primaryKey(),
+            'fieldId' => $migration->integer()->notNull(),
+            'uid' => $migration->uid(),
+        ]);
+    }
+
+    $db->getSchema()->refresh();
+
+    try {
+        $db->createCommand()->insert('{{%fields}}', [
+            'name' => 'Legacy Super Table',
+            'handle' => F::handle('legacySuperTable'),
+            'context' => 'global',
+            'type' => 'verbb\\supertable\\fields\\SuperTableField',
+            'settings' => Json::encode(['contentTable' => $superTable]),
+            'dateCreated' => craft\helpers\Db::prepareDateForDb(new DateTime()),
+            'dateUpdated' => craft\helpers\Db::prepareDateForDb(new DateTime()),
+            'uid' => craft\helpers\StringHelper::UUID(),
+        ])->execute();
+        $superTableFieldId = (int)$db->getLastInsertID();
+        $db->createCommand()->insert($blockTypesTable, [
+            'fieldId' => $superTableFieldId,
+            'uid' => $blockTypeUid,
+        ])->execute();
+
+        foreach ([[$legacyTable, $globalOwner], [$superTable, $superTableOwner]] as [$table, $owner]) {
+            $db->createCommand()->insert($table, [
+                'elementId' => $owner->id,
+                'siteId' => $owner->siteId,
+                $column => Json::encode([F::entryLinkPayload($target, 'Legacy')]),
+            ])->execute();
+        }
+
+        $owners = fn() => array_map('intval', (new Query())
+            ->select('ownerId')
+            ->from('{{%hyper_links}}')
+            ->where(['fieldId' => $field->id, 'ownerId' => [$globalOwner->id, $superTableOwner->id]])
+            ->column());
+
+        LinkRelation::deleteAll(['fieldId' => $field->id]);
+        (new LegacyContentRelationRebuilder())->rebuild($field);
+        expect($owners())->toBe([$globalOwner->id]);
+
+        LinkRelation::deleteAll(['fieldId' => $field->id]);
+        $nested = clone $field;
+        $nested->context = 'superTableBlockType:' . $blockTypeUid;
+        (new LegacyContentRelationRebuilder())->rebuild($nested);
+        expect($owners())->toBe([$superTableOwner->id]);
+    } finally {
+        if ($superTableFieldId) {
+            $db->createCommand()->delete('{{%fields}}', ['id' => $superTableFieldId])->execute();
+        }
+
+        if (!$hadBlockTypes) {
+            $migration->dropTableIfExists($blockTypesTable);
+        } else {
+            $db->createCommand()->delete($blockTypesTable, ['uid' => $blockTypeUid])->execute();
+        }
+
+        $migration->dropTableIfExists($legacyTable);
+        $migration->dropTableIfExists($superTable);
+        $db->getSchema()->refresh();
     }
 });
 

@@ -48,8 +48,18 @@ class LegacyContentRelationRebuilder
             $field->columnSuffix ? '_' . $field->columnSuffix : '',
         );
         $synced = 0;
+        [$ownTable, $superTableTables] = $this->_superTableContentTables($field);
 
         foreach ($this->_db->getSchema()->getTableSchemas() as $tableSchema) {
+            // Fields created before Craft 3.7 have no column suffix, so the same
+            // column name can exist in several content tables. A Super Table field
+            // reads only its own table, and other fields skip Super Table tables.
+            if ($ownTable !== null
+                ? $tableSchema->name !== $ownTable
+                : isset($superTableTables[$tableSchema->name])) {
+                continue;
+            }
+
             if (!$tableSchema->getColumn('id')
                 || !$tableSchema->getColumn('elementId')
                 || !$tableSchema->getColumn('siteId')
@@ -93,6 +103,53 @@ class LegacyContentRelationRebuilder
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Resolve the Super Table content tables that remain before its own migration.
+     *
+     * Returns this field's table when it belongs to a Super Table block type (an
+     * empty string when unresolved, so nothing is guessed), and every Super Table
+     * content table so fields in other contexts can skip them.
+     */
+    private function _superTableContentTables(HyperField $field): array
+    {
+        $blockTypesTable = '{{%supertableblocktypes}}';
+
+        if (!$this->_db->tableExists($blockTypesTable)) {
+            return [null, []];
+        }
+
+        $schema = $this->_db->getSchema();
+        $tables = [];
+        $tablesByBlockType = [];
+        $rows = (new Query())
+            ->select(['blockTypes.uid', 'fields.settings'])
+            ->from(['blockTypes' => $blockTypesTable])
+            ->innerJoin(['fields' => Table::FIELDS], '[[fields.id]] = [[blockTypes.fieldId]]')
+            ->all($this->_db);
+
+        foreach ($rows as $row) {
+            $settings = is_string($row['settings']) ? json_decode($row['settings'], true) : $row['settings'];
+            $contentTable = is_array($settings) ? ($settings['contentTable'] ?? null) : null;
+
+            if (!is_string($contentTable) || $contentTable === '') {
+                continue;
+            }
+
+            $name = $schema->getRawTableName($contentTable);
+            $tables[$name] = true;
+            $tablesByBlockType[$row['uid']] = $name;
+        }
+
+        $ownTable = null;
+        $prefix = 'superTableBlockType:';
+
+        if (is_string($field->context) && str_starts_with($field->context, $prefix)) {
+            $ownTable = $tablesByBlockType[substr($field->context, strlen($prefix))] ?? '';
+        }
+
+        return [$ownTable, $tables];
+    }
 
     private function _isIndexableOwner(int $ownerId, int $ownerSiteId): bool
     {
