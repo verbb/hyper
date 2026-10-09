@@ -12,7 +12,7 @@ const SETTINGS_SELECTOR = '[data-hyper-settings]';
 const HYPER_FIELD_SELECTOR = `${INPUT_SELECTOR}, ${SETTINGS_SELECTOR}`;
 
 const mountedInputs = new WeakMap<Element, HyperInput>();
-const mountedSettings = new WeakSet<Element>();
+const mountedSettings = new WeakMap<Element, HyperSettings>();
 
 registerHyperGlobals();
 registerHyperFormHooks();
@@ -46,8 +46,16 @@ const mountSettings = (root: Element) => {
         return;
     }
 
-    new HyperSettings(root).init();
-    mountedSettings.add(root);
+    const settings = new HyperSettings(root);
+    settings.init();
+    mountedSettings.set(root, settings);
+};
+
+const unmountSettings = (root: Element) => {
+    if (root.isConnected) return;
+
+    mountedSettings.get(root)?.destroy();
+    mountedSettings.delete(root);
 };
 
 const mountAll = (scope: ParentNode = document) => {
@@ -68,6 +76,12 @@ const startObserver = () => {
                 }
 
                 node.querySelectorAll(INPUT_SELECTOR).forEach(unmountInput);
+
+                if (node.matches(SETTINGS_SELECTOR)) {
+                    unmountSettings(node);
+                }
+
+                node.querySelectorAll(SETTINGS_SELECTOR).forEach(unmountSettings);
             });
 
             mutation.addedNodes.forEach((node) => {

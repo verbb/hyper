@@ -284,4 +284,6 @@ await import('./nested-input.mjs');
 
 await import('./input-capacity.mjs');
 
+await import('./sortable-lifecycle.mjs');
+
 await import('./bulk-recovery.mjs');

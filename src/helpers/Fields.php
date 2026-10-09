@@ -78,7 +78,10 @@ class Fields
         $namespacedId = $view->namespaceInputId($config['id']);
 
         $js = <<<JS
-new Craft.FieldLayoutDesigner("#$namespacedId", $jsSettings);
+// The panel can be removed before Craft executes queued footer scripts.
+if (document.getElementById("$namespacedId")) {
+    $("#$namespacedId").data('hyperFld', new Craft.FieldLayoutDesigner("#$namespacedId", $jsSettings));
+}
 JS;
         $view->registerJs($js);
 

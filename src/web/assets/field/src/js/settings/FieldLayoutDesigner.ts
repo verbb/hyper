@@ -15,6 +15,15 @@ type LayoutDesignerCache = {
     footHtmlAppended?: boolean;
 };
 
+type Disposable = { destroy: () => void };
+
+type CraftDesigner = Disposable & {
+    tabGrid?: Disposable;
+    tabDrag?: Disposable;
+    elementDrag?: Disposable;
+    libraryPicker?: Disposable;
+};
+
 type ScrollPosition = {
     x: number;
     y: number;
@@ -23,6 +32,7 @@ type ScrollPosition = {
 /** Garnish HUD instance stored on `.fld-add-btn` via jQuery `.data('hud')`. */
 type FldLibraryHud = {
     on: (event: string, callback: () => void) => void;
+    off: (event: string, callback: () => void) => void;
     $main?: JQuery & { [index: number]: Element };
 };
 
@@ -49,6 +59,14 @@ export class FieldLayoutDesigner {
 
     private pendingScrollRestore: ScrollPosition | null = null;
 
+    private destroyed = false;
+
+    private events = new AbortController();
+
+    private frames = new Set<number>();
+
+    private hudCleanups: Array<() => void> = [];
+
     constructor(container: HTMLElement, options: FieldLayoutDesignerOptions) {
         this.container = container;
         this.options = options;
@@ -66,7 +84,62 @@ export class FieldLayoutDesigner {
         this.stageEl.appendChild(this.workspaceEl);
     }
 
+    destroy(): void {
+        if (this.destroyed) return;
+
+        this.flushPending();
+        this.destroyed = true;
+        this.events.abort();
+        this.observer?.disconnect();
+        this.observer = null;
+        $(this.contentEl).find('input[data-config-input]').off('.hyperFld');
+        this.frames.forEach((frame) => cancelAnimationFrame(frame));
+        this.frames.clear();
+        this.hudCleanups.forEach((cleanup) => cleanup());
+        this.hudCleanups = [];
+        // Craft's tab teardown changes its working config, so first detach our
+        // change bridge. The saved layout was flushed before disposal began.
+        const designers = new Set<CraftDesigner>();
+        this.contentEl.querySelectorAll('[data-disclosure-trigger]').forEach((element) => {
+            const menu = $(element).data('disclosureMenu') as (Disposable & { $container?: JQuery }) | undefined;
+            menu?.destroy();
+            // Garnish unregisters the controller but leaves its body-level DOM.
+            menu?.$container?.[0]?.remove();
+        });
+        this.contentEl.querySelectorAll('[data-config-input]').forEach((input) => {
+            if (!input.parentElement) return;
+            const designer = $(input.parentElement).data('hyperFld') as CraftDesigner | undefined;
+            if (designer) designers.add(designer);
+        });
+        this.contentEl.querySelectorAll('.fld-add-btn').forEach((element) => {
+            ($(element).data('hud') as Disposable | undefined)?.destroy();
+        });
+        this.contentEl.querySelectorAll('.fld-tab').forEach((element) => {
+            ($(element).data('fld-tab') as Disposable | undefined)?.destroy();
+        });
+        designers.forEach((designer) => {
+            designer.tabDrag?.destroy();
+            designer.elementDrag?.destroy();
+            designer.tabGrid?.destroy();
+            designer.libraryPicker?.destroy();
+            designer.destroy();
+        });
+        this.cache = null;
+        this.pendingScrollRestore = null;
+        this.stageEl.remove();
+    }
+
+    private nextFrame(callback: () => void): void {
+        const frame = requestAnimationFrame(() => {
+            this.frames.delete(frame);
+            if (!this.destroyed) callback();
+        });
+        this.frames.add(frame);
+    }
+
     load(): void {
+        if (this.destroyed) return;
+
         if (this.loaded) {
             this.showContent(true);
             return;
@@ -82,6 +155,8 @@ export class FieldLayoutDesigner {
     }
 
     syncValue(): void {
+        if (this.destroyed || this.workingValue === null) return;
+
         // Craft FLD stores config on [data-config-input] (nameless so it never
         // participates in CP form serialize / confirm-unload).
         const target = this.contentEl.querySelector('input[data-config-input]');
@@ -140,7 +215,7 @@ export class FieldLayoutDesigner {
             if (event.propertyName === 'opacity') {
                 finish();
             }
-        }, { once: true });
+        }, { once: true, signal: this.events.signal });
     }
 
     private showError(error: unknown): void {
@@ -156,13 +231,13 @@ export class FieldLayoutDesigner {
         retry.className = 'btn submit';
         retry.textContent = Craft.t('hyper', 'Try again');
         retry.addEventListener('click', () => {
-            if (this.loading) {
+            if (this.loading || this.destroyed) {
                 return;
             }
 
             this.showLoading();
             this.fetchLayout();
-        });
+        }, { signal: this.events.signal });
 
         this.workspaceEl.append(createStatePanel({
             variant: 'error',
@@ -201,6 +276,8 @@ export class FieldLayoutDesigner {
             },
         })
             .then((response) => {
+                if (this.destroyed) return;
+
                 const data = response.data as LayoutDesignerCache & { html?: string };
 
                 if (!data.html) {
@@ -212,14 +289,14 @@ export class FieldLayoutDesigner {
                     footHtmlAppended: false,
                 };
 
-                this.renderLayout();
+                return this.renderLayout();
             })
             .catch((error: unknown) => {
-                this.showError(error);
+                if (!this.destroyed) this.showError(error);
             });
     }
 
-    private renderLayout(): void {
+    private async renderLayout(): Promise<void> {
         if (!this.cache) {
             return;
         }
@@ -235,7 +312,8 @@ export class FieldLayoutDesigner {
         Craft.initUiElements(this.contentEl);
 
         if (this.cache.footHtml && !this.cache.footHtmlAppended) {
-            Craft.appendBodyHtml(this.cache.footHtml);
+            await Craft.appendBodyHtml(this.cache.footHtml);
+            if (this.destroyed) return;
             this.cache.footHtmlAppended = true;
         }
 
@@ -265,7 +343,7 @@ export class FieldLayoutDesigner {
             if (target.closest('.fld-add-btn') || target.closest('.fld-library .fld-element')) {
                 rememberScroll();
             }
-        }, true);
+        }, { capture: true, signal: this.events.signal });
 
         this.stageEl.addEventListener('keydown', (event) => {
             if (!(event instanceof KeyboardEvent)) {
@@ -281,10 +359,10 @@ export class FieldLayoutDesigner {
             if (target instanceof HTMLElement && target.closest('.fld-add-btn')) {
                 rememberScroll();
             }
-        }, true);
+        }, { capture: true, signal: this.events.signal });
 
         // FieldLayoutDesigner is constructed from footHtml; patch HUD handlers next frame.
-        requestAnimationFrame(() => {
+        this.nextFrame(() => {
             this.contentEl.querySelectorAll('.fld-add-btn').forEach((button) => {
                 const hud = $(button).data('hud') as FldLibraryHud | undefined;
 
@@ -292,10 +370,10 @@ export class FieldLayoutDesigner {
                     return;
                 }
 
-                hud.on('show', () => {
+                const onShow = () => {
                     rememberScroll();
 
-                    requestAnimationFrame(() => {
+                    this.nextFrame(() => {
                         const search = hud.$main?.[0]?.querySelector('.fld-field-library .search input');
 
                         if (search instanceof HTMLInputElement) {
@@ -304,16 +382,23 @@ export class FieldLayoutDesigner {
 
                         this.restorePendingScroll();
                     });
-                });
+                };
 
-                hud.on('hide', () => {
-                    requestAnimationFrame(() => {
+                const onHide = () => {
+                    this.nextFrame(() => {
                         if (button instanceof HTMLElement) {
                             button.focus({ preventScroll: true });
                         }
 
                         this.restorePendingScroll();
                     });
+                };
+
+                hud.on('show', onShow);
+                hud.on('hide', onHide);
+                this.hudCleanups.push(() => {
+                    hud.off('show', onShow);
+                    hud.off('hide', onHide);
                 });
             });
         });
@@ -327,9 +412,9 @@ export class FieldLayoutDesigner {
     }
 
     private restoreScrollPosition(position: ScrollPosition): void {
-        requestAnimationFrame(() => {
+        this.nextFrame(() => {
             window.scrollTo(position.x, position.y);
-            requestAnimationFrame(() => window.scrollTo(position.x, position.y));
+            this.nextFrame(() => window.scrollTo(position.x, position.y));
         });
     }
 

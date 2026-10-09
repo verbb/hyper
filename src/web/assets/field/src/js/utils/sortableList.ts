@@ -32,6 +32,8 @@ export class HyperSortableList {
 
     private sortables: Sortable[] = [];
 
+    private handleDescriptions = new Map<HTMLElement, string | null>();
+
     private cleanupListeners: Array<() => void> = [];
 
     private options: HyperSortableListOptions;
@@ -60,9 +62,12 @@ export class HyperSortableList {
     }
 
     destroy(): void {
+        // Cancel before removing listeners so an active drag resumes host autosave.
+        this.manager.actions.stop({ canceled: true });
         this.cleanupListeners.forEach((cleanup) => cleanup());
         this.cleanupListeners = [];
         this.destroySortables();
+        this.manager.destroy();
     }
 
     private bindEvents(): void {
@@ -115,6 +120,10 @@ export class HyperSortableList {
 
         this.getItems().forEach((element, index) => {
             const handle = element.querySelector(this.options.handleSelector);
+            const activator = handle instanceof HTMLElement ? handle : element;
+
+            this.handleDescriptions.set(activator, activator.getAttribute('aria-describedby'));
+
             const id = this.options.getItemId?.(element, index)
                 ?? element.dataset.linkId
                 ?? element.dataset.linkTypeHandle
@@ -136,6 +145,16 @@ export class HyperSortableList {
             sortable.destroy();
         });
         this.sortables = [];
+
+        // A fresh manager must attach its own instructions when these handles remount.
+        this.handleDescriptions.forEach((description, handle) => {
+            if (description === null) {
+                handle.removeAttribute('aria-describedby');
+            } else {
+                handle.setAttribute('aria-describedby', description);
+            }
+        });
+        this.handleDescriptions.clear();
     }
 
     private getItems(): HTMLElement[] {

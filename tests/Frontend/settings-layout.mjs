@@ -13,7 +13,7 @@ const craftPath = process.env.HYPER_CRAFT_PATH || [
 ].find(candidate => fs.existsSync(path.join(candidate, 'src/web/assets/jquery/dist/jquery.js')));
 if (!craftPath) throw new Error('Run ddev test first or set HYPER_CRAFT_PATH.');
 const bundle = await build({
-    stdin: {contents: "export {FieldLayoutDesigner} from './src/web/assets/field/src/js/settings/FieldLayoutDesigner';", resolveDir: root},
+    stdin: {contents: "export {FieldLayoutDesigner} from './src/web/assets/field/src/js/settings/FieldLayoutDesigner';export {HyperSettings} from './src/web/assets/field/src/js/settings/HyperSettings';", resolveDir: root},
     bundle: true, format: 'iife', globalName: 'LayoutTest', write: false,
 });
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
@@ -97,7 +97,115 @@ try {
     assert.equal(await page.locator('#error-designer input[data-config-input]').inputValue(), 'recovered layout');
     assert.equal(await page.locator('#error-designer .hyper-fld-stage').getAttribute('class'), 'hyper-fld-stage');
 
-    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes', 'field layout error retry']}));
+    const disposed = await page.evaluate(async () => {
+        let resolve;
+        let footers = 0;
+        Craft.sendActionRequest = () => new Promise(done => { resolve = done; });
+        Craft.appendBodyHtml = () => { footers++; };
+        const root = document.createElement('div');
+        document.body.append(root);
+        const pending = new LayoutTest.FieldLayoutDesigner(root, {
+            fieldId: null, type: 'url', value: 'original', onChange() { throw new Error('Disposed update'); },
+        });
+        pending.load();
+        pending.destroy();
+        pending.destroy();
+        resolve({data: {html: '<input data-config-input value="late">', footHtml: 'late footer'}});
+        await new Promise(done => setTimeout(done, 50));
+        return {footers, children: root.childElementCount};
+    });
+    assert.deepEqual(disposed, {footers: 0, children: 0});
+
+    const cleanup = await page.evaluate(async () => {
+        let updates = 0;
+        let destroys = 0;
+        Craft.sendActionRequest = async () => ({data: {
+            html: '<div><input data-config-input value="working"><div class="fld-tab"><button class="fld-add-btn"></button></div></div>',
+        }});
+        const root = document.createElement('div');
+        document.body.append(root);
+        const live = new LayoutTest.FieldLayoutDesigner(root, {
+            fieldId: null, type: 'url', value: 'original', onChange() { updates++; },
+        });
+        live.load();
+        await new Promise(done => setTimeout(done, 50));
+        const input = root.querySelector('input');
+        $(input.parentElement).data('hyperFld', {
+            destroy() { destroys++; }, tabGrid: {destroy() { destroys++; }}, elementDrag: {destroy() { destroys++; }},
+        });
+        $(root.querySelector('.fld-tab')).data('fld-tab', {destroy() { destroys++; }});
+        $(root.querySelector('button')).data('hud', {destroy() { destroys++; }});
+        input.value = 'final edit';
+        live.destroy();
+        $(input).trigger('change');
+        input.value = 'detached edit';
+        live.flushPending();
+        await new Promise(done => setTimeout(done, 50));
+        return {updates, destroys, children: root.childElementCount};
+    });
+    assert.deepEqual(cleanup, {updates: 1, destroys: 5, children: 0});
+
+    const queuedFooter = await page.evaluate(async () => {
+        let finish;
+        let updates = 0;
+        Craft.sendActionRequest = async () => ({data: {html: '<input data-config-input value="expanded">', footHtml: 'queued'}});
+        Craft.appendBodyHtml = () => new Promise(resolve => { finish = resolve; });
+        const root = document.createElement('div');
+        document.body.append(root);
+        const pending = new LayoutTest.FieldLayoutDesigner(root, {fieldId: null, type: 'url', value: 'original', onChange() {updates++;}});
+        pending.load();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        pending.destroy();
+        finish();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        return {updates, children: root.childElementCount};
+    });
+    assert.deepEqual(queuedFooter, {updates: 0, children: 0});
+
+    // Reuse the same DOM: listeners/timers belong to one mount and layouts survive.
+    const remount = await page.evaluate(async () => {
+        const root = document.createElement('div');
+        root.dataset.hyperSettingsConfig = JSON.stringify({fieldId: 1, namespacedName: 'settings', registeredLinkTypes: [{value: 'url', label: 'URL'}], linkTypeTemplates: []});
+        root.innerHTML = `<button data-hyper-settings-add-trigger>New type</button><div data-hyper-settings-add-list><ul data-hyper-settings-add-options></ul></div><div data-hyper-settings-item data-link-type-handle="url"><span data-hyper-settings-label>URL</span></div>
+            <div data-hyper-settings-link-pane data-link-type-handle="url">
+                <input data-label-field value="URL"><input data-handle-field value="url" data-generate-handle="1">
+                <div data-hyper-fld data-link-type="url" data-layout-config="original"></div>
+            </div>`;
+        document.body.append(root);
+        let requests = 0, generated = 0, disposed = 0, menuClicks = 0;
+        Craft.cp = {displayError() { menuClicks++; }};
+        Craft.initUiElements = container => {
+            const trigger = container.querySelector('[data-hyper-settings-add-trigger]');
+            const menu = container.querySelector('[data-hyper-settings-add-list]');
+            if (trigger && menu) {
+                document.body.append(menu);
+                $(trigger).data('menubtn', {destroy() {menu.remove(); $(trigger).removeData('menubtn');}});
+            }
+        };
+        Craft.HandleGenerator = class {constructor() { generated++; } destroy() { disposed++; }};
+        Craft.sendActionRequest = async () => {
+            requests++;
+            return {data: {html: '<input data-config-input value="expanded">'}};
+        };
+        for (let i = 0; i < 10; i++) {
+            const settings = new LayoutTest.HyperSettings(root);
+            settings.init();
+            document.querySelector('[data-hyper-settings-add-type]').click();
+            await new Promise(done => setTimeout(done, 10));
+            const value = root.querySelector('input[data-config-input]');
+            value.value = `edited-${i}`;
+            $(value).trigger('change');
+            root.querySelector('[data-label-field]').dispatchEvent(new Event('input'));
+            settings.destroy();
+            settings.destroy();
+            if (root.querySelectorAll('.hyper-fld-stage').length) throw new Error('Leaked designer stage');
+        }
+        await new Promise(done => setTimeout(done, 50));
+        return {requests, generated, disposed, menuClicks, layout: root.querySelector('[data-hyper-fld]').dataset.layoutConfig};
+    });
+    assert.deepEqual(remount, {requests: 10, generated: 10, disposed: 10, menuClicks: 10, layout: 'edited-9'});
+
+    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes', 'field layout error retry', 'removal during pending request', 'native designer disposal', 'ten settings remounts', 'removal during queued footer preserves pristine layout']}));
 } finally {
     await browser.close();
 }

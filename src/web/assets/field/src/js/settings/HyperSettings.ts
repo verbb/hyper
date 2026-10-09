@@ -24,6 +24,12 @@ export class HyperSettings {
 
     private addMenuCleanup: (() => void) | null = null;
 
+    private events = new AbortController();
+
+    private destroyed = false;
+
+    private timers = new Set<number>();
+
     constructor(container: HTMLElement) {
         this.container = container;
 
@@ -37,6 +43,8 @@ export class HyperSettings {
     }
 
     init(): void {
+        if (this.destroyed) return;
+
         this.populateAddMenu();
         Craft.initUiElements(this.container);
         this.bindSidebar();
@@ -49,14 +57,50 @@ export class HyperSettings {
         this.container.classList.add('hyper-settings--ready');
     }
 
+    destroy(): void {
+        if (this.destroyed) return;
+
+        this.destroyed = true;
+        this.events.abort();
+        this.timers.forEach((timer) => window.clearTimeout(timer));
+        this.timers.clear();
+        this.addMenuCleanup?.();
+        this.addMenuCleanup = null;
+        const trigger = this.container.querySelector('[data-hyper-settings-add-trigger]');
+        if (trigger) {
+            ($(trigger).data('menubtn') as { destroy: () => void } | undefined)?.destroy();
+            // Craft reparents and removes this menu. Keep it beside its trigger
+            // so the same settings DOM can be mounted again.
+            if (this.addMenuEl) trigger.after(this.addMenuEl);
+        }
+        this.sortable?.destroy();
+        this.sortable = null;
+        this.designers.forEach((designer) => designer.destroy());
+        this.designers.clear();
+        this.handleGenerators.forEach((generator) => generator.destroy());
+        this.handleGenerators.clear();
+        this.container.classList.remove('hyper-settings--ready');
+    }
+
+    private defer(callback: () => void): void {
+        const timer = window.setTimeout(() => {
+            this.timers.delete(timer);
+            if (!this.destroyed) callback();
+        }, 0);
+        this.timers.add(timer);
+    }
+
     private populateAddMenu(): void {
-        const list = this.container.querySelector('[data-hyper-settings-add-options]');
+        const trigger = this.container.querySelector('[data-hyper-settings-add-trigger]');
+        const nativeMenu = trigger ? $(trigger).data('menubtn') as { menu?: { $container?: JQuery } } | undefined : undefined;
+        // Craft may initialise and reparent this menu before Hyper's bundle loads.
+        this.addMenuEl = this.container.querySelector('[data-hyper-settings-add-list]')
+            ?? (nativeMenu?.menu?.$container?.[0] as HTMLElement | undefined) ?? null;
+        const list = this.addMenuEl?.querySelector('[data-hyper-settings-add-options]');
 
         if (!(list instanceof HTMLElement)) {
             return;
         }
-
-        this.addMenuEl = list.closest('[data-hyper-settings-add-list]');
 
         list.innerHTML = this.config.registeredLinkTypes.map((type) => {
             const value = this.escapeAttribute(type.value);
@@ -152,7 +196,7 @@ export class HyperSettings {
             if (item instanceof HTMLElement) {
                 this.selectItem(item);
             }
-        });
+        }, { signal: this.events.signal });
 
         sidebar?.addEventListener('keydown', (event) => {
             if (!(event instanceof KeyboardEvent)) {
@@ -171,7 +215,7 @@ export class HyperSettings {
                 event.preventDefault();
                 this.selectItem(item);
             }
-        });
+        }, { signal: this.events.signal });
     }
 
     private selectItem(item: HTMLElement): void {
@@ -475,6 +519,7 @@ export class HyperSettings {
             type: node.dataset.linkType ?? template.type,
             value: node.dataset.layoutConfig ?? '',
             onChange: (value: string) => {
+                node.dataset.layoutConfig = value;
                 // Read the live handle so a re-keyed row writes under its current identity.
                 const currentHandle = pane.dataset.linkTypeHandle ?? handle;
                 const name = getName(this.config.namespacedName, `linkTypes[${currentHandle}][layoutConfig]`);
@@ -522,6 +567,7 @@ export class HyperSettings {
             }
 
             if (handle) {
+                this.designers.get(handle)?.destroy();
                 this.designers.delete(handle);
                 this.handleGenerators.get(handle)?.destroy();
                 this.handleGenerators.delete(handle);
@@ -542,7 +588,7 @@ export class HyperSettings {
             if (next instanceof HTMLElement) {
                 this.selectItem(next);
             }
-        });
+        }, { signal: this.events.signal });
     }
 
     private syncEmptyState(): void {
@@ -582,7 +628,7 @@ export class HyperSettings {
 
         labelField.addEventListener('input', () => {
             sidebarLabel.textContent = labelField.value;
-        });
+        }, { signal: this.events.signal });
 
         if (!(handleField instanceof HTMLInputElement)) {
             return;
@@ -651,8 +697,8 @@ export class HyperSettings {
             previousHandle = next;
         };
 
-        handleField.addEventListener('input', () => applyHandle(false));
-        handleField.addEventListener('change', () => applyHandle(true));
+        handleField.addEventListener('input', () => applyHandle(false), { signal: this.events.signal });
+        handleField.addEventListener('change', () => applyHandle(true), { signal: this.events.signal });
 
         labelField.addEventListener('input', () => {
             const option = defaultOption();
@@ -663,12 +709,12 @@ export class HyperSettings {
 
             // Craft's generator sets the handle value without firing `input`, so re-sync on
             // the next tick (after it writes) to keep the row key aligned with the handle.
-            window.setTimeout(() => applyHandle(false), 0);
-        });
+            this.defer(() => applyHandle(false));
+        }, { signal: this.events.signal });
 
         labelField.addEventListener('change', () => {
-            window.setTimeout(() => applyHandle(true), 0);
-        });
+            this.defer(() => applyHandle(true));
+        }, { signal: this.events.signal });
 
         syncCopyValue();
 
