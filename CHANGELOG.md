@@ -5,8 +5,8 @@
 ### Changed
 - Upgrading from Hyper 1 or Hyper 2 now rebuilds link relations once instead of twice, shortening upgrades on large sites.
 - Front-end requests no longer look up link relations for elements that don’t have a Hyper field.
+- Clarified upgrade deployment steps, third-party migration events and link rendering references.
 - Unknown methods on Link objects now raise Craft’s normal method error instead of silently returning null.
-- Clarified upgrade instructions, including upgrading directly from Hyper 1 on Craft 4, and simplified developer documentation.
 
 ### Fixed
 - Fixed embed DNS pinning for absolute trailing-dot hostnames on older Curl versions.

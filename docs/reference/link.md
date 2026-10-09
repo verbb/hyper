@@ -163,6 +163,8 @@ Whether the selected element can be resolved with the requested status.
 **Returns:** `Twig\Markup|null`
 
 Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
+
+Passed classes are added to saved classes. Other passed attributes override saved values with the same name.
 :::
 
 ::: reference

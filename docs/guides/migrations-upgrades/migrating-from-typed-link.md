@@ -10,7 +10,7 @@ Because the migration needs to modify the content of your elements, this will be
 :::
 
 ## Migration Process
-The migration consists of two parts; 1. Migrating your field to Hyper and 2. Migrating the content of elements (entries, etc) to a Hyper Link model.
+The migration has three steps: **Update Legacy Fields** prepares older Typed Link settings, **Migrate Fields** converts the fields to Hyper, and **Migrate Content** converts their saved links. Run these in order; the legacy step leaves settings that already use the current format unchanged.
 
 Because content is stored per-environment, we'll need to re-run any content migrations on each environment. For example, migrating content locally will not change any content on your staging or production installs. Field changes are stored in Project Config and are applied when that configuration is deployed.
 

@@ -9,7 +9,7 @@ Run commands from the Craft project directory. For example, `php craft hyper/mig
 | Option | Behaviour |
 | --- | --- |
 | `--step` | Select a source’s `field` or `content` step, or `all` for its full sequence. Defaults to `all`. Typed Link also exposes a `legacy` step. Entrification has its own action without a field/content sequence. |
-| `--dry-run=1` | Preview supported content transformations without saving them. This is not a dry run of field-definition changes; select `--step=content` for a content preview. |
+| `--dry-run=1` | Preview supported field and content conversions without saving them. Typed Link’s legacy step is skipped without changing settings. Select `--step=content` to preview only content. |
 | `--sync-relations=1` | Synchronise Hyper’s relation index after content conversion. Enabled by default; `0` disables it. |
 | `--create-backup=1` | Create a database backup before a write operation. Defaults to the `backupOnMigrate` setting; `0` disables it. |
 
@@ -24,7 +24,8 @@ Source action names are `typed-link`, `linkit`, `link`, `craft-link` and `oembed
 | Typed Link | `MigrateTypedLinkField` | `MigrateTypedLinkContent` |
 | Linkit | `MigrateLinkitField` | `MigrateLinkitContent` |
 | Craft Link | `MigrateCraftLinkField` | `MigrateCraftLinkContent` |
+| Flipbox Link | `MigrateLinkField` | `MigrateLinkContent` |
 
-These classes are in the `verbb\hyper\migrations` namespace. Register on both field and content classes when both stages need the mapping. For Typed Link’s legacy field step, register on `MigrateTypedLinkFieldLegacy` where the source requires it.
+These classes are in the `verbb\hyper\migrations` namespace. Register on both field and content classes when both stages need the mapping. Typed Link’s separate `MigrateTypedLinkFieldLegacy` step updates its old settings; it does not trigger this event.
 
 This event selects the target type. It does not provide a general transformation of every field in the source payload. Use the [Content API](/developers/managing-embedded-content) when you need an explicit raw-value conversion.
