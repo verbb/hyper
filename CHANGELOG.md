@@ -7,7 +7,9 @@
 
 ### Fixed
 - Fixed cached links retaining old titles, URLs or visibility after their destination changes.
+- Fixed saving Vizy content and nested Matrix values inside Hyper links.
 - Fixed clean frontend builds requiring local Plugin Kit source folders.
+- Fixed programmatically created Matrix and Neo rows inside Hyper links overwriting sibling values when saved in the control panel.
 - Fixed linked-element caches being retained between queue jobs.
 
 ## 3.0.0-beta.3 - 2026-10-08

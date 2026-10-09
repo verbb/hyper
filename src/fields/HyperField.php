@@ -533,6 +533,22 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $value;
     }
 
+    public function serializeValueForDb(mixed $value, ElementInterface $element): mixed
+    {
+        $value = $this->normalizeValue($value, $element);
+        $serialized = $this->serializeValue($value, $element);
+
+        foreach (array_values($value->getLinks()) as $index => $link) {
+            $fields = \verbb\hyper\services\EmbeddedFields::serialize($link);
+
+            if ($fields !== []) {
+                $serialized[$index]['fields'] = [...($serialized[$index]['fields'] ?? []), ...$fields];
+            }
+        }
+
+        return $serialized;
+    }
+
     public function getElementConditionRuleType(): array|string|null
     {
         return EmptyFieldConditionRule::class;
@@ -634,6 +650,9 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $value = $element->getFieldValue($this->handle);
 
         if ($value instanceof LinkCollection) {
+            foreach ($value->getLinks() as $link) {
+                \verbb\hyper\services\EmbeddedFields::afterSave($link);
+            }
             LinkFieldLifecycle::finalizeUploads($value, $element);
             Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($this, $element, $value);
             Hyper::$plugin->getMultisiteLinks()->propagateLinkStructure($this, $element, $value);

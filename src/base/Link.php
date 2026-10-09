@@ -20,7 +20,9 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\elements\conditions\ElementConditionInterface;
+use craft\elements\db\ElementQueryInterface;
 use craft\fieldlayoutelements\BaseNativeField;
+use craft\fields\Matrix;
 use craft\helpers\ArrayHelper;
 use craft\helpers\StringHelper;
 use craft\helpers\Template;
@@ -585,6 +587,10 @@ abstract class Link extends Element implements LinkInterface
                     }
                 }
 
+                foreach ($fieldContent as $handle => $fieldValue) {
+                    $fieldContent[$handle] = $this->_ensureNestedElementUids($handle, $fieldValue);
+                }
+
                 // Reset omitted values on a replacement, including Craft's normalized
                 // field cache. Unknown fields remain opaque in the stored payload.
                 foreach ($fieldLayout->getCustomFields() as $field) {
@@ -613,6 +619,7 @@ abstract class Link extends Element implements LinkInterface
 
     public function setFieldValue(string $fieldHandle, mixed $value): void
     {
+        $value = $this->_ensureNestedElementUids($fieldHandle, $value);
         parent::setFieldValue($fieldHandle, $value);
 
         // Craft's custom-field behaviour and Hyper's stored JSON must share edits.
@@ -1068,5 +1075,59 @@ abstract class Link extends Element implements LinkInterface
         }
 
         return $attributes;
+    }
+
+    private function _ensureNestedElementUids(string $handle, mixed $value): mixed
+    {
+        $field = $this->getFieldLayout()?->getFieldByHandle($handle);
+
+        if (!$field instanceof Matrix && !is_a($field, 'benf\\neo\\Field')) {
+            return $value;
+        }
+
+        // Programmatic callers can also pass an already-normalized query. Only
+        // inspect pending cached rows; do not execute an unrelated element query.
+        if ($value instanceof ElementQueryInterface) {
+            foreach ($value->getCachedResult() ?? [] as $row) {
+                if (!$row->uid) {
+                    $row->uid = StringHelper::UUID();
+                }
+            }
+
+            return $value;
+        }
+
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        // These rows live in link JSON, so Craft never saves the synthetic
+        // elements and assigns their missing UUIDs. Preserve a row identity in
+        // the payload before rendering, or every sibling posts as `uid:`.
+        $key = $field instanceof Matrix ? 'entries' : 'blocks';
+        $rows = array_key_exists($key, $value) ? $value[$key] : $value;
+
+        if (!is_array($rows)) {
+            return $value;
+        }
+
+        foreach ($rows as $rowKey => &$row) {
+            if (!is_array($row) || !isset($row['type']) || !empty($row['uid'])) {
+                continue;
+            }
+
+            $row['uid'] = str_starts_with((string)$rowKey, 'uid:') && strlen((string)$rowKey) > 4
+                ? substr((string)$rowKey, 4)
+                : StringHelper::UUID();
+        }
+
+        unset($row);
+
+        if (array_key_exists($key, $value)) {
+            $value[$key] = $rows;
+            return $value;
+        }
+
+        return $rows;
     }
 }

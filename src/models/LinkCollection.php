@@ -307,6 +307,10 @@ class LinkCollection extends Component implements LinkCollectionInterface, Itera
             return null;
         }
 
+        if ($link instanceof Link) {
+            $link->setOwner($this->_element);
+        }
+
         if ($link && $this->_ownerSiteId !== null) {
             $link->ownerSiteId = $this->_ownerSiteId;
             $link->siteId = $this->_ownerSiteId;
