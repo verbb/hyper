@@ -22,6 +22,21 @@ class RecordingEmbedTransport extends EmbedClient
         return array_shift($this->responses) ?? new Response(200, [], 'synthetic');
     }
 }
+
+it('pins both Curl forms of a trailing-dot host without changing ordinary hosts', function () {
+    $client = new RecordingEmbedTransport();
+    $method = new ReflectionMethod(EmbedClient::class, '_resolveEntries');
+    $resolveEntries = static fn(string $host, int $port, string $address): array => $method->invoke($client, $host, $port, $address);
+
+    expect($resolveEntries('example.test', 443, '93.184.215.14'))
+        ->toBe(['example.test:443:93.184.215.14'])
+        ->and($resolveEntries('example.test.', 443, '93.184.215.14'))
+        ->toBe(['example.test.:443:93.184.215.14', 'example.test:443:93.184.215.14'])
+        ->and($resolveEntries('example.test.', 443, '[2001:4860:4860::8888]'))
+        ->toBe(['example.test.:443:[2001:4860:4860::8888]', 'example.test:443:[2001:4860:4860::8888]'])
+        ->and($resolveEntries('example.test..', 443, '93.184.215.14'))
+        ->toBe(['example.test..:443:93.184.215.14']);
+});
 it('does not send configured embed headers to another origin', function () {
     $client = new RecordingEmbedTransport(headerRules: [
         'https://origin.test' => ['X-Api-Key' => 'private-secret'],

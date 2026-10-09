@@ -11,6 +11,17 @@ class MigrationRenderer
     // Static Methods
     // =========================================================================
 
+    public static function sanitizeConsoleText(string $text): string
+    {
+        $sanitized = preg_replace('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', '', $text);
+
+        if ($sanitized !== null) {
+            return $sanitized;
+        }
+
+        return preg_replace('/[\x00-\x1F\x7F-\x9F]/', '', $text) ?? '';
+    }
+
     public static function renderToConsole(array $lines): void
     {
         foreach ($lines as $line) {
@@ -27,7 +38,7 @@ class MigrationRenderer
 
             $prefix = $line->depth > 0 ? '> ' : '';
 
-            Console::stdout($prefix . $line->message . PHP_EOL, $color);
+            Console::stdout($prefix . self::sanitizeConsoleText($line->message) . PHP_EOL, $color);
         }
     }
 
@@ -39,6 +50,8 @@ class MigrationRenderer
             Console::stdout(PHP_EOL . 'Summary:' . PHP_EOL, Console::FG_YELLOW);
 
             foreach ($result->stats as $key => $value) {
+                $key = self::sanitizeConsoleText((string)$key);
+                $value = self::sanitizeConsoleText((string)$value);
                 Console::stdout("- {$key}: {$value}" . PHP_EOL, Console::FG_GREY);
             }
         }

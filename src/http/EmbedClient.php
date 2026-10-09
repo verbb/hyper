@@ -150,7 +150,7 @@ class EmbedClient implements ClientInterface
             CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_RESOLVE => [$host . ':' . $port . ':' . $address],
+            CURLOPT_RESOLVE => $this->_resolveEntries($host, $port, $address),
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_CONNECTTIMEOUT => min($timeout, 5),
             CURLOPT_NOBODY => $request->getMethod() === 'HEAD',
@@ -204,6 +204,20 @@ class EmbedClient implements ClientInterface
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Pin both forms older and newer Curl versions may use for an absolute DNS name.
+     */
+    private function _resolveEntries(string $host, int $port, string $address): array
+    {
+        $entries = [$host . ':' . $port . ':' . $address];
+
+        if (str_ends_with($host, '.') && !str_ends_with($host, '..')) {
+            $entries[] = substr($host, 0, -1) . ':' . $port . ':' . $address;
+        }
+
+        return $entries;
+    }
 
     private function _withOriginHeaders(RequestInterface $request): RequestInterface
     {

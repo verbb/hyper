@@ -5,9 +5,11 @@ declare(strict_types=1);
 use verbb\hyper\helpers\MigrationRenderer;
 use verbb\hyper\Hyper;
 use verbb\hyper\migrations\MigrateCraftLinkContent;
+use verbb\hyper\migrations\PluginMigration;
 use verbb\hyper\migrations\plugins\Line;
 use verbb\hyper\migrations\plugins\MigrationResult;
 use verbb\hyper\migrations\plugins\PluginMigrator;
+use yii\console\Controller;
 
 it('registers migration sources including craft-link', function() {
     $sources = Hyper::$plugin->getMigrations()->getSources();
@@ -59,6 +61,42 @@ it('renders migration result html and console-safe lines', function() {
     ob_start();
     MigrationRenderer::renderResultToConsole($result);
     ob_end_clean();
+});
+
+it('neutralises terminal controls in migration output', function() {
+    $hostile = "Printable\x1B[2K\x1B]0;title\x07\r\x08\u{0085} text";
+    $sanitized = MigrationRenderer::sanitizeConsoleText($hostile);
+
+    expect(preg_match('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', $sanitized))->toBe(0)
+        ->and($sanitized)->toContain('Printable')
+        ->and($sanitized)->toContain('text');
+
+    $result = new MigrationResult();
+    $result->addLine(Line::info($hostile));
+    $result->setStat("rows\x1B]0;key\x07", "2\x1B[2K");
+    ob_start();
+    MigrationRenderer::renderResultToConsole($result);
+    $rendered = (string)ob_get_clean();
+
+    expect($rendered)->not->toContain("\x1B]0;")
+        ->and($rendered)->not->toContain("\x07");
+
+    $controller = new class('migration-test', Hyper::$plugin) extends Controller {
+        public string $output = '';
+
+        public function stdout($string): void
+        {
+            $this->output .= $string;
+        }
+    };
+    $migration = new PluginMigration();
+    $collected = new MigrationResult();
+    $migration->setConsoleRequest($controller);
+    $migration->setMigrationResult($collected);
+    $migration->stdout("Direct\x1B]0;title\x07" . PHP_EOL);
+
+    expect($controller->output)->toBe('Direct]0;title' . PHP_EOL . PHP_EOL)
+        ->and($collected->lines[0]->message)->toBe('Direct]0;title');
 });
 
 it('creates a plugin migrator via the plugin factory', function() {

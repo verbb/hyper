@@ -13,6 +13,7 @@ use verbb\hyper\fieldlayoutelements\LinkTextField;
 use verbb\hyper\fieldlayoutelements\LinkTitleField;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\ArrayHelper;
+use verbb\hyper\helpers\MigrationRenderer;
 use verbb\hyper\migrations\plugins\Line;
 use verbb\hyper\migrations\plugins\MigrationResult;
 
@@ -204,8 +205,11 @@ class PluginMigration extends Migration
 
     public function stdout($string, $color = ''): void
     {
-        $message = trim(strip_tags((string)$string));
-        $depth = str_starts_with(ltrim((string)$string), '>') || preg_match('/^\s{2,}>?\s*/', (string)$string) ? 1 : 0;
+        $string = (string)$string;
+        $trailingLineBreak = str_ends_with($string, PHP_EOL) ? PHP_EOL : '';
+        $consoleText = MigrationRenderer::sanitizeConsoleText($string);
+        $message = trim(strip_tags($consoleText));
+        $depth = str_starts_with(ltrim($consoleText), '>') || preg_match('/^\s{2,}>?\s*/', $consoleText) ? 1 : 0;
         $level = match ($color) {
             Console::FG_GREEN, (string)Console::FG_GREEN, '32' => 'success',
             Console::FG_RED, (string)Console::FG_RED, '31' => 'error',
@@ -239,7 +243,7 @@ class PluginMigration extends Migration
         }
 
         if ($this->_consoleRequest) {
-            $this->_consoleRequest->stdout($string . PHP_EOL, $color);
+            $this->_consoleRequest->stdout($consoleText . $trailingLineBreak . PHP_EOL, $color);
         } else {
             $class = '';
 
