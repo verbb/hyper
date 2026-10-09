@@ -321,6 +321,10 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             return null;
         }
 
+        // A disabled or missing destination can become available after this fragment is cached.
+        $elements = Craft::$app->getElements();
+        $elements->collectCacheTags(["element::$targetId"]);
+
         if ($this->_element !== null && (int)$this->_element->id === $targetId) {
             // Recheck site + status on every hit — never trust a stale locale cache (A04).
             $wantedSiteId = $this->linkSiteId
@@ -331,6 +335,8 @@ abstract class ElementLink extends Link implements ElementLinkInterface
                 (int)$this->_element->siteId === (int)$wantedSiteId
                 && $this->_matchesElementStatus($this->_element, $status)
             ) {
+                $elements->collectCacheInfoForElement($this->_element);
+
                 return $this->_element;
             }
 
@@ -340,6 +346,8 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $this->_element = null;
 
         if ($element = $this->_getPrimedElement($status)) {
+            $elements->collectCacheInfoForElement($element);
+
             return $this->_element = $element;
         }
 
@@ -354,6 +362,10 @@ abstract class ElementLink extends Link implements ElementLinkInterface
             $status,
             fn(ElementQueryInterface $query, mixed $queryStatus) => $this->modifyElementQuery($query, $queryStatus),
         );
+
+        if ($element) {
+            $elements->collectCacheInfoForElement($element);
+        }
 
         return $this->_element = $element;
     }

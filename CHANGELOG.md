@@ -6,6 +6,7 @@
 - Clarified upgrade instructions, including upgrading directly from Hyper 1 on Craft 4, and simplified developer documentation.
 
 ### Fixed
+- Fixed cached links retaining old titles, URLs or visibility after their destination changes.
 - Fixed clean frontend builds requiring local Plugin Kit source folders.
 
 ## 3.0.0-beta.3 - 2026-10-08
