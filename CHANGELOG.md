@@ -4,12 +4,14 @@
 
 ### Changed
 - Upgrading from Hyper 1 or Hyper 2 now rebuilds link relations once instead of twice, shortening upgrades on large sites.
+- Unknown methods on Link objects now raise Craft’s normal method error instead of silently returning null.
 - Clarified upgrade instructions, including upgrading directly from Hyper 1 on Craft 4, and simplified developer documentation.
 
 ### Fixed
 - Fixed embed DNS pinning for absolute trailing-dot hostnames on older Curl versions.
 - Fixed migration output allowing database content to emit terminal control characters.
 - Fixed saved links becoming unavailable after renaming their link type handle. Saved handles are now read-only; labels remain editable.
+- Fixed Link objects bypassing Craft behaviour methods and allowing calls to protected methods.
 - Fixed the Default Link Type Config being lost during fresh installation, skipped when upgrading earlier betas, or duplicated when deploying incoming Project Config.
 - Fixed upgrades from Craft 4 possibly indexing links from the wrong Super Table content table when older fields share a column name.
 - Fixed nested fields creating unsaved changes during initialization, and early edits failing to trigger autosave while field controls were loading.

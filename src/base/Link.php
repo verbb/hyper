@@ -245,22 +245,6 @@ abstract class Link extends Element implements LinkInterface
         return get_object_vars($this);
     }
 
-    public function __call($name, $params): mixed
-    {
-        // Prevent a hard error being thrown when referencing a property that might not exist. This helps templating be leaner
-        // for custom fields that might be existing for one link type, but not another. Rather than throwing a heap of conditionals
-        // around the link type in Twig, just return null if not found.
-        if (property_exists($this, $name)) {
-            return $this->$name;
-        }
-
-        if (method_exists($this, $name)) {
-            return $this->$name($params);
-        }
-
-        return null;
-    }
-
     public function count(): int|bool
     {
         return $this->isEmpty() ? 0 : 1;

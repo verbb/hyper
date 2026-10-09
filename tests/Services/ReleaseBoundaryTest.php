@@ -47,6 +47,30 @@ it('waits for incoming default config without creating a competing identity', fu
     }
 });
 
+it('dispatches Craft element methods and attached behavior methods on links', function() {
+    $link = new Url();
+    $link->attachBehavior('example', new class extends yii\base\Behavior {
+        public function greeting(string $name, string $suffix): string { return $name . $suffix; }
+    });
+    expect($link->greeting('Editor', '!'))->toBe('Editor!');
+    $caption = new craft\fields\PlainText(['name' => 'Caption', 'handle' => F::handle('hyperCaption')]);
+    expect(Craft::$app->fields->saveField($caption))->toBeTrue();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new craft\fieldlayoutelements\CustomField($caption)]);
+    $link->setFieldLayout($layout);
+    expect($link->{'isFieldEmpty:' . $caption->handle}())->toBeTrue();
+    $link->setFieldValue($caption->handle, 'Caption');
+    expect($link->{'isFieldEmpty:' . $caption->handle}())->toBeFalse();
+});
+
+it('does not expose protected link methods through magic calls', function() {
+    $link = new class extends Url {
+        protected function exampleSecret(): string { return 'private'; }
+    };
+    expect(fn() => $link->exampleSecret())->toThrow(yii\base\UnknownMethodException::class);
+});
+
 it('refuses renaming a saved link type handle without losing authored links', function(bool $shared) {
     $type = F::linkTypeConfig(new Url(['handle' => 'promotion', 'isCustom' => true]));
     $config = null;
