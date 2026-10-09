@@ -20,6 +20,9 @@
         ],
         "baseline": [
             "--group=baseline"
+        ],
+        "large-performance": [
+            "--group=perf-large"
         ]
     },
     "tasks": {

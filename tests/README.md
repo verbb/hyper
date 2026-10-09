@@ -7,7 +7,10 @@ ddev test
 ddev test --filter='a test name'
 ddev test --suite=all
 ddev test --suite=performance
+ddev test --suite=large-performance --default-time-limit=300
 ```
+
+The large-performance suite creates 1,000 owners and measures incoming-link reads, distinct destinations and memory retained across batches. It runs separately from the regular suite because it creates considerably more content.
 
 The command starts the dedicated test project, installs dependencies inside DDEV, creates a clean Craft application, installs this checkout as a Composer path dependency, seeds plugin fixtures and runs Pest. No separate Craft site, host PHP, host Composer, database setup or `.env.testing` file is required. The root Composer `test` aliases call this same command if you already have Composer on your host.
 
