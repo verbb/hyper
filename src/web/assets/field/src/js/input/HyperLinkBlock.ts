@@ -143,7 +143,7 @@ export class HyperLinkBlock {
             text.textContent = label;
         }
 
-        this.el.querySelectorAll('[data-hyper-change-type]').forEach((item) => {
+        this.el.querySelectorAll(':scope > .hyper-wrapper > .hyper-header [data-hyper-change-type]').forEach((item) => {
             if (!(item instanceof HTMLElement)) {
                 return;
             }
@@ -249,7 +249,7 @@ export class HyperLinkBlock {
      * Hidden when New Window is a layout lightswitch (one control only).
      */
     syncHeaderNewWindow(show: boolean): void {
-        const toggle = this.el.querySelector('[data-hyper-new-window-switch]');
+        const toggle = this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-new-window-switch]');
 
         if (!(toggle instanceof HTMLElement)) {
             return;
@@ -286,7 +286,7 @@ export class HyperLinkBlock {
             }
 
             this.el.querySelectorAll('[data-hyper-tab-index]').forEach((tab) => {
-                if (!(tab instanceof HTMLElement)) {
+                if (!(tab instanceof HTMLElement) || tab.closest('[data-hyper-link]') !== this.el) {
                     return;
                 }
 
@@ -305,7 +305,7 @@ export class HyperLinkBlock {
             }
 
             this.el.querySelectorAll('[data-hyper-tab-option]').forEach((option) => {
-                if (!(option instanceof HTMLElement)) {
+                if (!(option instanceof HTMLElement) || option.closest('[data-hyper-link]') !== this.el) {
                     return;
                 }
 
@@ -346,7 +346,7 @@ export class HyperLinkBlock {
 
     /** Reset new-window toggle when a block is cloned for a new link. */
     static applyNewWindowDefault(blockEl: HTMLElement, newWindow: boolean): void {
-        const toggle = blockEl.querySelector('[data-hyper-new-window-switch]');
+        const toggle = blockEl.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-new-window-switch]');
 
         if (toggle instanceof HTMLElement) {
             toggle.classList.toggle('is-active', newWindow);
@@ -363,7 +363,7 @@ export class HyperLinkBlock {
     }
 
     static readNewWindow(blockEl: HTMLElement): boolean {
-        const toggle = blockEl.querySelector('[data-hyper-new-window-switch]');
+        const toggle = blockEl.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-new-window-switch]');
 
         if (!(toggle instanceof HTMLElement) || toggle.hasAttribute('hidden')) {
             return false;
@@ -375,7 +375,7 @@ export class HyperLinkBlock {
     }
 
     private toggleNewWindow(): void {
-        const toggle = this.el.querySelector('[data-hyper-new-window-switch]');
+        const toggle = this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-new-window-switch]');
 
         if (!(toggle instanceof HTMLElement) || toggle.hasAttribute('disabled')) {
             return;
@@ -388,7 +388,7 @@ export class HyperLinkBlock {
 
     private bindEvents(): void {
         // Legacy <select> chrome (pre-compact header) — keep working if present.
-        const typeSelect = this.el.querySelector('[data-hyper-link-type]');
+        const typeSelect = this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-link-type]');
 
         if (typeSelect instanceof HTMLSelectElement) {
             typeSelect.addEventListener('change', () => {
@@ -399,7 +399,7 @@ export class HyperLinkBlock {
             });
         }
 
-        this.el.querySelector('[data-hyper-type-menu]')?.addEventListener('pk-select', (event) => {
+        this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-type-menu]')?.addEventListener('pk-select', (event) => {
             if (!(event instanceof CustomEvent)) {
                 return;
             }
@@ -416,7 +416,7 @@ export class HyperLinkBlock {
             }));
         });
 
-        this.el.querySelector('[data-hyper-block-menu]')?.addEventListener('pk-select', (event) => {
+        this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-block-menu]')?.addEventListener('pk-select', (event) => {
             if (!(event instanceof CustomEvent)) {
                 return;
             }
@@ -430,6 +430,7 @@ export class HyperLinkBlock {
                 !(event instanceof CustomEvent)
                 || !(event.target instanceof HTMLElement)
                 || !event.target.matches('[data-hyper-layout-tabs-menu]')
+                || event.target.closest('[data-hyper-link]') !== this.el
             ) {
                 return;
             }
@@ -441,7 +442,7 @@ export class HyperLinkBlock {
         this.el.addEventListener('click', (event) => {
             const target = event.target;
 
-            if (!(target instanceof HTMLElement)) {
+            if (!(target instanceof HTMLElement) || target.closest('[data-hyper-link]') !== this.el) {
                 return;
             }
 
@@ -470,7 +471,7 @@ export class HyperLinkBlock {
     }
 
     private initMenu(): void {
-        const trigger = this.el.querySelector('[data-hyper-block-menu]');
+        const trigger = this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-block-menu]');
 
         if (!(trigger instanceof HTMLElement) || trigger.tagName.toLowerCase() === 'pk-dropdown-menu') {
             return;
@@ -480,7 +481,7 @@ export class HyperLinkBlock {
     }
 
     private runAction(action: string): void {
-        if (this.el.querySelector(`[data-hyper-action="${action}"][disabled]`)) {
+        if (this.el.querySelector(`:scope > .hyper-wrapper > .hyper-header [data-hyper-action="${action}"][disabled]`)) {
             return;
         }
 
@@ -500,7 +501,7 @@ export class HyperLinkBlock {
     }
 
     private setActionDisabled(action: string, disabled: boolean): void {
-        const item = this.el.querySelector(`[data-hyper-action="${action}"]`);
+        const item = this.el.querySelector(`:scope > .hyper-wrapper > .hyper-header [data-hyper-action="${action}"]`);
 
         if (!(item instanceof HTMLElement)) {
             return;
@@ -574,9 +575,10 @@ export class HyperLinkBlock {
             return null;
         }
 
-        const html = parseLinkIdHtml(template.innerHTML, linkId);
+        const placeholder = template.dataset.linkPlaceholder;
+        const html = parseLinkIdHtml(template.innerHTML, linkId, placeholder);
         const js = template.dataset.linkJs
-            ? parseLinkIdHtml(decodeHtmlEntities(template.dataset.linkJs), linkId)
+            ? parseLinkIdHtml(decodeHtmlEntities(template.dataset.linkJs), linkId, placeholder)
             : undefined;
 
         let tabLabels: string[] = [];

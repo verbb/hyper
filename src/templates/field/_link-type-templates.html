@@ -2,6 +2,7 @@
     {% for template in linkTypeTemplates %}
         <template
             data-link-type="{{ template.handle }}"
+            data-link-placeholder="{{ template.placeholder }}"
             data-link-tab-count="{{ template.tabCount }}"
             data-link-tab-labels="{{ template.tabLabels|default([])|json_encode|e('html_attr') }}"
             data-link-show-header-new-window="{{ template.showHeaderNewWindow ? '1' : '0' }}"

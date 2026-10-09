@@ -1096,10 +1096,9 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 'tabLabels' => $tabLabels,
                 'showHeaderNewWindow' => $showHeaderNewWindow,
                 'newWindow' => (bool)($link->newWindow ?? $this->defaultNewWindow),
-                'html' => $this->_parseBlockPlaceholder($html, '__LINK_ID__', $placeholderKey),
-                'js' => $this->_namespaceDeferredFieldPayload(
-                    $this->_parseBlockPlaceholder($deferredJs, '__LINK_ID__', $placeholderKey),
-                ),
+                'placeholder' => '__HYPER_BLOCK_' . $placeholderKey . '__',
+                'html' => $html,
+                'js' => $this->_namespaceDeferredFieldPayload($deferredJs),
                 'serialized' => $link->getSerializedValues(),
                 'input' => $link->getInputConfig(),
             ];
@@ -1297,10 +1296,10 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 'tabCount' => count($tabLabels) ?: ($linkType['tabCount'] ?? 0),
                 'tabLabels' => $tabLabels,
                 'showHeaderNewWindow' => $this->newWindow && !$newWindowInLayout,
-                'html' => $this->_parseBlockPlaceholder($linkType['html'] ?? '', '__LINK_ID__', $placeholderKey),
-                'js' => $this->_namespaceDeferredFieldPayload(
-                    $this->_parseBlockPlaceholder($linkType['js'] ?? '', '__LINK_ID__', $placeholderKey),
-                ),
+                // Nested Hyper templates must keep their own placeholders until their rows are added.
+                'placeholder' => '__HYPER_BLOCK_' . $placeholderKey . '__',
+                'html' => $linkType['html'] ?? '',
+                'js' => $this->_namespaceDeferredFieldPayload($linkType['js'] ?? ''),
             ];
         }
 

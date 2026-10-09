@@ -39,7 +39,8 @@ export type HyperSeededBlock = {
     tabLabels?: string[];
     showHeaderNewWindow?: boolean;
     newWindow?: boolean;
-    /** HTML/JS still carry the __LINK_ID__ placeholder — the client mints a unique id. */
+    /** Only this field's placeholder is replaced; nested fields retain their own. */
+    placeholder?: string;
     html: string;
     js?: string;
     input?: LinkInstance;

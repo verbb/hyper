@@ -109,8 +109,8 @@ export class HyperInput {
 
         this.fieldRoot = fieldRoot;
         this.storeInput = fieldRoot.querySelector('[data-hyper-store]');
-        this.linksRoot = this.container.querySelector('[data-hyper-links]');
-        this.templatesRoot = this.container.querySelector('[data-hyper-link-templates]');
+        this.linksRoot = this.container.querySelector(':scope > [data-hyper-links]');
+        this.templatesRoot = this.container.querySelector(':scope > [data-hyper-link-templates]');
 
         if (!this.linksRoot || !this.storeInput) {
             return;
@@ -187,7 +187,7 @@ export class HyperInput {
 
         this.sortable = new HyperSortableList({
             container: this.linksRoot,
-            itemSelector: '[data-hyper-link]',
+            itemSelector: ':scope > [data-hyper-link]',
             handleSelector: '[data-hyper-drag-handle]',
             group: `hyper-links-${this.settings.fieldId}`,
             containerDraggingClass: 'hyper-dragging',
@@ -233,7 +233,7 @@ export class HyperInput {
     }
 
     private bindAddLink(): void {
-        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        const addRoot = this.container.querySelector(':scope > [data-hyper-add-link]');
 
         if (!(addRoot instanceof HTMLElement) || this.addLinkAbort) {
             return;
@@ -333,7 +333,7 @@ export class HyperInput {
         // A failed callback can reject the shared batch before this field mounts. Keep its
         // server-rendered control safely inert rather than flushing against a partial interface.
         if (!this.initialized) {
-            const addRoot = this.container.querySelector('[data-hyper-add-link]');
+            const addRoot = this.container.querySelector(':scope > [data-hyper-add-link]');
             addRoot?.setAttribute('inert', '');
             this.pendingInteractions = [];
             return;
@@ -344,7 +344,7 @@ export class HyperInput {
         this.refreshPasteUi();
         this.interactionsReady = true;
 
-        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        const addRoot = this.container.querySelector(':scope > [data-hyper-add-link]');
         addRoot?.removeAttribute('aria-busy');
         this.container.classList.add('hyper-input--interactive');
         this.fieldRoot?.classList.add('hyper-input--interactive');
@@ -369,7 +369,7 @@ export class HyperInput {
         this.pendingInteractions = [];
         this.interactionsReady = false;
 
-        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        const addRoot = this.container.querySelector(':scope > [data-hyper-add-link]');
         addRoot?.setAttribute('inert', '');
         addRoot?.setAttribute('aria-busy', 'true');
         this.container.classList.remove('hyper-input--interactive');
@@ -610,8 +610,8 @@ export class HyperInput {
         // fields, etc.); everything else clones the blank client template.
         const template = serverBlock
             ? {
-                html: parseLinkIdHtml(serverBlock.html, linkId),
-                js: serverBlock.js ? parseLinkIdHtml(serverBlock.js, linkId) : undefined,
+                html: parseLinkIdHtml(serverBlock.html, linkId, serverBlock.placeholder),
+                js: serverBlock.js ? parseLinkIdHtml(serverBlock.js, linkId, serverBlock.placeholder) : undefined,
                 tabCount: serverBlock.tabCount ?? (serverBlock.tabLabels?.length ?? 0),
                 tabLabels: serverBlock.tabLabels ?? [],
                 label: serverBlock.label ?? handle,
@@ -624,7 +624,7 @@ export class HyperInput {
         }
 
         const prototype = this.linksRoot.querySelector('[data-hyper-link]');
-        const chromeTemplate = this.container.querySelector('template[data-hyper-link-chrome]');
+        const chromeTemplate = this.container.querySelector(':scope > template[data-hyper-link-chrome]');
         let blockEl: HTMLElement;
 
         if (prototype instanceof HTMLElement) {
@@ -956,7 +956,7 @@ export class HyperInput {
         const pasteEnabled = canPaste && !atMax;
 
         this.container.querySelectorAll('[data-hyper-paste-item]').forEach((el) => {
-            if (!(el instanceof HTMLElement)) {
+            if (!(el instanceof HTMLElement) || el.closest('[data-hyper-input]') !== this.container) {
                 return;
             }
 
@@ -974,6 +974,7 @@ export class HyperInput {
 
         this.container.querySelectorAll<HTMLElement>('[data-hyper-paste-separator]')
             .forEach((el) => {
+                if (el.closest('[data-hyper-input]') !== this.container) return;
                 el.hidden = !canPaste;
             });
     }
@@ -1047,6 +1048,10 @@ export class HyperInput {
         }
 
         this.storeInput.value = serialized;
+        // Enclosing editors observe the canonical value, including menu-driven
+        // changes which never emit a native input event from a visible control.
+        this.storeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        this.storeInput.dispatchEvent(new Event('change', { bubbles: true }));
 
         const debug = this.container.closest('.hyper-input-component')?.querySelector('[data-store-debug]');
 
@@ -1084,7 +1089,7 @@ export class HyperInput {
         const isEmpty = this.blocks.length === 0;
         this.container.classList.toggle('hyper-input--empty', isEmpty);
 
-        const addRoot = this.container.querySelector('[data-hyper-add-link]');
+        const addRoot = this.container.querySelector(':scope > [data-hyper-add-link]');
 
         if (!(addRoot instanceof HTMLElement)) {
             return;

@@ -28,12 +28,12 @@ export const parseLinkTypeHtml = (html: string | undefined, handle: string): str
     return html.replace(/__LINK_TYPE__/g, handle);
 };
 
-export const parseLinkIdHtml = (html: string | undefined, linkId: string): string => {
+export const parseLinkIdHtml = (html: string | undefined, linkId: string, placeholder = '__LINK_ID__'): string => {
     if (typeof html !== 'string') {
         return '';
     }
 
-    return html.replace(/__LINK_ID__/g, linkId);
+    return html.split(placeholder).join(linkId);
 };
 
 export const decodeHtmlEntities = (html: string): string => {
