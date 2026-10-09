@@ -13,6 +13,7 @@ type ElementEditorInstance = {
     pause?: () => Promise<void>;
     resume?: () => void;
     pauseLevel?: number;
+    checkForm?: () => Promise<unknown>;
     on?: (event: string, handler: (event: { data: { serialized: string } }) => void) => void;
     __hyperSerializeHook?: boolean;
 };
@@ -201,6 +202,14 @@ export function enqueueHyperFieldInit(
 
                     if (paused && (elementEditor?.pauseLevel ?? 0) > 0) {
                         elementEditor?.resume?.();
+                        // Refreshing FormObserver's raw snapshot suppresses hydration
+                        // noise, but also consumes inputs typed while it was paused.
+                        // Compare against ElementEditor's persisted baseline as well.
+                        if ((elementEditor?.pauseLevel ?? 0) === 0) {
+                            void elementEditor?.checkForm?.().catch(() => {
+                                // Craft owns the failed-save status and recovery UI.
+                            });
+                        }
                     }
                 }
             }),

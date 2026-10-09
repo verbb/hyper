@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';export * from '${source}portalMutations';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -34,6 +34,59 @@ try {
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
+    // Nested Add/Paste controls settle after the parent's observer starts. Their
+    // availability must not count as a content edit, but input state still must.
+    const portalMutations = await page.evaluate(async () => {
+        const portal = document.createElement('div');
+        portal.innerHTML = '<button>Paste</button><pk-dropdown-item>Paste</pk-dropdown-item><div aria-busy="true"></div><input name="value" value="saved"><span>Before</span><vizy-editor><span>Loading</span></vizy-editor>';
+        document.body.append(portal);
+        const records = [];
+        const observer = new MutationObserver(items => records.push(...items));
+        observer.observe(portal, {attributes:true, childList:true, characterData:true, subtree:true});
+        portal.querySelector('button').setAttribute('disabled', '');
+        portal.querySelector('button').setAttribute('tabindex', '-1');
+        portal.querySelector('pk-dropdown-item').setAttribute('disabled', '');
+        portal.querySelector('div').removeAttribute('aria-busy');
+        portal.querySelector('input').setAttribute('disabled', '');
+        portal.querySelector('input').setAttribute('value', 'edited');
+        portal.querySelector('span').firstChild.data = 'After';
+        portal.append(document.createElement('input'));
+        portal.querySelector('vizy-editor span').firstChild.data = 'Ready';
+        portal.querySelector('vizy-editor').append(document.createElement('div'));
+        await Promise.resolve();
+        observer.disconnect();
+        portal.remove();
+        const wrapper = document.createElement('vizy-editor');
+        wrapper.append(portal);
+        return records.map(record => Audit.isPortalContentMutation(record, portal));
+    });
+    assert.deepEqual(portalMutations, [false, false, false, false, true, true, true, true, false, false]);
+    const earlySiblingEdit = await page.evaluate(async () => {
+        const form = document.createElement('form');
+        form.innerHTML = '<input name="title" value="Saved"><div data-hyper-input></div>';
+        document.body.append(form);
+        const host = form.querySelector('[data-hyper-input]');
+        let rawSnapshot = 'Saved';
+        let dirtyChecks = 0;
+        const editor = {
+            serializeForm: () => $(form).serialize(), on() {}, pauseLevel: 0,
+            pause: async function() { this.pauseLevel++; },
+            resume: function() { this.pauseLevel--; },
+            formObserver: { _serialize() { rawSnapshot = form.querySelector('input').value; } },
+            checkForm: async function() {
+                if (this.serializeForm() !== $(form).data('initialSerializedValue')) dirtyChecks++;
+            },
+        };
+        $(form).data('elementEditor', editor).data('initialSerializedValue', $(form).serialize());
+        await Audit.enqueueHyperFieldInit(host, () => { form.querySelector('input').value = 'Early edit'; });
+        const result = {rawSnapshot, dirtyChecks, baseline:$(form).data('initialSerializedValue'), pauseLevel:editor.pauseLevel};
+        form.remove();
+        return result;
+    });
+    assert.equal(earlySiblingEdit.rawSnapshot, 'Early edit');
+    assert.equal(earlySiblingEdit.dirtyChecks, 1);
+    assert.equal(earlySiblingEdit.baseline, 'title=Saved');
+    assert.equal(earlySiblingEdit.pauseLevel, 0);
     // Exercise Craft's actual serializer: it reads the form before emitting its event.
     // Direct save/autosave calls bypass the jQuery data('serializer') callback.
     const directSave = await page.evaluate((nativeSource) => {
@@ -269,7 +322,7 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:['direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
+    console.log(JSON.stringify({ok:true,scenarios:['nested initialization chrome','direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}
 
 await import('./input-lifecycle.mjs');

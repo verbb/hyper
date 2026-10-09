@@ -6,6 +6,7 @@
 - Clarified upgrade instructions, including upgrading directly from Hyper 1 on Craft 4, and simplified developer documentation.
 
 ### Fixed
+- Fixed nested fields creating unsaved changes during initialization, and early edits failing to trigger autosave while field controls were loading.
 - Fixed cached links retaining old titles, URLs or visibility after their destination changes.
 - Fixed saving Vizy content and nested Matrix values inside Hyper links.
 - Fixed clean frontend builds requiring local Plugin Kit source folders.

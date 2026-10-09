@@ -1,3 +1,4 @@
+import { isPortalContentMutation } from './portalMutations';
 import { destroyEmbedWidgets } from './embed';
 import { debounce } from 'lodash-es';
 
@@ -528,7 +529,7 @@ export class HyperLinkBlock {
             }
 
             // Ignore layout-chrome attribute noise (tab panes toggle `.hidden` / aria).
-            if (!mutations.some((mutation) => isPortalContentMutation(mutation))) {
+            if (!mutations.some((mutation) => isPortalContentMutation(mutation, portal))) {
                 return;
             }
 
@@ -609,35 +610,6 @@ export class HyperLinkBlock {
             showHeaderNewWindow: template.dataset.linkShowHeaderNewWindow !== '0',
         };
     }
-}
-
-/**
- * Portal MutationObserver filter: layout tabs only toggle chrome attrs (`.hidden`, aria).
- * Those must not project to the hidden store. Real edits change values / DOM structure.
- */
-function isPortalContentMutation(mutation: MutationRecord): boolean {
-    if (mutation.type === 'characterData' || mutation.type === 'childList') {
-        return true;
-    }
-
-    if (mutation.type !== 'attributes' || !mutation.attributeName) {
-        return false;
-    }
-
-    const attr = mutation.attributeName;
-
-    if (
-        attr === 'class'
-        || attr === 'style'
-        || attr === 'hidden'
-        || attr === 'aria-selected'
-        || attr === 'aria-hidden'
-        || attr === 'aria-pressed'
-    ) {
-        return false;
-    }
-
-    return true;
 }
 
 function escapeHtml(value: string): string {
