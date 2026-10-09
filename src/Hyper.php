@@ -46,6 +46,7 @@ use craft\web\UrlManager;
 
 use yii\base\ActionEvent;
 use yii\base\Event;
+use yii\queue\Queue;
 
 use craft\feedme\events\RegisterFeedMeFieldsEvent;
 use craft\feedme\services\Fields as FeedMeFields;
@@ -87,6 +88,14 @@ class Hyper extends Plugin
 
         $this->_registerCachePreload();
         $this->_registerLinkedElementWithParsing();
+
+        // Queue workers reuse the application across jobs. Request caches must not
+        // retain one job's targets or eager-loading choices into the next job.
+        foreach ([Queue::EVENT_BEFORE_EXEC, Queue::EVENT_AFTER_EXEC, Queue::EVENT_AFTER_ERROR] as $event) {
+            Event::on(Queue::class, $event, function() {
+                $this->getLinkRelations()->resetRequestState();
+            });
+        }
     }
 
     public function getSettingsResponse(): mixed

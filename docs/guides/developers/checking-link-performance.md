@@ -40,3 +40,17 @@ If nothing changes, confirm that the template actually reads the destination’s
 Keep explicit paths on queries that read fields from linked destinations. Plain anchor lists generally need only the standard rendering methods on frontend site requests. Console code and nested content can have different loading conditions; consult [Loading Links](/reference/loading-links) before applying the same assumption there.
 
 Incoming-link queries answer a separate question: which entries link to this target? Use [Reverse Relations](/feature-tour/reverse-relations) for that task.
+
+## Process Large Lists in Batches
+
+Hyper keeps loaded destinations available for the rest of a request, so repeated reads can reuse them. A command that processes thousands of different destinations can therefore retain more memory as it runs. Process owners in small batches and release their Hyper cache after finishing each batch:
+
+```php
+use verbb\hyper\Hyper;
+
+Hyper::$plugin->getLinkRelations()->resetRequestState();
+```
+
+Call this after you have finished reading the batch’s links. It clears loaded destinations and eager-loading choices; it does not change saved content. Add any required `with()` paths to the next batch’s query. Hyper also clears this state between queue jobs, including failed jobs. A single large job still needs its own batching.
+
+Measure peak memory as well as query count, and compare the first and last batches. Smaller batches reduce retained content at the cost of more database queries. Choose a batch size using the fields and destinations your site actually reads.
