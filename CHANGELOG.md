@@ -15,9 +15,11 @@
 - Fixed Link objects bypassing Craft behaviour methods and allowing calls to protected methods.
 - Fixed translated link structure updates repeatedly saving the same entry on sites with three or more languages.
 - Fixed error pages resolving linked destinations individually instead of batching them.
+- Fixed Entry and Asset link selectors not opening when a Hyper field is nested inside Matrix. ([#278](https://github.com/verbb/hyper/issues/278))
 - Fixed links to disabled, expired or deleted destinations querying the database again each time a template read them.
 - Fixed the Default Link Type Config being lost during fresh installation, skipped when upgrading earlier betas, or duplicated when deploying incoming Project Config.
 - Fixed upgrades from Craft 4 possibly indexing links from the wrong Super Table content table when older fields share a column name.
+- Fixed link controls responding twice after a Hyper field was removed and added back to the page, and Bulk Add adding links to a field that had already been removed.
 - Fixed nested fields creating unsaved changes during initialization, and early edits failing to trigger autosave while field controls were loading.
 - Fixed cached links retaining old titles, URLs or visibility after their destination changes.
 - Fixed saving Vizy content and nested Matrix values inside Hyper links.

@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';export * from '${source}portalMutations';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';export * from '${source}portalMutations';export * from '${source}craftUi';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -34,6 +34,14 @@ try {
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const deferredNamespace = await page.evaluate(() => Audit.resolveDeferredFieldJs(
+        '<script id="__HYPER_INPUT_NAMESPACE__-hyper-entry-script">new Craft.BaseElementSelectInput({"id":"__HYPER_INPUT_NAMESPACE__-hyperData-row-entry","name":"__HYPER_INPUT_NAMESPACE__[hyperData][row][linkValue]","other":"fields[title]"});</script><script id="__HYPER_INPUT_NAMESPACE__-hyper-asset-script">new Craft.AssetSelectInput({"id":"__HYPER_INPUT_NAMESPACE__-hyperData-row-asset","name":"__HYPER_INPUT_NAMESPACE__[hyperData][row][assetValue]"});</script>',
+        {
+            inputNamePrefix: 'fields[contentBlocks][entries][uid:row][fields]',
+            inputIdPrefix: 'fields-contentBlocks-entries-uid-row-fields',
+        },
+    ));
+    assert.equal(deferredNamespace, '<script id="fields-contentBlocks-entries-uid-row-fields-hyper-entry-script">new Craft.BaseElementSelectInput({"id":"fields-contentBlocks-entries-uid-row-fields-hyperData-row-entry","name":"fields[contentBlocks][entries][uid:row][fields][hyperData][row][linkValue]","other":"fields[title]"});</script><script id="fields-contentBlocks-entries-uid-row-fields-hyper-asset-script">new Craft.AssetSelectInput({"id":"fields-contentBlocks-entries-uid-row-fields-hyperData-row-asset","name":"fields[contentBlocks][entries][uid:row][fields][hyperData][row][assetValue]"});</script>');
     // Nested Add/Paste controls settle after the parent's observer starts. Their
     // availability must not count as a content edit, but input state still must.
     const portalMutations = await page.evaluate(async () => {
@@ -322,7 +330,7 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:['nested initialization chrome','direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
+    console.log(JSON.stringify({ok:true,scenarios:['deferred Matrix namespace','nested initialization chrome','direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}
 
 await import('./input-lifecycle.mjs');

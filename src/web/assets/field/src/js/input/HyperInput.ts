@@ -68,6 +68,8 @@ export class HyperInput {
 
     private addLinkAbort: AbortController | null = null;
 
+    private typeChangeAbort: AbortController | null = null;
+
     private destroyed = false;
 
     private pasting = false;
@@ -366,6 +368,8 @@ export class HyperInput {
         this.unregisterSubmitSync = null;
         this.addLinkAbort?.abort();
         this.addLinkAbort = null;
+        this.typeChangeAbort?.abort();
+        this.typeChangeAbort = null;
         this.pendingInteractions = [];
         this.interactionsReady = false;
 
@@ -394,6 +398,10 @@ export class HyperInput {
     }
 
     private bindTypeChanges(): void {
+        // init() can run again after destroy() on the same instance; never bind twice.
+        this.typeChangeAbort?.abort();
+        this.typeChangeAbort = new AbortController();
+
         this.container.addEventListener('hyper:change-type', (event) => {
             if (!(event instanceof CustomEvent)) {
                 return;
@@ -437,7 +445,7 @@ export class HyperInput {
                 template.showHeaderNewWindow,
             );
             this.updateEmptyChrome();
-        });
+        }, { signal: this.typeChangeAbort.signal });
     }
 
     /** Clicking a link type in the Add menu always adds a single blank row). */
@@ -545,6 +553,11 @@ export class HyperInput {
                     ...params,
                 },
             });
+
+            // The field can be removed (or remounted) while the request is in flight.
+            if (this.destroyed || !this.initialized || !this.container.isConnected) {
+                return false;
+            }
 
             const blocks = (response?.data?.blocks ?? []) as HyperSeededBlock[];
             const headHtml = response?.data?.headHtml as string | undefined;

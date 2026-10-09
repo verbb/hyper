@@ -15,17 +15,17 @@ use yii\web\ForbiddenHttpException;
 it('namespaces native Matrix constructor IDs and all input namespace settings', function () {
     $method = new ReflectionMethod(HyperField::class, '_namespaceDeferredFieldPayload');
     $result = $method->invoke(new HyperField(), '<script>new Craft.MatrixInput("hyperData-row-fields-blocks", [], "hyperData[row][fields][blocks]", {"namespace":"hyperData[row][fields]"}); $("#hyperData-row-control");</script>');
-    expect($result)->toContain('new Craft.Hyper.MatrixInput("fields-hyperData-row-fields-blocks"')
-        ->toContain('"fields[hyperData][row][fields][blocks]"')
-        ->toContain('"namespace":"fields[hyperData][row][fields]"')
-        ->toContain('$("#fields-hyperData-row-control")');
+    expect($result)->toContain('new Craft.Hyper.MatrixInput("__HYPER_INPUT_NAMESPACE__-hyperData-row-fields-blocks"')
+        ->toContain('"__HYPER_INPUT_NAMESPACE__[hyperData][row][fields][blocks]"')
+        ->toContain('"namespace":"__HYPER_INPUT_NAMESPACE__[hyperData][row][fields]"')
+        ->toContain('$("#__HYPER_INPUT_NAMESPACE__-hyperData-row-control")');
 });
 
 it('namespaces escaped EditableTable IDs and input names without decoding HTML escapes', function () {
     $method = new ReflectionMethod(HyperField::class, '_namespaceDeferredFieldPayload');
     $result = $method->invoke(new HyperField(), '<script>new Craft.EditableTable("hyperData\u002Drow\u002DcustomAttributes", "hyperData\u005Brow\u005D\u005BcustomAttributes\u005D", {}); const label = "\u003C/script\u003E";</script>');
-    expect($result)->toContain('"fields-hyperData\u002Drow\u002DcustomAttributes"')
-        ->toContain('"fields[hyperData]\u005Brow\u005D\u005BcustomAttributes\u005D"')
+    expect($result)->toContain('"__HYPER_INPUT_NAMESPACE__-hyperData\u002Drow\u002DcustomAttributes"')
+        ->toContain('"__HYPER_INPUT_NAMESPACE__[hyperData]\u005Brow\u005D\u005BcustomAttributes\u005D"')
         ->toContain('"\u003C/script\u003E"');
 });
 

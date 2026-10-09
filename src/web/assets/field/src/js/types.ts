@@ -50,6 +50,10 @@ export type HyperSeededBlock = {
 export type HyperInputSettings = {
     fieldId: number | string | null;
     handle: string;
+    /** Final owner namespace before this Hyper field's handle. */
+    inputNamePrefix: string;
+    /** ID-normalized form of inputNamePrefix. */
+    inputIdPrefix: string;
     /** Owner element site id — Advanced-tab Entries pickers use this. */
     siteId?: number | null;
     /** Owner element id when saved — FieldsController canSave checks. */

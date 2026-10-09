@@ -52,6 +52,12 @@ const readMatrixClipboard = (): any[] => {
 // serialization instead of asking Craft to draft a synthetic Link element ID.
 export function createMatrixInput(...args: unknown[]): unknown {
     const nativeMatrix = (Craft as any).MatrixInput;
+    // Craft's entry class is internal. If it changes, keep native Matrix behaviour
+    // rather than throwing for every Matrix field on the page.
+    if (!nativeMatrix.__hyperEntryLifecycle && typeof nativeMatrix.Entry?.extend !== 'function') {
+        console.warn('[Hyper] Craft.MatrixInput.Entry is unavailable; nested Matrix enhancements are disabled.');
+        nativeMatrix.__hyperEntryLifecycle = true;
+    }
     if (!nativeMatrix.__hyperEntryLifecycle) {
         nativeMatrix.__hyperEntryLifecycle = true;
         window.addEventListener('storage', (event) => {

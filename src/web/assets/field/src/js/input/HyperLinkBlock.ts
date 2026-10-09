@@ -129,7 +129,7 @@ export class HyperLinkBlock {
 
         if (js) {
             this.el.dataset.linkJs = js;
-            appendBlockJs(js);
+            appendBlockJs(js, this.settings);
         }
 
         this.onChange();
@@ -344,7 +344,7 @@ export class HyperLinkBlock {
         const js = this.el.dataset.linkJs;
 
         if (js) {
-            appendBlockJs(decodeHtmlEntities(js));
+            appendBlockJs(decodeHtmlEntities(js), this.settings);
         }
     }
 
@@ -391,6 +391,9 @@ export class HyperLinkBlock {
     }
 
     private bindEvents(): void {
+        // Destroying the block aborts these, so a remounted field never runs stale handlers.
+        const { signal } = this.headerAbort;
+
         // Legacy <select> chrome (pre-compact header) — keep working if present.
         const typeSelect = this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-link-type]');
 
@@ -400,7 +403,7 @@ export class HyperLinkBlock {
                     bubbles: true,
                     detail: { handle: typeSelect.value },
                 }));
-            });
+            }, { signal });
         }
 
         this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-type-menu]')?.addEventListener('pk-select', (event) => {
@@ -418,7 +421,7 @@ export class HyperLinkBlock {
                 bubbles: true,
                 detail: { handle },
             }));
-        });
+        }, { signal });
 
         this.el.querySelector(':scope > .hyper-wrapper > .hyper-header [data-hyper-block-menu]')?.addEventListener('pk-select', (event) => {
             if (!(event instanceof CustomEvent)) {
@@ -426,7 +429,7 @@ export class HyperLinkBlock {
             }
 
             this.runAction(String(event.detail?.value ?? ''));
-        });
+        }, { signal });
 
         // Delegate so a type switch can replace the responsive tab menu in place.
         this.el.addEventListener('pk-select', (event) => {
@@ -441,7 +444,7 @@ export class HyperLinkBlock {
 
             const index = Number(event.detail?.value ?? 0);
             this.selectTab(Number.isFinite(index) ? index : 0);
-        });
+        }, { signal });
 
         this.el.addEventListener('click', (event) => {
             const target = event.target;
@@ -471,7 +474,7 @@ export class HyperLinkBlock {
             }
 
             this.runAction(action ?? '');
-        });
+        }, { signal });
     }
 
     private initMenu(): void {

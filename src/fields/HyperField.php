@@ -141,6 +141,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     public const EDITOR_MODE_EXPANDED = self::VIEW_MODE_BLOCKS;
     public const EDITOR_MODE_CARDS = self::VIEW_MODE_CARDS;
 
+    private const DEFERRED_INPUT_NAMESPACE = '__HYPER_INPUT_NAMESPACE__';
+
 
     // Properties
     // =========================================================================
@@ -1217,6 +1219,9 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $settings = [
             'fieldId' => $this->id,
             'handle' => $this->handle,
+            // Deferred Craft widgets mount after the field reaches its final owner namespace.
+            'inputNamePrefix' => $view->getNamespace(),
+            'inputIdPrefix' => Html::id($view->getNamespace()),
             // CP Advanced-tab relation pickers need the owner site.
             'siteId' => $element?->siteId ?? Craft::$app->getSites()->getCurrentSite()->id,
             // Owner element id for FieldsController canSave checks (when already saved).
@@ -1550,7 +1555,9 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return '';
         }
 
-        $namespace = 'fields';
+        // The final owner namespace can change when Matrix inserts a fresh entry, and is
+        // resolved by the mounted Hyper input immediately before this payload executes.
+        $namespace = self::DEFERRED_INPUT_NAMESPACE;
         $normalized = Html::id($namespace);
 
         $payload = Html::namespaceAttributes($payload, $namespace);

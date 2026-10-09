@@ -67,7 +67,18 @@ try {
     }
     assert.equal(await page.locator('[data-hyper-link]').count(),2);
     assert.deepEqual(JSON.parse(await page.locator('[data-hyper-store]').inputValue()).map(link=>link.linkValue),['/retry-resource','42']);
-    await page.evaluate(()=>instance.destroy());
+    // A response that arrives after the field is removed must not add blocks to it.
+    await page.getByRole('button',{name:'Bulk Add',exact:true}).click();
+    await page.locator('pk-dialog[open]').waitFor();
+    await page.locator('textarea').fill('/late-response');
+    await page.getByRole('button',{name:'Add',exact:true}).click();
+    await page.waitForFunction(()=>pending.length===5);
+    const noticesBefore=await page.evaluate(()=>notices.length);
+    await page.evaluate(()=>{instance.destroy();succeed(4);});
+    // Proving an absence needs the resolved promise and its continuation to settle.
+    await page.evaluate(()=>new Promise(resolve=>setTimeout(resolve,50)));
+    assert.equal(await page.locator('[data-hyper-link]').count(),2,'Late response adds nothing');
+    assert.equal(await page.evaluate(()=>notices.length),noticesBefore,'No success notice for a removed field');
     assert.deepEqual(errors,[]);
-    console.log(JSON.stringify({ok:true,scenarios:['bulk text failure retains values','bulk element failure retains selection','pending request disables duplicate submission','retry adds once and closes on success']}));
+    console.log(JSON.stringify({ok:true,scenarios:['bulk text failure retains values','bulk element failure retains selection','pending request disables duplicate submission','retry adds once and closes on success','late response after removal adds nothing']}));
 } finally {await browser.close();}
