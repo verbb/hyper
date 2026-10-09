@@ -532,7 +532,7 @@ export class HyperInput {
         handle: string,
         mode: 'elements' | 'text',
         params: Record<string, unknown>,
-    ): Promise<void> {
+    ): Promise<boolean> {
         try {
             const response = await Craft.sendActionRequest('POST', 'hyper/fields/create-links', {
                 data: {
@@ -570,8 +570,10 @@ export class HyperInput {
             if (blocks.length) {
                 Craft.cp.displayNotice(Craft.t('hyper', '{num} links added.', { num: String(blocks.length) }));
             }
-        } catch (error) {
-            Craft.cp.displayError(Craft.t('hyper', 'Couldn’t add links.'));
+
+            return true;
+        } catch {
+            return false;
         }
     }
 
@@ -1138,7 +1140,7 @@ function buildBulkAddDialog(options: {
         handle: string,
         mode: 'elements' | 'text',
         params: Record<string, unknown>,
-    ) => Promise<void> | void;
+    ) => Promise<boolean>;
 }): { open: () => void } {
     const { types, remaining } = options;
 
@@ -1147,6 +1149,7 @@ function buildBulkAddDialog(options: {
 
     let currentHandle = types[0].handle;
     let textarea: HTMLTextAreaElement | null = null;
+    let submitting = false;
 
     // Element mode mounts Craft's native element select; we read the chosen chips straight off it.
     let elementContainer: HTMLElement | null = null;
@@ -1215,6 +1218,13 @@ function buildBulkAddDialog(options: {
     body.appendChild(region);
     dialog.appendChild(body);
 
+    const errorMessage = document.createElement('p');
+    errorMessage.className = 'error';
+    errorMessage.setAttribute('role', 'alert');
+    errorMessage.textContent = Craft.t('hyper', 'Couldn’t add links.');
+    errorMessage.hidden = true;
+    dialog.appendChild(errorMessage);
+
     const cancelBtn = document.createElement('button');
     cancelBtn.type = 'button';
     cancelBtn.className = 'btn';
@@ -1259,8 +1269,8 @@ function buildBulkAddDialog(options: {
             ready = readSelectedElements().length > 0;
         }
 
-        addBtn.disabled = !ready;
-        addBtn.classList.toggle('disabled', !ready);
+        addBtn.disabled = submitting || !ready;
+        addBtn.classList.toggle('disabled', addBtn.disabled);
     };
 
     function renderRegion(): void {
@@ -1351,8 +1361,13 @@ function buildBulkAddDialog(options: {
         updateAddState();
     }
 
-    addBtn.addEventListener('click', () => {
+    addBtn.addEventListener('click', async () => {
+        if (submitting) {
+            return;
+        }
+
         const type = currentType();
+        let params: Record<string, unknown>;
 
         if (type.bulk.mode === 'text') {
             const lines = (textarea?.value ?? '')
@@ -1365,20 +1380,37 @@ function buildBulkAddDialog(options: {
                 return;
             }
 
-            close();
-            void options.commit(type.handle, 'text', { values });
-            return;
+            params = { values };
+        } else {
+            // The native select already enforces the limit; also cap against remaining space.
+            const selected = readSelectedElements().slice(0, cap(readSelectedElements()));
+
+            if (!selected.length) {
+                return;
+            }
+
+            params = { elements: selected };
         }
 
-        // The native select already enforces `limit`, but cap defensively against remaining.
-        const selected = readSelectedElements().slice(0, cap(readSelectedElements()));
+        submitting = true;
+        errorMessage.hidden = true;
+        body.inert = true;
+        dialog.setAttribute('aria-busy', 'true');
+        updateAddState();
 
-        if (!selected.length) {
-            return;
+        try {
+            // Keep the entered values and selected elements available if the request fails.
+            if (await options.commit(type.handle, type.bulk.mode, params)) {
+                close();
+            } else {
+                errorMessage.hidden = false;
+            }
+        } finally {
+            submitting = false;
+            body.inert = false;
+            dialog.removeAttribute('aria-busy');
+            updateAddState();
         }
-
-        close();
-        void options.commit(type.handle, 'elements', { elements: selected });
     });
 
     renderRegion();

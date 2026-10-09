@@ -15,6 +15,7 @@
 - Fixed adding custom attributes to links from the Advanced tab.
 - Fixed pasting into single-link fields after changing them from multiple links with a saved maximum.
 - Fixed linked-element caches being retained between queue jobs.
+- Fixed Bulk Add losing entered values and selected elements when a request failed.
 
 ## 3.0.0-beta.3 - 2026-10-08
 
