@@ -16,7 +16,10 @@ final class CpActionRequest
     public static function asUser(?User $identity, callable $callback): mixed
     {
         $app = Craft::$app;
-        $original = ['request' => $app->request, 'user' => $app->user];
+        $original = ['request' => $app->request, 'response' => $app->response, 'user' => $app->user];
+        $originalVite = Hyper::$plugin->getComponents()['vite'];
+        $view = $app->view;
+        $mode = $view->getTemplateMode();
 
         try {
             $request = new Request(['isCpRequest' => true, 'isConsoleRequest' => false, 'enableCookieValidation' => false]);
@@ -25,15 +28,22 @@ final class CpActionRequest
             $request->setScriptFile(CRAFT_WEB_ROOT . '/index.php');
             $request->setUrl('/index.php?p=admin/entries');
             $app->set('request', $request);
+            $app->set('response', new Response());
+            Hyper::$plugin->set('vite', Hyper::config()['components']['vite']);
+            $view->setTemplateMode(View::TEMPLATE_MODE_CP);
 
             $user = new class extends \craft\console\User {
                 public string $idParam = '__id';
+                public function getRemainingSessionTime(): int { return -1; }
+                public function getImpersonator(): ?User { return null; }
             };
             $user->setIdentity($identity);
             $app->set('user', $user);
 
             return $callback();
         } finally {
+            Hyper::$plugin->set('vite', $originalVite);
+            $view->setTemplateMode($mode);
             foreach ($original as $id => $component) {
                 $app->set($id, $component);
             }
@@ -44,6 +54,7 @@ final class CpActionRequest
     {
         $app = Craft::$app;
         $original = ['request' => $app->request, 'response' => $app->response, 'user' => $app->user, 'elementSources' => $app->elementSources];
+        $originalVite = Hyper::$plugin->getComponents()['vite'];
         $site = $app->sites->getCurrentSite();
         $sourceCache = new \ReflectionProperty(\craft\base\Element::class, 'sources');
         $previousSources = $sourceCache->getValue();
@@ -60,6 +71,8 @@ final class CpActionRequest
             $request->setQueryParams($query);
             $request->getHeaders()->set('Accept', 'application/json');
             $app->set('request', $request);
+            // A real HTTP request does not reuse a Vite service initialized in the console.
+            Hyper::$plugin->set('vite', Hyper::config()['components']['vite']);
             $app->set('response', new Response());
             $user = new class extends \craft\console\User {
                 public string $idParam = '__id';
@@ -82,6 +95,7 @@ final class CpActionRequest
             };
             return $controller->runAction($action);
         } finally {
+            Hyper::$plugin->set('vite', $originalVite);
             $sourceCache->setValue(null, $previousSources);
             foreach ($original as $id => $component) {
                 $app->set($id, $component);

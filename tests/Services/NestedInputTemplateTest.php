@@ -13,7 +13,9 @@ it('keeps nested Hyper template placeholders independent when hydrating new link
     $url->setFieldLayout($layout);
     $outer = F::hyperFieldWithLinkTypes([F::linkTypeConfig($url)]);
     $owner = F::plainEntry(F::entrySection($outer), 'Nested template owner');
-    $blocks = $outer->getHydratedLinkBlocks('url', [F::urlLinkPayload('/parent')], $owner, false);
+    $blocks = \Tests\Support\CpActionRequest::asUser(\craft\elements\User::find()->admin()->one(),
+        fn() => $outer->getHydratedLinkBlocks('url', [F::urlLinkPayload('/parent')], $owner, false),
+    );
     expect($blocks)->toHaveCount(1);
     $block = $blocks[0];
     expect($block)->toHaveKey('placeholder');

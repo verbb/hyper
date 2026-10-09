@@ -6,7 +6,7 @@ use Tests\Support\ResetTestDatabase;
 use verbb\hyper\Hyper;
 
 uses(Tests\General\TestCase::class)
-    ->in('Gql', 'Performance', 'Services');
+    ->in('Performance', 'Services');
 
 uses()->beforeEach(function(): void {
     ResetTestDatabase::resetHyperData();
@@ -15,4 +15,4 @@ uses()->beforeEach(function(): void {
         Hyper::$plugin->getLinkRelations()->resetRequestState();
         Hyper::$plugin->getLinkRelations()->enableRequestPriming = true;
     }
-})->in('Services', 'Performance');
+})->in('Services', 'Performance', 'Integrations');
