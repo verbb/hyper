@@ -13,6 +13,7 @@
 - Fixed nested Hyper fields interfering with their parent field’s add, reorder, and link controls.
 - Fixed programmatically created Matrix and Neo rows inside Hyper links overwriting sibling values when saved in the control panel.
 - Fixed adding custom attributes to links from the Advanced tab.
+- Fixed pasting into single-link fields after changing them from multiple links with a saved maximum.
 - Fixed linked-element caches being retained between queue jobs.
 
 ## 3.0.0-beta.3 - 2026-10-08

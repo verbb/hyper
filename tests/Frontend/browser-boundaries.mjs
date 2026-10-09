@@ -281,3 +281,5 @@ await import('./immediate-input.mjs');
 await import('./nested-templates.mjs');
 
 await import('./nested-input.mjs');
+
+await import('./input-capacity.mjs');

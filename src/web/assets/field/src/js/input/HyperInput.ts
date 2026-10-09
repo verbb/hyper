@@ -593,7 +593,8 @@ export class HyperInput {
             return;
         }
 
-        if (this.settings.maxLinks && this.blocks.length >= this.settings.maxLinks) {
+        // A field can retain its former multiple-link limit after switching to single mode.
+        if (this.settings.multipleLinks && this.settings.maxLinks && this.blocks.length >= this.settings.maxLinks) {
             return;
         }
 
