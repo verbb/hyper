@@ -13,6 +13,7 @@
 - Fixed migration output allowing database content to emit terminal control characters.
 - Fixed saved links becoming unavailable after renaming their link type handle. Saved handles are now read-only; labels remain editable.
 - Fixed Link objects bypassing Craft behaviour methods and allowing calls to protected methods.
+- Fixed translated link structure updates repeatedly saving the same entry on sites with three or more languages.
 - Fixed error pages resolving linked destinations individually instead of batching them.
 - Fixed links to disabled, expired or deleted destinations querying the database again each time a template read them.
 - Fixed the Default Link Type Config being lost during fresh installation, skipped when upgrading earlier betas, or duplicated when deploying incoming Project Config.

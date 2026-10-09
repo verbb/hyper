@@ -64,6 +64,37 @@ it('dispatches Craft element methods and attached behavior methods on links', fu
     expect($link->{'isFieldEmpty:' . $caption->handle}())->toBeFalse();
 });
 
+it('visits each translated owner once when propagating link structure', function(int $siteCount) {
+    $sites = F::ensureSites($siteCount);
+    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true, 'translationMethod' => craft\base\Field::TRANSLATION_METHOD_SITE]);
+    $owner = F::plainEntry(F::translatableEntrySection($field, $siteCount), 'Translated navigation', [
+        $field->handle => [F::urlLinkPayload('https://example.test/first', 'First')],
+    ], $sites[0]);
+    $owner = Entry::find()->id($owner->id)->siteId($sites[0]->id)->one();
+    $links = $owner->getFieldValue($field->handle);
+    $owner->setFieldValue($field->handle, $links->withLinks([
+        ...$links->getLinks(), Hyper::$plugin->links->createLinkFromSerialized($field, F::urlLinkPayload('https://example.test/second', 'Second')),
+    ]));
+    $visits = [];
+    $handler = function($event) use ($owner, &$visits) {
+        if ($event->element instanceof Entry && $event->element->id === $owner->id) {
+            $visits[] = $event->element->siteId;
+        }
+    };
+    yii\base\Event::on(craft\services\Elements::class, craft\services\Elements::EVENT_BEFORE_SAVE_ELEMENT, $handler);
+    try {
+        expect(Craft::$app->elements->saveElement($owner, false, false))->toBeTrue();
+    } finally {
+        yii\base\Event::off(craft\services\Elements::class, craft\services\Elements::EVENT_BEFORE_SAVE_ELEMENT, $handler);
+    }
+    expect($visits)->toHaveCount($siteCount);
+    foreach ($sites as $site) {
+        $saved = Entry::find()->id($owner->id)->siteId($site->id)->one();
+        expect(array_map(fn($link) => $link->getUrl(), $saved->getFieldValue($field->handle)->getLinks()))
+            ->toBe(['https://example.test/first', 'https://example.test/second']);
+    }
+})->with([3, 5]);
+
 it('does not expose protected link methods through magic calls', function() {
     $link = new class extends Url {
         protected function exampleSecret(): string { return 'private'; }

@@ -157,7 +157,8 @@ class MultisiteLinks extends Component
             return;
         }
 
-        $key = $element->id . ':' . $element->siteId . ':' . $field->id;
+        // Saving a translated owner must not start another pass through its siblings.
+        $key = $element->id . ':' . $field->id;
 
         if (isset($this->_propagating[$key])) {
             return;
