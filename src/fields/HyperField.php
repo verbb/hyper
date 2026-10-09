@@ -1547,6 +1547,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $payload,
         ) ?? $payload;
 
+        // Twig's JS escaping writes dashes and brackets as Unicode escapes in table constructors.
+        $payload = preg_replace_callback(
+            '/([\'"])(#?)hyperData(\\\\u002[dD])/',
+            static fn($m) => $m[1] . $m[2] . $normalized . '-hyperData' . $m[3],
+            $payload,
+        ) ?? $payload;
+
+        $payload = preg_replace_callback(
+            '/([\'"])hyperData(\\\\u005[bB])/',
+            static fn($m) => $m[1] . $namespace . '[hyperData]' . $m[2],
+            $payload,
+        ) ?? $payload;
+
         $payload = str_replace('new Craft.MatrixInput(', 'new Craft.Hyper.MatrixInput(', $payload);
 
         return $payload;

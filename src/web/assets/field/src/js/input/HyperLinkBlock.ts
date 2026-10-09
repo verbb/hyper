@@ -318,6 +318,9 @@ export class HyperLinkBlock {
                     option.removeAttribute('aria-current');
                 }
             });
+
+            // Craft tables and other hidden widgets finish initialization when their pane becomes visible.
+            window.dispatchEvent(new Event('resize'));
         } finally {
             // Flush MutationObserver microtasks while still suppressed, then re-enable.
             window.requestAnimationFrame(() => {

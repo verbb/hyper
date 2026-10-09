@@ -21,6 +21,14 @@ it('namespaces native Matrix constructor IDs and all input namespace settings', 
         ->toContain('$("#fields-hyperData-row-control")');
 });
 
+it('namespaces escaped EditableTable IDs and input names without decoding HTML escapes', function () {
+    $method = new ReflectionMethod(HyperField::class, '_namespaceDeferredFieldPayload');
+    $result = $method->invoke(new HyperField(), '<script>new Craft.EditableTable("hyperData\u002Drow\u002DcustomAttributes", "hyperData\u005Brow\u005D\u005BcustomAttributes\u005D", {}); const label = "\u003C/script\u003E";</script>');
+    expect($result)->toContain('"fields-hyperData\u002Drow\u002DcustomAttributes"')
+        ->toContain('"fields[hyperData]\u005Brow\u005D\u005BcustomAttributes\u005D"')
+        ->toContain('"\u003C/script\u003E"');
+});
+
 it('binds signed editor context to user field site and original owner', function () {
     $field = F::hyperField();
     $owner = F::plainEntry(F::entrySection($field));
