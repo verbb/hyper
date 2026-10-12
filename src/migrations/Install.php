@@ -3,7 +3,6 @@ namespace verbb\hyper\migrations;
 
 use craft\db\Migration;
 use craft\db\Table;
-use craft\helpers\MigrationHelper;
 
 class Install extends Migration
 {
@@ -87,7 +86,10 @@ class Install extends Migration
     public function dropForeignKeys(): void
     {
         if ($this->db->tableExists('{{%hyper_element_cache}}')) {
-            MigrationHelper::dropAllForeignKeysOnTable('{{%hyper_element_cache}}', $this);
+            $this->dropForeignKeyIfExists('{{%hyper_element_cache}}', 'sourceId');
+            $this->dropForeignKeyIfExists('{{%hyper_element_cache}}', 'sourceSiteId');
+            $this->dropForeignKeyIfExists('{{%hyper_element_cache}}', 'targetId');
+            $this->dropForeignKeyIfExists('{{%hyper_element_cache}}', 'targetSiteId');
         }
     }
 }
