@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- Updated Craft API usage to avoid deprecated migration helpers.
 - Upgrading from Hyper 1 or Hyper 2 now rebuilds link relations once instead of twice, shortening upgrades on large sites.
 - Front-end requests no longer look up link relations for elements that don’t have a Hyper field.
 - Clarified upgrade deployment steps, third-party migration events and link rendering references.
