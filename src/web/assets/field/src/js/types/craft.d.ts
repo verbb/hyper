@@ -31,6 +31,7 @@ interface JQuery {
     text(value: string): JQuery;
     html(): string;
     html(value: string): JQuery;
+    serialize(): string;
     [index: number]: Element;
 }
 

@@ -19,7 +19,7 @@ assert(serializeStart >= 0, 'Locate the installed Craft serializer rather than s
 const nativeSerializeForm = editorSource.slice(serializeStart, editorSource.indexOf('\n    /**', serializeStart))
     .trim().replace(/^serializeForm: /, '').replace(/,$/, '');
 const source='./src/web/assets/field/src/js/input/';
-const bundle=await build({stdin:{contents:`export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';export * from '${source}portalMutations';export * from '${source}craftUi';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
+const bundle=await build({stdin:{contents:`export * from './src/web/assets/field/src/js/globals';export * from '${source}embed';export * from '${source}clipboard';export * from '${source}serialize';export * from '${source}blockContent';export * from '${source}registry';export * from '${source}matrix';export * from '${source}elementEditor';export * from '${source}hostSerialization';export * from '${source}portalMutations';export * from '${source}craftUi';`,resolveDir:root},bundle:true,format:'iife',globalName:'Audit',write:false});
 const browserType = {chromium, firefox, webkit}[process.env.HYPER_BROWSER || 'chromium'];
 if (!browserType) throw new Error('Unsupported HYPER_BROWSER');
 const browser=await browserType.launch({headless:true});
@@ -95,6 +95,50 @@ try {
     assert.equal(earlySiblingEdit.dirtyChecks, 1);
     assert.equal(earlySiblingEdit.baseline, 'title=Saved');
     assert.equal(earlySiblingEdit.pauseLevel, 0);
+    // Global Sets use Craft's full-page form without an Element Editor serializer.
+    // Hyper must supply one early enough for unload checks and delta submissions.
+    const globalForm = await page.evaluate(async () => {
+        const form = document.createElement('form');
+        form.innerHTML = '<input name="action" value="globals/save-content"><input data-hyper-store name="fields[links]" value="saved"><div data-hyper-input><input name="fields[hyperData][row][linkValue]" value="saved"></div>';
+        document.body.append(form);
+        const host = form.querySelector('[data-hyper-input]');
+        const store = form.querySelector('[data-hyper-store]');
+        const portal = host.querySelector('input');
+        $(form).data('initialSerializedValue', $(form).serialize());
+        const unregister = Audit.registerHyperInputSync(host, () => { store.value = portal.value; });
+        try {
+            const serializerBefore = typeof $(form).data('serializer');
+            Audit.sanitizeElementEditorSerializedBaseline(form);
+            Audit.wrapFormSerializer(form);
+            const serializer = $(form).data('serializer');
+            const baseline = $(form).data('initialSerializedValue');
+            const untouched = serializer();
+            portal.value = 'edited';
+            const edited = serializer();
+
+            // A host serializer can still arrive after Hyper's early fallback.
+            const hostSerializer = () => `${$(form).serialize()}&extension=retained`;
+            $(form).data('serializer', hostSerializer);
+            portal.value = 'host-edit';
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const activeSerializer = $(form).data('serializer');
+            const composed = activeSerializer();
+
+            return {serializerBefore, baseline, untouched, edited, composed, wrappedHost: activeSerializer !== hostSerializer};
+        } finally {
+            unregister();
+            form.remove();
+        }
+    });
+    assert.equal(globalForm.serializerBefore, 'undefined');
+    assert.equal(globalForm.untouched, globalForm.baseline);
+    assert.notEqual(globalForm.edited, globalForm.baseline);
+    assert.equal(new URLSearchParams(globalForm.edited).get('fields[links]'), 'edited');
+    assert(!new URLSearchParams(globalForm.edited).has('fields[hyperData][row][linkValue]'));
+    assert.equal(new URLSearchParams(globalForm.composed).get('fields[links]'), 'host-edit');
+    assert.equal(new URLSearchParams(globalForm.composed).get('extension'), 'retained');
+    assert(!new URLSearchParams(globalForm.composed).has('fields[hyperData][row][linkValue]'));
+    assert.equal(globalForm.wrappedHost, true);
     // Exercise Craft's actual serializer: it reads the form before emitting its event.
     // Direct save/autosave calls bypass the jQuery data('serializer') callback.
     const directSave = await page.evaluate((nativeSource) => {
@@ -330,7 +374,7 @@ try {
     await page.locator('.visible').fill('https://example.test/remount');
     await page.waitForFunction(n=>pending.length===n+1,before);
     assert.equal(await page.evaluate(()=>pending.length),before+1);
-    console.log(JSON.stringify({ok:true,scenarios:['deferred Matrix namespace','nested initialization chrome','direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
+    console.log(JSON.stringify({ok:true,scenarios:['deferred Matrix namespace','nested initialization chrome','Global Set form serialization','direct Craft save and autosave','immediate URL','response race','live preview','preview failure and recovery','clear race','submit sync','partial fields','opaque record','concurrent copy/cut','removed debounce','remount','nested namespace','child-before-parent submit','late nested initialization','Matrix clipboard portal filtering','parent editor canonical-store isolation']}));
 } finally {await browser.close();}
 
 await import('./input-lifecycle.mjs');

@@ -10,6 +10,7 @@
 - Unknown methods on Link objects now raise Craft’s normal method error instead of silently returning null.
 
 ### Fixed
+- Fixed Global Sets incorrectly warning about unsaved changes when their Hyper fields were untouched. ([#279](https://github.com/verbb/hyper/issues/279))
 - Fixed embed DNS pinning for absolute trailing-dot hostnames on older Curl versions.
 - Fixed migration output allowing database content to emit terminal control characters.
 - Fixed saved links becoming unavailable after renaming their link type handle. Saved handles are now read-only; labels remain editable.

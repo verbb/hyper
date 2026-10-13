@@ -5,9 +5,12 @@ import { createMatrixInput } from './input/matrix';
 import {
     ensureElementEditorSerializeHook,
     sanitizeElementEditorSerializedBaseline,
+    stripHyperPortalParams,
     syncElementEditorFormObserver,
 } from './input/elementEditor';
 import { syncAllHyperInputStores } from './input/registry';
+
+type FormSerializer = () => string;
 
 export function registerHyperGlobals(): void {
     Craft.Hyper = Craft.Hyper || {};
@@ -59,37 +62,48 @@ export function registerHyperGlobals(): void {
     });
 }
 
-/** Wrap Craft's jQuery `serializer` callback so Hyper hidden stores flush on every save/autosave. */
-const wrapFormSerializer = (form: HTMLFormElement): void => {
-    const $form = $(form);
+const installFormSerializer = ($form: JQuery, existing?: FormSerializer): FormSerializer => {
+    const serializer = () => {
+        syncAllHyperInputStores();
 
-    if ($form.data('hyperSerializerWrap')) {
-        return;
-    }
-
-    const applyWrap = (): boolean => {
-        const existing = $form.data('serializer');
-
-        if (typeof existing !== 'function') {
-            return false;
-        }
-
-        $form.data('serializer', () => {
-            syncAllHyperInputStores();
-            return existing();
-        });
-        $form.data('hyperSerializerWrap', true);
-
-        return true;
+        return stripHyperPortalParams(existing ? existing() : $form.serialize());
     };
 
-    if (applyWrap()) {
+    $form.data('serializer', serializer);
+    $form.data('hyperSerializerWrap', serializer);
+
+    return serializer;
+};
+
+/** Keep Hyper's canonical stores in Craft form comparisons and exclude authoring portals. */
+export const wrapFormSerializer = (form: HTMLFormElement): void => {
+    const $form = $(form);
+    const active = $form.data('serializer');
+    const installed = $form.data('hyperSerializerWrap');
+
+    if (typeof active === 'function' && active === installed) {
         return;
     }
 
+    const existing = typeof active === 'function' ? active as FormSerializer : undefined;
+    installFormSerializer($form, existing);
+
+    if (existing) {
+        return;
+    }
+
+    // Global Set forms never receive Craft's Element Editor serializer, so the
+    // raw fallback must exist before Craft captures its unload/delta baseline.
+    // Keep watching briefly in case another host installs a richer serializer.
     const startedAt = Date.now();
     const interval = window.setInterval(() => {
-        if (applyWrap() || Date.now() - startedAt >= 10000) {
+        const current = $form.data('serializer');
+        const currentWrap = $form.data('hyperSerializerWrap');
+
+        if (typeof current === 'function' && current !== currentWrap) {
+            installFormSerializer($form, current as FormSerializer);
+            window.clearInterval(interval);
+        } else if (!form.isConnected || Date.now() - startedAt >= 10000) {
             window.clearInterval(interval);
         }
     }, 50);
