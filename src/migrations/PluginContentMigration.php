@@ -21,12 +21,6 @@ use craft\helpers\Json;
 
 class PluginContentMigration extends PluginMigration
 {
-    // Properties
-    // =========================================================================
-
-    protected ?int $contentSiteId = null;
-
-
     // Public Methods
     // =========================================================================
 
@@ -85,8 +79,12 @@ class PluginContentMigration extends PluginMigration
                     }
 
                     $this->contentSiteId = $ref->siteId ?: null;
-                    $converted = $this->convertModel($field, $raw);
-                    $this->contentSiteId = null;
+
+                    try {
+                        $converted = $this->convertModel($field, $raw);
+                    } finally {
+                        $this->contentSiteId = null;
+                    }
 
                     if ($converted === null) {
                         return Change::unchanged();
@@ -108,7 +106,11 @@ class PluginContentMigration extends PluginMigration
                         $this->stdout('    > Migrated content for element #' . $ref->elementId, Console::FG_GREEN);
                         $this->getMigrationResult()?->incrementStat('elementsMigrated');
 
-                        return Change::replace((new LinkCollection($field, $converted))->serializeValues());
+                        // Repairs to existing Hyper rows must preserve custom fields, unavailable
+                        // types and legacy identifiers rather than reserializing the whole collection.
+                        return Change::replace($this->isHyperLinkContent($raw)
+                            ? $converted
+                            : (new LinkCollection($field, $converted))->serializeValues());
                     }
 
                     return Change::unchanged();
@@ -135,6 +137,65 @@ class PluginContentMigration extends PluginMigration
 
     // Protected Methods
     // =========================================================================
+
+    protected function isHyperLinkContent(array $content): bool
+    {
+        $rows = array_is_list($content) ? $content : [$content];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            if (!empty($row['linkTypeHandle'])) {
+                return true;
+            }
+
+            $type = $row['type'] ?? null;
+
+            if (is_string($type) && (str_starts_with($type, 'verbb\\hyper\\links\\') || is_a($type, LinkInterface::class, true))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function repairMigratedLinks(HyperField $field, array $content): ?array
+    {
+        if (!$this->contentSiteId) {
+            return null;
+        }
+
+        $isList = array_is_list($content);
+        $rows = $isList ? $content : [$content];
+        $changed = false;
+
+        foreach ($rows as &$row) {
+            if (!is_array($row) || !empty($row['linkSiteId'])) {
+                continue;
+            }
+
+            // Current content is identified by the configured handle, including custom
+            // instances. Legacy class identities remain usable even if their type is disabled.
+            $handle = $row['linkTypeHandle'] ?? $row['handle'] ?? null;
+            $type = $row['type'] ?? null;
+            $isElement = is_string($handle) && $field->getLinkTypeByHandle($handle) instanceof ElementLink;
+
+            if (!isset($row['linkTypeHandle']) && is_string($type)) {
+                $isElement = is_a($type, ElementLink::class, true);
+            }
+
+            if ($isElement) {
+                $row['linkSiteId'] = $this->contentSiteId;
+                $changed = true;
+            }
+        }
+
+        unset($row);
+
+        return $changed ? ($isList ? $rows : $rows[0]) : null;
+    }
 
     protected function describeConvertFailure(HyperField $field, array $raw): string
     {

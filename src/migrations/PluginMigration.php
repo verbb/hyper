@@ -96,6 +96,8 @@ class PluginMigration extends Migration
     public bool $dryRun = false;
     public bool $syncRelations = true;
 
+    protected ?int $contentSiteId = null;
+
     private ?Controller $_consoleRequest = null;
     private ?MigrationResult $_migrationResult = null;
 
@@ -180,7 +182,13 @@ class PluginMigration extends Migration
                 return false;
             }
 
-            $converted = $this->convertModel($field, $raw);
+            $this->contentSiteId = $ref->siteId ?: null;
+
+            try {
+                $converted = $this->convertModel($field, $raw);
+            } finally {
+                $this->contentSiteId = null;
+            }
 
             if (!is_array($converted)) {
                 return false;

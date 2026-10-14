@@ -41,10 +41,8 @@ class MigrateLinkContent extends PluginContentMigration
         $this->_lastConvertFailureDetail = '';
 
         // Already a Hyper collection (v2/v3 content)
-        if ($this->_looksLikeHyperCollection($oldSettings)) {
-            $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
-
-            return null;
+        if ($this->isHyperLinkContent($oldSettings)) {
+            return $this->repairMigratedLinks($field, $oldSettings);
         }
 
         $resolved = $this->_resolveLinkType($field, $oldSettings);
@@ -153,22 +151,5 @@ class MigrateLinkContent extends PluginContentMigration
         }
 
         return null;
-    }
-
-    private function _looksLikeHyperCollection(array $oldSettings): bool
-    {
-        $first = $oldSettings[0] ?? null;
-
-        if (!is_array($first)) {
-            return false;
-        }
-
-        if (!empty($first['linkTypeHandle'])) {
-            return true;
-        }
-
-        $type = (string)($first['type'] ?? '');
-
-        return str_contains($type, 'verbb\\hyper');
     }
 }

@@ -1,40 +1,75 @@
 # Changelog
 
-## Unreleased
+## 3.0.0
+
+> {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.
+
+### Added
+- Added shared **Link Type Configs** for reusing link types and field layouts across Hyper fields, alongside field-owned **Custom** configurations. ([#52](https://github.com/verbb/hyper/issues/52))
+- Added **Bulk Add** for multi-link fields, with multiple element selection and one-value-per-line entry for supported link types. ([#158](https://github.com/verbb/hyper/issues/158), [D#37](https://github.com/verbb/hyper/discussions/37))
+- Added a card view mode for multi-link fields. ([#246](https://github.com/verbb/hyper/issues/246), [D#36](https://github.com/verbb/hyper/discussions/36))
+- Added copy, cut and paste actions for links between compatible Hyper fields. ([#107](https://github.com/verbb/hyper/issues/107))
+- Added selectable-element conditions for Entry, Asset and User links, and field-layout visibility and editability conditions for link types. ([#225](https://github.com/verbb/hyper/issues/225))
+- Added default values and character limits for Link Text fields. ([#210](https://github.com/verbb/hyper/issues/210), [#96](https://github.com/verbb/hyper/issues/96))
+- Added default and fixed values for URL link types. ([#51](https://github.com/verbb/hyper/issues/51))
+- Added the **Passive** link type for labels without a destination. ([#8](https://github.com/verbb/hyper/issues/8))
+- Added a **New Window** field layout element.
+- Added allowed-domain settings for individual Embed link types. ([#24](https://github.com/verbb/hyper/issues/24))
+- Added options to hide Entry and Category sources without URI formats. ([#242](https://github.com/verbb/hyper/issues/242), [#63](https://github.com/verbb/hyper/issues/63))
+- Added default upload volume and subpath settings for Asset links. ([#101](https://github.com/verbb/hyper/issues/101))
+- Added multi-link previews to element cards and tables. ([#251](https://github.com/verbb/hyper/issues/251))
+- Added link collection filtering by type handle, native attributes and custom fields, with Boolean conditions, ordering, limits and explicit empty-link selection.
+- Added automatic batching of linked-element queries on frontend requests and `with()` eager-loading paths for linked elements and their fields, including links nested in Matrix and Neo. ([#222](https://github.com/verbb/hyper/issues/222), [#84](https://github.com/verbb/hyper/issues/84))
+- Added a content API for inspecting and updating custom fields inside links, including links nested in Vizy content.
+- Added `LinkCollectionInterface` and `LinkCollection::withLinks()` for creating a collection with a replacement set of links.
+- Added a GraphQL `fields` property for custom link field values and an `empty` argument for including or selecting links without destinations. ([D#68](https://github.com/verbb/hyper/discussions/68))
+- Added Embed `html`, `iframeSrc`, `embedImage` and `providerName` values to the GraphQL `HyperLinkInterface`. ([#194](https://github.com/verbb/hyper/issues/194))
+- Added support for upgrading directly from Hyper 1 on Craft 4 without installing Hyper 2 first.
+- Added migration support for native Craft Link and wrav/oEmbed fields. ([#124](https://github.com/verbb/hyper/issues/124))
+- Added `hyper/migrate/entrify-categories` to remap Category links after Craft category entrification. ([#136](https://github.com/verbb/hyper/issues/136))
+- Added `hyper/content/sync-relations` to rebuild the link relation index from stored content.
 
 ### Changed
-- Updated Craft API usage to avoid deprecated migration helpers.
-- Upgrading from Hyper 1 or Hyper 2 now rebuilds link relations once instead of twice, shortening upgrades on large sites.
-- Front-end requests no longer look up link relations for elements that don’t have a Hyper field.
-- Clarified upgrade deployment steps, third-party migration events and link rendering references.
-- Unknown methods on Link objects now raise Craft’s normal method error instead of silently returning null.
+- Hyper now requires Craft 5.9 or later and Embed 4.
+- Redesigned link block headers with compact controls and inline field-layout tabs, replacing the Advanced settings slide-out. ([#160](https://github.com/verbb/hyper/issues/160))
+- Empty single-link fields now show an **Add link** action instead of a blank link block. ([#141](https://github.com/verbb/hyper/issues/141))
+- Multi-link fields using **Translate for each site** now synchronise added, removed and reordered links across an entry's sites while preserving existing translated labels and custom fields. ([#219](https://github.com/verbb/hyper/issues/219))
+- Element links now resolve localised destinations through Craft's propagation lifecycle. ([#45](https://github.com/verbb/hyper/issues/45), [#212](https://github.com/verbb/hyper/issues/212))
+- Link collections now exclude links without a resolved URL from iteration, counting, array access, first-link rendering and GraphQL results. Use `empty(null)` to include all stored links, including Passive links.
+- Link `isEmpty()` now consistently checks the resolved URL across link types.
+- Link destinations are now literal values. Replace environment-variable and Craft alias references before upgrading.
+- Link rendering now escapes ordinary label strings and validates custom attributes. Use template-authored Twig markup for labels containing HTML.
+- URL values now use a shared URI scheme policy. Configure `allowedUriSchemes` for additional application schemes.
+- The `embedHeaders` setting now requires headers to be configured per exact HTTPS origin.
+- Embed domain restrictions now match complete hostnames or subdomains, and control-panel previews use sandboxed frames.
+- Saved content now uses stable `linkTypeHandle` identifiers instead of PHP class names. Existing Hyper 2 content remains readable, and saved link type handles are read-only. ([#255](https://github.com/verbb/hyper/issues/255))
+- Link type settings now use `LinkTypeDefinition` objects. Custom integrations that treat settings as Link objects must use the definition API.
+- GraphQL link type names now use original field handles and stable link type handles. Update fragments based on custom type labels or field-layout aliases. ([#218](https://github.com/verbb/hyper/issues/218))
+- Link objects now use Craft's normal method handling, including attached behaviours. Unknown method calls throw an error instead of returning null.
+- Reverse relation lookups now use a dedicated `hyper_links` index rebuilt from stored content during the upgrade.
+- Unavailable link types retain their original content instead of falling back to the default type.
+- Deleting a site now removes its references from Hyper settings, defaults and stored link content. ([#264](https://github.com/verbb/hyper/issues/264))
+- Third-party content migrations now support dry runs and rebuild link relations after conversion.
+- Improved Typed Link migration handling for Vizy content, orphaned elements and encoded URLs. ([#244](https://github.com/verbb/hyper/issues/244), [#226](https://github.com/verbb/hyper/issues/226), [#191](https://github.com/verbb/hyper/issues/191))
 
 ### Fixed
-- Fixed Global Sets incorrectly warning about unsaved changes when their Hyper fields were untouched. ([#279](https://github.com/verbb/hyper/issues/279))
-- Fixed embed DNS pinning for absolute trailing-dot hostnames on older Curl versions.
-- Fixed migration output allowing database content to emit terminal control characters.
-- Fixed saved links becoming unavailable after renaming their link type handle. Saved handles are now read-only; labels remain editable.
-- Fixed Link objects bypassing Craft behaviour methods and allowing calls to protected methods.
-- Fixed translated link structure updates repeatedly saving the same entry on sites with three or more languages.
-- Fixed error pages resolving linked destinations individually instead of batching them.
-- Fixed Entry and Asset link selectors not opening when a Hyper field is nested inside Matrix. ([#278](https://github.com/verbb/hyper/issues/278))
-- Fixed links to disabled, expired or deleted destinations querying the database again each time a template read them.
-- Fixed the Default Link Type Config being lost during fresh installation, skipped when upgrading earlier betas, or duplicated when deploying incoming Project Config.
-- Fixed upgrades from Craft 4 possibly indexing links from the wrong Super Table content table when older fields share a column name.
-- Fixed link controls responding twice after a Hyper field was removed and added back to the page, and Bulk Add adding links to a field that had already been removed.
-- Fixed nested fields creating unsaved changes during initialization, and early edits failing to trigger autosave while field controls were loading.
-- Fixed cached links retaining old titles, URLs or visibility after their destination changes.
-- Fixed saving Vizy content and nested Matrix values inside Hyper links.
-- Fixed clean frontend builds requiring local Plugin Kit source folders.
-- Fixed nested Hyper links losing their values when added inside a new link.
-- Fixed nested Hyper fields interfering with their parent field’s add, reorder, and link controls.
-- Fixed programmatically created Matrix and Neo rows inside Hyper links overwriting sibling values when saved in the control panel.
-- Fixed adding custom attributes to links from the Advanced tab.
-- Fixed pasting into single-link fields after changing them from multiple links with a saved maximum.
-- Fixed linked-element caches being retained between queue jobs.
-- Fixed field settings retaining layout requests and event handlers after closing or removing their panel.
-- Fixed drag-and-drop cleanup when removing fields, including resuming autosave if a drag is still active.
-- Fixed Bulk Add losing entered values and selected elements when a request failed.
+- Fixed cleared element selections continuing to resolve a cached target. ([#259](https://github.com/verbb/hyper/issues/259))
+- Fixed field-level New Window defaults and per-link overrides not being applied consistently. ([#146](https://github.com/verbb/hyper/issues/146))
+- Fixed link type layouts rendering a Link Value input when that field was omitted. ([#129](https://github.com/verbb/hyper/issues/129))
+- Fixed Embed URLs being cleared when metadata had not finished loading. ([#203](https://github.com/verbb/hyper/issues/203))
+- Fixed hash-only and configured custom-scheme URL values being rejected. ([#188](https://github.com/verbb/hyper/issues/188), [#235](https://github.com/verbb/hyper/issues/235))
+- Fixed empty Site links appearing to select the first available site. ([#233](https://github.com/verbb/hyper/issues/233))
+- Fixed shared link attributes being lost when changing link type. ([#108](https://github.com/verbb/hyper/issues/108))
+- Fixed link rendering dropping zero-valued titles, ARIA labels, classes and custom attributes.
+- Fixed multi-column fields overflowing narrow control-panel containers and flyouts. ([#180](https://github.com/verbb/hyper/issues/180))
+- Fixed migration of Link content nested in Matrix and Super Table fields. ([#253](https://github.com/verbb/hyper/issues/253))
+
+### Deprecated
+- Deprecated separate `-field` and `-content` console migration commands for Typed Link, Linkit and Link. Use the source command with `--step=field` or `--step=content` instead, such as `hyper/migrate/typed-link --step=content`.
+
+### Removed
+- Removed arbitrary collection forwarding to the first link. Read custom fields, edit attributes and call type-specific methods on a Link obtained through `first()` or iteration. Explicit rendering conveniences such as `getLink()`, `getUrl()` and `getText()` remain available.
+- Removed the `ElementCache` and `FieldCache` services, legacy cache tables, page-template preload and Hyper's Clear Caches utility entry.
 
 ## 3.0.0-beta.3 - 2026-10-08
 

@@ -5,7 +5,6 @@ use verbb\hyper\fields\HyperField;
 use verbb\hyper\links as linkTypes;
 
 use craft\helpers\Console;
-use craft\helpers\StringHelper;
 
 use presseddigital\linkit\fields\LinkitField;
 use presseddigital\linkit\models\Asset;
@@ -63,14 +62,12 @@ class MigrateLinkitContent extends PluginContentMigration
 
     public function convertModel(HyperField $field, array $oldSettings): bool|array|null
     {
-        $oldType = $oldSettings['type'] ?? null;
-        $hyperType = $oldSettings[0]['type'] ?? null;
-
-        if (isset($oldSettings[0]['linkTypeHandle']) || (is_string($hyperType) && str_contains($hyperType, 'verbb\\hyper'))) {
-            $this->stdout('    > Content already migrated to Hyper content.', Console::FG_GREEN);
-
-            return null;
+        if ($this->isHyperLinkContent($oldSettings)) {
+            return $this->repairMigratedLinks($field, $oldSettings);
         }
+
+        $oldSettings = $this->_normalizeLegacySettings($oldSettings);
+        $oldType = $oldSettings['type'] ?? null;
 
         // Return `null` for an empty field, or already migrated to Hyper.
         // `false` for when unable to find matching new type.
@@ -93,5 +90,44 @@ class MigrateLinkitContent extends PluginContentMigration
         $link->newWindow = $oldSettings['target'] ?? false;
 
         return $this->serializeMigratedLink($link);
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private function _normalizeLegacySettings(array $settings): array
+    {
+        // Craft 2 Linkit used short type names and a separate destination key for each type.
+        // Preserve modern payloads and metadata, then use the normal migration type mapping.
+        if (array_key_exists('value', $settings)) {
+            return $settings;
+        }
+
+        $types = [
+            'email' => Email::class,
+            'custom' => Url::class,
+            'tel' => Phone::class,
+            'entry' => Entry::class,
+            'category' => Category::class,
+            'asset' => Asset::class,
+            'product' => Product::class,
+        ];
+        $type = $settings['type'] ?? null;
+
+        if (!is_string($type) || !isset($types[$type])) {
+            return $settings;
+        }
+
+        $value = $settings[$type] ?? null;
+
+        if (in_array($type, ['entry', 'category', 'asset', 'product'], true) && is_array($value)) {
+            $value = $value[0] ?? null;
+        }
+
+        $settings['type'] = $types[$type];
+        $settings['value'] = $value;
+
+        return $settings;
     }
 }
