@@ -18,7 +18,7 @@ For a separate frontend, use [GraphQL](/developers/graphql) to retrieve link dat
 
 You can [create links in PHP](/guides/developers/creating-links-programmatically), [create Hyper fields in a migration](/guides/developers/creating-hyper-fields-programmatically), or add a custom destination with [Link Types](/developers/creating-link-types).
 
-The [Link](/reference/link), [LinkCollection](/reference/link-collection), and [Link Type Settings](/reference/link-type-settings) pages explain the objects and settings used by those examples. Start with [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links) for a complete walkthrough.
+The [Link](/reference/link), [LinkCollection](/reference/link-collection), and [Link Type Settings](/reference/link-type-settings) pages explain the objects and settings used by those examples.
 
 ## Moving an Existing Site
 

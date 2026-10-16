@@ -2,7 +2,7 @@
 
 Use Hyper’s link renderer when you want an anchor containing the saved destination, label and attributes. Use individual properties when your design needs different markup, such as a linked card or a navigation heading without a destination.
 
-The examples on this page belong in an entry’s Twig template. They assume `entry` is the current entry and its Hyper field has the handle `myLinkField`. Replace that handle with your own. If you have not created and attached a field yet, follow [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links).
+The examples on this page belong in an entry’s Twig template. They assume `entry` is the current entry and its Hyper field has the handle `myLinkField`. Replace that handle with your own. If you have not created and attached a field yet, follow the [Overview](/feature-tour/overview).
 
 ## Render a Single Link
 

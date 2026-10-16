@@ -2,7 +2,7 @@
 
 Hyper gives editors a field for links to entries, assets, external websites and other destinations. You choose which destinations editors can select and what additional information each link needs. A page might need one call-to-action button, while a resources page needs a list of links.
 
-To create a field, open **Settings → Fields → New Field** and select **Hyper** as the field type. Give it a name and a handle: the handle is the name you use to access the field in templates. For a complete example, follow [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links).
+To create a field, open **Settings → Fields → New Field** and select **Hyper** as the field type. Give it a name and a handle: the handle is the name you use to access the field in templates.
 
 ## Field Settings
 

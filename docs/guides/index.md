@@ -1,10 +1,6 @@
 # User Guides
 
-These guides walk through practical tasks with Hyper, from creating fields to displaying links. The practical walkthroughs explain their setup and expected result; the main documentation covers the available settings and APIs.
-
-## Creating and Displaying Links
-
-Follow [Creating and Displaying Your First Links](/guides/templating/creating-and-displaying-your-first-links) to add a field, save links and render them in Twig.
+These guides walk through practical tasks with Hyper, including creating fields programmatically, importing content and migrating from other plugins. The practical walkthroughs explain their setup and expected result; the main documentation covers the available settings and APIs.
 
 ## Developers
 

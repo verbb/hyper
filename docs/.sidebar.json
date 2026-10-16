@@ -4,7 +4,6 @@
         "collapsable": false,
         "children": [
             "get-started/installation-setup",
-            "get-started/creating-your-first-link",
             "get-started/requirements",
             "get-started/configuration",
             "get-started/upgrading-from-v2",
@@ -60,13 +59,6 @@
         "title": "User Guides",
         "collapsable": false,
         "children": [
-            {
-                "title": "Templating",
-                "collapsable": false,
-                "children": [
-                    "guides/templating/creating-and-displaying-your-first-links"
-                ]
-            },
             {
                 "title": "Developers",
                 "collapsable": false,
