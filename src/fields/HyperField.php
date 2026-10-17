@@ -1187,6 +1187,10 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $rules = parent::defineRules();
 
         $rules[] = [['minLinks', 'maxLinks'], 'integer', 'min' => 0];
+        // Zero and null mean unlimited; single-link mode retains unused limits.
+        $rules[] = ['maxLinks', 'compare', 'compareAttribute' => 'minLinks', 'operator' => '>=', 'type' => 'number',
+            'when' => fn() => $this->multipleLinks && $this->minLinks > 0 && $this->maxLinks > 0,
+        ];
         $rules[] = [['enableBulkAdd'], 'boolean'];
         $rules[] = ['linkTypes', 'validateLinkTypes'];
         $rules[] = [['viewMode'], 'in', 'range' => [

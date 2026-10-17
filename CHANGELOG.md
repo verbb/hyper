@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- Fixed Link Text defaults preventing link inputs from rendering.
+- Fixed contradictory minimum and maximum link limits being accepted.
+- Fixed Link Type Config deletion dialogs omitting the configuration name.
 - Fixed custom fields being incorrectly identified in the field layout designer.
 
 ## 3.0.0

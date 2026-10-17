@@ -10,6 +10,37 @@ use verbb\hyper\models\LinkTypeConfig;
 use verbb\hyper\services\LinkTypeConfigs;
 use yii\web\ForbiddenHttpException;
 
+it('rejects contradictory link limits without replacing saved field settings', function() {
+    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true]);
+    $field->minLinks = 2;
+    $field->maxLinks = 3;
+    expect(Craft::$app->fields->saveField($field))->toBeTrue();
+
+    $field->minLinks = 4;
+    expect(Craft::$app->fields->saveField($field))->toBeFalse();
+    expect($field->getErrors('maxLinks'))->not->toBeEmpty();
+    Craft::$app->fields->refreshFields();
+    $saved = Craft::$app->fields->getFieldById($field->id);
+    expect($saved->minLinks)->toBe(2)->and($saved->maxLinks)->toBe(3);
+});
+
+it('accepts compatible and inactive link limits', function(bool $multiple, ?int $min, ?int $max) {
+    $field = new \verbb\hyper\fields\HyperField([
+        'multipleLinks' => $multiple,
+        'minLinks' => $min,
+        'maxLinks' => $max,
+    ]);
+    expect($field->validate(['minLinks', 'maxLinks']))->toBeTrue();
+})->with([
+    'equal bounds' => [true, 3, 3],
+    'ordered bounds' => [true, 2, 3],
+    'unlimited zero' => [true, 4, 0],
+    'unlimited blank' => [true, 4, null],
+    'no minimum' => [true, null, 3],
+    'zero minimum' => [true, 0, 3],
+    'inactive single-link limits' => [false, 4, 3],
+]);
+
 it('keeps default config creation out of plugin bootstrap and config reads', function() {
     $pluginSource = file_get_contents(dirname(__DIR__, 2) . '/src/Hyper.php');
     $serviceSource = file_get_contents(dirname(__DIR__, 2) . '/src/services/LinkTypeConfigs.php');

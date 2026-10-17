@@ -45,7 +45,7 @@ class LinkTextField extends TextField
     {
         // Seed empty CP inputs with the layout default so new links show “Learn More” etc
         if ($element && $this->defaultValue !== null && $this->defaultValue !== '') {
-            $current = $element->getFieldValue($this->attribute());
+            $current = $element->{$this->attribute()};
 
             if ($current === null || $current === '') {
                 $element->{$this->attribute()} = $this->defaultValue;

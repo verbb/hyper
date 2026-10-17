@@ -18,6 +18,7 @@
 {% for config in configs %}
     {% set tableData = tableData | merge([{
         id: config.uid,
+        title: config.name,
         nameHtml: {
             url: url('hyper/settings/link-type-configs/' ~ config.uid),
             html: config.name | e,
