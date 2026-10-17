@@ -492,6 +492,11 @@
     vertical-align: middle;
 }
 
+/* The layout owns this value when its native New Window field is present. */
+.hyper-header-actions .hyper-header-new-window[hidden] {
+    display: none;
+}
+
 .hyper-header-actions .hyper-header-new-window .hyper-menu-icon {
     display: block;
     width: 12px;

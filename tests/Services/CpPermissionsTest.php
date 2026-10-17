@@ -252,7 +252,7 @@ it('requires a valid owner context on every public input endpoint', function(str
     $body = signedCpBody($f, 'noOwner') + ['hyperFieldId' => $f['field']->id];
     expect(fn() => CpActionRequest::run($action, $f['users']['noOwner'], $body))
         ->toThrow(ForbiddenHttpException::class, 'User is not authorized to edit this element.');
-})->with(['create-links', 'bulk-element-select', 'input-settings', 'input-settings-save', 'preview-embed', 'create-matrix-entry', 'matrix-field-layout']);
+})->with(['create-links', 'bulk-element-select', 'input-settings', 'input-settings-save', 'preview-embed', 'link-field-layout', 'create-matrix-entry', 'matrix-field-layout']);
 
 it('rejects inaccessible main and custom-field selections while rendering permitted clipboard content', function() {
     $f = $this->cpFixture;
@@ -339,4 +339,61 @@ it('rejects inaccessible selections before saving an owner while permitting visi
     } finally {
         Craft::$app->fields->deleteField($related);
     }
+});
+
+it('refreshes conditional link fields and tabs without replacing unchanged inputs', function() {
+    $f = $this->cpFixture;
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $condition = Url::createCondition();
+    $condition->setConditionRules([$condition->createConditionRule([
+        'class' => \verbb\hyper\elements\conditions\LinkValueConditionRule::class,
+        'operator' => '**', 'value' => 'details',
+    ])]);
+    $text = $layout->getField('linkText');
+    $text->setElementCondition($condition);
+    $extra = new \craft\models\FieldLayoutTab(['name' => 'Conditional', 'layout' => $layout, 'uid' => StringHelper::UUID()]);
+    $extra->setElementCondition(clone $condition);
+    $extra->setElements([new \craft\fieldlayoutelements\Tip(['tip' => 'Conditional content', 'uid' => StringHelper::UUID()])]);
+    $layout->setTabs([...$layout->getTabs(), $extra]);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig($url)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+    $layout = $f['field']->getLinkTypeByHandle('url')->getFieldLayout();
+    $textUid = $layout->getField('linkText')->uid;
+    $body = signedCpBody($f) + ['namespace' => 'fields[hyperData][test]'];
+    $hidden = CpActionRequest::run('link-field-layout', $f['users']['editor'], $body)->data;
+    expect(array_column($hidden['tabs'], 'label'))->not->toContain('Conditional');
+    $elements = array_merge(...array_column($hidden['tabs'], 'elements'));
+    expect(array_column($elements, 'html', 'uid')[$textUid])->toBeFalse();
+    $visible = [];
+    foreach ($hidden['tabs'] as $tab) {
+        $visible[$tab['uid']] = array_column(array_filter($tab['elements'], fn($e) => is_string($e['html'])), 'uid');
+    }
+    $body['visibleElements'] = $visible;
+    $body['data']['linkValue'] = '/details';
+    $body['data']['linkText'] = 'Retained label';
+    $shown = CpActionRequest::run('link-field-layout', $f['users']['editor'], $body)->data;
+    expect(array_column($shown['tabs'], 'label'))->toContain('Conditional');
+    $elements = array_column(array_merge(...array_column($shown['tabs'], 'elements')), 'html', 'uid');
+    expect($elements[$textUid])->toContain('Retained label')->toContain('fields[hyperData][test][linkText]');
+    expect($elements[$layout->getField('linkValue')->uid])->toBeTrue();
+});
+
+it('keeps user-hidden fields out of conditional refresh responses', function() {
+    $f = $this->cpFixture;
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $condition = User::createCondition();
+    $condition->setConditionRules([$condition->createConditionRule([
+        'class' => \craft\elements\conditions\users\AdminConditionRule::class, 'value' => true,
+    ])]);
+    $layout->getField('linkText')->setUserCondition($condition);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig($url)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+    $body = signedCpBody($f) + ['namespace' => 'fields[hyperData][test]'];
+    $body['data']['linkText'] = 'Hidden label';
+    $response = CpActionRequest::run('link-field-layout', $f['users']['editor'], $body);
+    expect(Json::encode($response->data['tabs']))->not->toContain('Hidden label');
 });

@@ -14,11 +14,19 @@ try {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.setContent('<form id="owner"></form>');
+    page.on('console', message => { if (message.type() === 'warning') errors.push(message.text()); });
+    await page.setContent('<style>.hidden { display: none; }</style><form id="owner"></form>');
     await page.addScriptTag({path: path.join(craftPath, 'src/web/assets/jquery/dist/jquery.js')});
+    await page.addScriptTag({path: path.join(craftPath, 'src/web/assets/garnish/dist/garnish.js')});
     await page.evaluate(() => {
+        window.nativeInitializations = [];
         window.Craft = {
-            initUiElements() {}, randomString: () => Math.random().toString(36).slice(2),
+            initUiElements(root) {
+                nativeInitializations.push(root.dataset.linkId);
+                $(root).find('.nicetext').each(function () {
+                    if (!$(this).data('nicetext')) window.hostTextWidget = new Garnish.NiceText(this);
+                });
+            }, randomString: () => Math.random().toString(36).slice(2),
             expandPostArray(flat) {
                 const tree = {};
                 for (const [name, value] of Object.entries(flat)) {
@@ -28,7 +36,7 @@ try {
                 return tree;
             },
         };
-        window.Garnish = {getPostData: node => Object.fromEntries($(node).find(':input').serializeArray().map(({name, value}) => [name, value]))};
+        Garnish.getPostData = node => Object.fromEntries($(node).find(':input').serializeArray().map(({name, value}) => [name, value]));
         const row = (id, child = '') => `<div data-hyper-link data-link-id="${id}" data-link-handle="url"><div class="hyper-wrapper"><div class="hyper-header"><button type="button" data-hyper-action="toggle-new-window" data-hyper-new-window-switch aria-pressed="false">New window</button><button type="button" data-hyper-action="move-down">Move down</button><button type="button" data-hyper-action="delete">Delete</button></div><div data-hyper-portal><input name="fields[hyperData][${id}][linkValue]" value="/${id}">${child}</div></div></div>`;
         const field = (id, rows) => {
             const section = document.createElement('section'); section.id = id; section.className = 'hyper-input-component';
@@ -42,12 +50,16 @@ try {
         const header = child.querySelector('.hyper-header');
         header.insertAdjacentHTML('beforeend', '<button type="button" data-hyper-action="select-tab" data-hyper-tab-index="1">Advanced child</button>');
         const portal = child.querySelector('[data-hyper-portal]');
-        portal.innerHTML = `<div class="flex-fields">${portal.innerHTML}</div><div class="flex-fields hidden" data-native-pane>Native widget</div>`;
+        portal.innerHTML = `<div class="flex-fields">${portal.innerHTML}</div><div class="flex-fields hidden" data-native-pane><textarea class="nicetext">Native widget</textarea></div>`;
         window.visiblePaneNotifications = 0;
         window.addEventListener('resize', () => {
             if (!document.querySelector('[data-native-pane]')?.classList.contains('hidden')) window.visiblePaneNotifications++;
         });
         document.querySelector('#owner').append(field('parent', row('parent1', child.outerHTML)));
+        // Real Craft NiceText defers its data registration while this tab is hidden.
+        Craft.initUiElements(document.querySelector('#owner'));
+        window.originalTextWidget = hostTextWidget;
+        nativeInitializations.length = 0;
     });
     await page.addScriptTag({content: bundle.outputFiles[0].text});
     await page.evaluate(() => {
@@ -56,10 +68,12 @@ try {
     });
     await page.locator('#parent > [data-hyper-input].hyper-input--interactive').waitFor();
     await page.locator('#child > [data-hyper-input].hyper-input--interactive').waitFor();
+    assert.deepEqual(await page.evaluate(() => nativeInitializations), [], 'Existing layouts belong to the Craft host, including pending hidden widgets');
     await page.getByRole('button', {name:'Add parent',exact:true}).click();
     const parents = page.locator('#parent > [data-hyper-input] > [data-hyper-links] > [data-hyper-link]');
     assert.equal(await parents.count(), 2, 'The reopened outer Add control remains usable');
     assert.equal(await parents.nth(1).locator('[data-hyper-portal] input').inputValue(), '/parent-new', 'The outer field uses its own template');
+    assert.deepEqual(await page.evaluate(() => nativeInitializations), [await parents.nth(1).getAttribute('data-link-id')], 'A newly inserted row initializes native widgets once');
     await page.locator('#child [data-hyper-new-window-switch]').click();
     assert.equal(await page.locator('#child [data-hyper-new-window-switch]').getAttribute('aria-pressed'), 'true');
     assert.equal(await parents.first().locator(':scope > .hyper-wrapper > .hyper-header [data-hyper-new-window-switch]').getAttribute('aria-pressed'), 'false', 'A child toggle cannot change its parent');
@@ -68,10 +82,11 @@ try {
     await page.getByRole('button', {name:'Advanced child',exact:true}).click();
     assert.equal(await page.locator('[data-native-pane]').evaluate(el => el.classList.contains('hidden')), false);
     assert((await page.evaluate(() => visiblePaneNotifications)) > 0, 'Native hidden widgets receive their visibility notification');
+    assert.equal(await page.evaluate(() => $('[data-native-pane] textarea').data('nicetext') === originalTextWidget), true, 'Revealing a tab retains the host widget instead of destroying a duplicate');
     await page.locator('#child [data-hyper-action="delete"]').click();
     assert.equal(await parents.count(), 2, 'Deleting a child cannot delete its parent');
     assert.equal(await page.locator('#child [data-hyper-link]').count(), 0);
     await page.evaluate(() => instances.forEach(instance => instance.destroy()));
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ok:true,scenarios:['reopened parent add','parent template ownership','independent child toggle','parent move with disabled child action','independent child delete','native widget visibility on tab change']}));
+    console.log(JSON.stringify({ok:true,scenarios:['reopened parent add','parent template ownership','independent child toggle','parent move with disabled child action','independent child delete','native widget visibility on tab change','host-owned native initialization']}));
 } finally {await browser.close();}

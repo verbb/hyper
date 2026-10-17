@@ -582,9 +582,15 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function getStaticHtml(mixed $value, ElementInterface $element): string
     {
+        $wasStatic = $this->_isStatic;
         $this->setIsStatic();
 
-        return $this->getInputHtml($value, $element);
+        try {
+            return $this->getInputHtml($value, $element);
+        } finally {
+            // Field instances can be reused by editable layouts in the same request.
+            $this->_isStatic = $wasStatic;
+        }
     }
 
     public function setIsStatic(): void
@@ -1625,35 +1631,13 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 );
             }
 
-            // Clone so we can stamp LinkField without mutating the cached layout.
-            $fieldLayout = clone($linkFieldLayout);
+            $form = \verbb\hyper\helpers\LinkLayout::createForm($this, $link, $this->_isStatic);
+            $state = [
+                'conditional' => \verbb\hyper\helpers\LinkLayout::hasElementConditions($link),
+                'tabs' => array_map(static fn($tab) => ['uid' => $tab->getUid(), 'label' => $tab->getName()], $form->tabs),
+            ];
 
-            // Add the link type to the LinkField field layout element, so we generate the correct HTML for the type
-            if ($fieldLayout->isFieldIncluded('linkValue')) {
-                $linkValueField = $fieldLayout->getField('linkValue');
-                $linkValueField->field = $this;
-                $linkValueField->link = $link;
-            }
-
-            // Card/index Matrix editors require persisted nested owners. A link is a JSON
-            // value, so render its Matrix fields inline without changing saved field settings.
-            $matrixModes = [];
-
-            foreach ($fieldLayout->getCustomFields() as $customField) {
-                if ($customField instanceof Matrix) {
-                    $matrixModes[] = [$customField, $customField->viewMode];
-                    $customField->viewMode = Matrix::VIEW_MODE_BLOCKS;
-                }
-            }
-
-            try {
-                $form = $fieldLayout->createForm($link);
-                return $view->namespaceInputs($form->render());
-            } finally {
-                foreach ($matrixModes as [$customField, $viewMode]) {
-                    $customField->viewMode = $viewMode;
-                }
-            }
+            return $view->namespaceInputs($form->render()) . Html::tag('template', Html::encode(Json::encode($state)), ['data-hyper-layout-state' => true]);
         } catch (Throwable $e) {
             $details = Craft::t('hyper', 'Unable to render field - {message} {file}:{line}', [
                 'message' => $e->getMessage(),

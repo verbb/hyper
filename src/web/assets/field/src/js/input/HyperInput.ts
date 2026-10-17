@@ -119,6 +119,14 @@ export class HyperInput {
         }
 
         this.initialStoreValue = this.storeInput.value;
+
+        // Revisions and read-only layouts need display widgets, not authoring observers.
+        // Resuming Craft's editor can refresh deleted revision Matrix rows by UUID.
+        if (this.settings.isStatic) {
+            this.initializeInterface(fieldRoot);
+            return;
+        }
+
         // Native widgets may finish mounting after their inputs become editable. Capture
         // real author edits immediately so a fast copy/save cannot restore the SSR value.
         this.container.addEventListener('input', this.captureUserEdit, true);
@@ -160,14 +168,17 @@ export class HyperInput {
         });
     }
 
-    private mountBlock(el: HTMLElement, index: number): HyperLinkBlock {
+    private mountBlock(el: HTMLElement, index: number, initializeCraftUi = false): HyperLinkBlock {
         el.dataset.linkIndex = String(index);
 
-        const block = new HyperLinkBlock(el, {
+        const block: HyperLinkBlock = new HyperLinkBlock(el, {
             settings: this.settings,
+            initializeCraftUi,
+            getValue: () => this.linkState.getModel().find(link => String(link.id) === el.dataset.linkId) ?? block.getLinkData(),
             onChange: () => {
                 this.markContentTouched();
                 this.syncStore();
+                if (this.storeWritesEnabled) block.refreshConditions();
             },
             onDelete: () => this.deleteBlock(block),
             onMoveUp: () => this.moveBlock(block, -1),
@@ -699,7 +710,7 @@ export class HyperInput {
             ? seed.newWindow
             : (this.settings.defaultNewWindow ?? false);
         HyperLinkBlock.applyNewWindowDefault(blockEl, newWindow);
-        const block = this.mountBlock(blockEl, blockIndex);
+        const block = this.mountBlock(blockEl, blockIndex, true);
         this.reindexBlocks();
         block.syncTypeLabel(handle);
         block.syncLayoutTabs(template.tabLabels);
@@ -1086,9 +1097,11 @@ export class HyperInput {
         }
 
         this.mountExistingBlocks();
-        this.reindexBlocks();
-        this.initSortable();
-        this.bindTypeChanges();
+        if (!this.settings.isStatic) {
+            this.reindexBlocks();
+            this.initSortable();
+            this.bindTypeChanges();
+        }
         this.updateEmptyChrome();
         this.initialized = true;
         this.container.classList.add('hyper-input--ready');

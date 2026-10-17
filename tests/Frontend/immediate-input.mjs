@@ -128,8 +128,52 @@ try {
     }
     assert.equal(await page.locator('#untouched [data-hyper-store]').inputValue(), untouched);
     await page.evaluate(() => instances.forEach(instance => instance.destroy()));
+
+    // Static revision rows may represent deleted Matrix entries. Mount their display
+    // widgets without waking Craft's form/layout refresh or projecting disabled inputs.
+    const revision = await page.evaluate(async () => {
+        const form = document.createElement('form');
+        form.innerHTML = document.querySelector('#untouched').outerHTML;
+        document.body.append(form);
+        const host = form.querySelector('[data-hyper-input]');
+        const config = JSON.parse(host.dataset.hyperInputConfig);
+        config.settings.isStatic = true;
+        host.dataset.hyperInputConfig = JSON.stringify(config);
+        host.classList.remove('hyper-input--ready', 'hyper-input--interactive');
+        const store = form.querySelector('[data-hyper-store]');
+        const original = store.value;
+        let pauses = 0;
+        let checks = 0;
+        const editor = {
+            pauseLevel: 0,
+            async pause() { pauses++; this.pauseLevel++; },
+            resume() { this.pauseLevel--; },
+            async checkForm() { checks++; },
+            serializeForm() { return $(form).serialize(); },
+            on() {},
+            formObserver: {_serialize() {}},
+        };
+        $(form).data('elementEditor', editor);
+        const instance = new ImmediateInput.HyperInput(host);
+        instance.init();
+        const input = form.querySelector('.url');
+        input.disabled = true;
+        input.setAttribute('value', 'static widget initialization');
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const result = {
+            ready: host.classList.contains('hyper-input--ready'),
+            interactive: host.classList.contains('hyper-input--interactive'),
+            pauses, checks, hooked: !!editor.__hyperSerializeHook,
+            unchanged: store.value === original,
+        };
+        instance.destroy();
+        form.remove();
+        return result;
+    });
+    assert.deepEqual(revision, {ready: true, interactive: false, pauses: 0, checks: 0, hooked: false, unchanged: true});
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'queued add during init', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained']}));
+    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'queued add during init', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained', 'static revision display without editor refresh']}));
 } finally {
     await browser.close();
 }

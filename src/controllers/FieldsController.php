@@ -5,6 +5,7 @@ use verbb\hyper\Hyper;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\helpers\Fields;
+use verbb\hyper\helpers\LinkLayout;
 use verbb\hyper\links\Embed;
 
 use Craft;
@@ -334,6 +335,54 @@ class FieldsController extends Controller
         unset($variables['action']);
 
         return $this->asSuccess(null, $variables);
+    }
+
+    public function actionLinkFieldLayout(): Response
+    {
+        $this->requireCpRequest();
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        $this->_requireOwnerElementAccess();
+        $field = Craft::$app->getFields()->getFieldById((int)$this->request->getRequiredBodyParam('fieldId'));
+        $data = $this->request->getRequiredBodyParam('data');
+        $handle = is_array($data) ? ($data['handle'] ?? '') : '';
+
+        if (!$field instanceof HyperField || !$field->getLinkTypeByHandle($handle)?->enabled) {
+            throw new NotFoundHttpException('Link type not found.');
+        }
+
+        $siteId = (int)$this->request->getRequiredBodyParam('siteId');
+        Craft::$app->getSites()->setCurrentSite($siteId);
+        $ownerId = (int)$this->request->getBodyParam('elementId');
+        $owner = $ownerId ? Craft::$app->getElements()->getElementById($ownerId, null, $siteId) : null;
+        $link = $field->normalizeValue([$data], $owner)->getLinks()[0];
+        $link->siteId = $siteId;
+        $link->id = random_int(1, 2147483647);
+        CpInputContext::assertVisibleSelections($link);
+        $form = LinkLayout::createForm($field, $link, false, [
+            'namespace' => $this->request->getRequiredBodyParam('namespace'),
+            'registerDeltas' => false,
+            'visibleElements' => $this->request->getBodyParam('visibleElements', []),
+            'staticElements' => $this->request->getBodyParam('staticElements', []),
+        ]);
+        $tabs = [];
+
+        foreach ($form->tabs as $tab) {
+            $elements = [];
+
+            foreach ($tab->elements as [$element, $conditional, $html, $static]) {
+                if ($conditional) {
+                    $elements[] = ['uid' => $element->uid, 'html' => $html, 'static' => $static];
+                }
+            }
+            $tabs[] = ['uid' => $tab->getUid(), 'label' => $tab->getName(), 'elements' => $elements];
+        }
+
+        return $this->asJson([
+            'tabs' => $tabs,
+            'headHtml' => $this->getView()->getHeadHtml(),
+            'bodyHtml' => str_replace('new Craft.MatrixInput(', 'new Craft.Hyper.MatrixInput(', $this->getView()->getBodyHtml()),
+        ]);
     }
 
     public function actionPreviewEmbed(): Response

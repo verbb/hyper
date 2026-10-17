@@ -13,9 +13,12 @@ import {
 } from './blockContent';
 import type { LinkInstance } from '../types';
 import { decodeHtmlEntities, parseLinkIdHtml } from '../utils/string';
+import { ConditionalLayout, readLayoutState } from './conditionalLayout';
 
 type HyperLinkBlockOptions = {
     settings: HyperInputSettings;
+    initializeCraftUi: boolean;
+    getValue: () => LinkInstance;
     onChange: () => void;
     onDelete: () => void;
     onMoveUp: () => void;
@@ -57,9 +60,14 @@ export class HyperLinkBlock {
     /** True while toggling layout tabs — pane `.hidden` must not sync the store / dirty EE. */
     private suppressPortalSync = false;
 
+    private conditionalLayout: ConditionalLayout | null = null;
+
+    private getValue: () => LinkInstance;
+
     constructor(el: HTMLElement, options: HyperLinkBlockOptions) {
         this.el = el;
         this.settings = options.settings;
+        this.getValue = options.getValue;
         this.onChange = options.onChange;
         this.onDelete = options.onDelete;
         this.onMoveUp = options.onMoveUp;
@@ -71,9 +79,12 @@ export class HyperLinkBlock {
 
         this.bindEvents();
         this.initMenu();
-        // Init native Craft widgets before deferred {% js %} runs (matches FieldLayoutDesigner).
-        initBlockCraftUi(this.el);
+        // Craft initializes server-rendered layouts, including their hidden controls.
+        // Only new Hyper rows need another pass: hidden NiceText instances are not
+        // registered until visible, so repeated passes queue duplicate instances.
+        initBlockCraftUi(this.el, options.initializeCraftUi);
         this.appendInitialJs();
+        this.initConditionalLayout();
     }
 
     /** Attach portal listeners after Craft widget init so init mutations do not sync the store. */
@@ -84,6 +95,24 @@ export class HyperLinkBlock {
 
         this.portalWatchEnabled = true;
         this.watchPortal();
+    }
+
+    refreshConditions(): void {
+        this.conditionalLayout?.schedule();
+    }
+
+    private initConditionalLayout(): void {
+        this.conditionalLayout?.destroy();
+        this.conditionalLayout = null;
+        if (this.settings.isStatic) return;
+        const portal = this.el.querySelector<HTMLElement>(':scope > .hyper-wrapper > [data-hyper-body] > [data-hyper-portal]');
+        if (!portal) return;
+        const state = readLayoutState(portal);
+        if (!state) return;
+        this.syncLayoutTabs(state.tabs.map(tab => tab.label));
+        if (state.conditional) {
+            this.conditionalLayout = new ConditionalLayout(portal, this.settings, this.el.dataset.linkId || '', this.getValue, (labels, selected) => this.syncLayoutTabs(labels, selected));
+        }
     }
 
     get index(): number {
@@ -126,6 +155,7 @@ export class HyperLinkBlock {
         this.syncTypeLabel(handle);
         this.syncLayoutTabs(tabLabels);
         this.syncHeaderNewWindow(showHeaderNewWindow);
+        this.initConditionalLayout();
 
         if (js) {
             this.el.dataset.linkJs = js;
@@ -161,7 +191,7 @@ export class HyperLinkBlock {
     /**
      * Rebuild Vizy-style header tabs when the link type (and its layout) changes.
      */
-    syncLayoutTabs(tabLabels: string[]): void {
+    syncLayoutTabs(tabLabels: string[], selected = 0): void {
         const header = this.el.querySelector('.hyper-header');
 
         if (!(header instanceof HTMLElement)) {
@@ -185,6 +215,11 @@ export class HyperLinkBlock {
 
         let tabsRoot = actionsTabs.querySelector('[data-hyper-layout-tabs]');
         let tabsMenu = actionsTabs.querySelector('[data-hyper-layout-tabs-menu]');
+        const currentLabels = [...(tabsRoot?.querySelectorAll('.hyper-header-tab-label') || [])].map(label => label.textContent);
+        if (tabLabels.length > 1 && JSON.stringify(currentLabels) === JSON.stringify(tabLabels)) {
+            this.selectTab(selected);
+            return;
+        }
 
         if (tabLabels.length < 2) {
             tabsRoot?.remove();
@@ -242,7 +277,7 @@ export class HyperLinkBlock {
             )),
         ].join('');
 
-        this.selectTab(0);
+        this.selectTab(selected);
     }
 
     /**
@@ -331,6 +366,7 @@ export class HyperLinkBlock {
     }
 
     destroy(): void {
+        this.conditionalLayout?.destroy();
         destroyEmbedWidgets(this.el);
         this.emitChangeDebounced.cancel();
         $(this.el).find('[data-hyper-portal]').off('.hyperPortal');
