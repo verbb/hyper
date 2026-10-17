@@ -17,6 +17,7 @@ use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
 use verbb\hyper\integrations\feedme\fields\Hyper as FeedMeHyperField;
 use verbb\hyper\links\Embed;
 use verbb\hyper\models\Settings;
+use verbb\hyper\services\DraftConflicts;
 use verbb\hyper\services\LinkTypeConfigs;
 use verbb\hyper\variables\HyperVariable;
 
@@ -36,6 +37,8 @@ use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\helpers\UrlHelper;
 use craft\models\FieldLayout;
+use craft\services\Drafts;
+use craft\services\Elements;
 use craft\services\Fields;
 use craft\services\Gql;
 use craft\services\Plugins;
@@ -64,7 +67,7 @@ class Hyper extends Plugin
     // =========================================================================
 
     public bool $hasCpSettings = true;
-    public string $schemaVersion = '1.5.1';
+    public string $schemaVersion = '1.5.2';
 
 
     // Public Methods
@@ -195,6 +198,10 @@ class Hyper extends Plugin
 
     private function _registerEventHandlers(): void
     {
+        Event::on(Drafts::class, Drafts::EVENT_AFTER_CREATE_DRAFT, [DraftConflicts::class, 'created']);
+        Event::on(Drafts::class, Drafts::EVENT_BEFORE_APPLY_DRAFT, [DraftConflicts::class, 'apply']);
+        Event::on(Elements::class, Elements::EVENT_AFTER_MERGE_CANONICAL_CHANGES, [DraftConflicts::class, 'merged']);
+
         // Hijack requests to `actions/matrix/create-entry` to handle non-saved-element owners.
         Event::on(Controller::class, Controller::EVENT_BEFORE_ACTION, function(ActionEvent $event) {
             // For "As inline-editable blocks"

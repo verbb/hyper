@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- Added draft conflict protection to prevent concurrent edits from overwriting changes to the same Hyper field. Conflicting drafts are retained with recovery instructions.
+
 ### Fixed
 - Fixed link propagation failing when editors could not access sibling sites.
 - Fixed conditional link fields and tabs not updating while editing.

@@ -32,6 +32,10 @@
         <div data-store-debug class="input text" style="margin-bottom: 20px;">{{ storeValueJson }}</div>
     {% endif %}
 
+    {% if draftBaseline ?? null %}
+        <input type="hidden" name="{{ name }}__hyperDraftBaseline" value="{{ draftBaseline }}">
+    {% endif %}
+
     {# Bare handle — Craft's namespaceInputs('fields') wrapper adds the fields[...] prefix once. #}
     <input
         data-hyper-store

@@ -38,11 +38,14 @@ class Install extends Migration
             $this->addForeignKey(null, '{{%hyper_links}}', ['targetSiteId'], Table::SITES, ['id'], 'SET NULL', 'CASCADE');
         }
 
+        (new m261017_000000_create_draft_baselines())->safeUp();
+
         return true;
     }
 
     public function safeDown(): bool
     {
+        $this->dropTableIfExists('{{%hyper_draft_baselines}}');
         $this->dropTableIfExists('{{%hyper_links}}');
 
         return true;

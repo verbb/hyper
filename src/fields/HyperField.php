@@ -665,6 +665,12 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     public function beforeElementSave(ElementInterface $element, bool $isNew): bool
     {
+        if (!\verbb\hyper\services\DraftConflicts::validateCanonicalSave($this, $element)) {
+            return false;
+        }
+
+        \verbb\hyper\services\DraftConflicts::rememberEdit($this, $element);
+
         if (!$element->propagating && !$element->getIsRevision()) {
             $value = $element->getFieldValue($this->handle);
 
@@ -1408,6 +1414,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'links' => $linksForTwig,
             'linkTypeTemplates' => $linkTypeTemplates,
             'storeValueJson' => Json::encode($storeValue),
+            'draftBaseline' => $this->_isStatic ? null : \verbb\hyper\services\DraftConflicts::inputToken($this, $element),
             'inputConfig' => [
                 'initialValue' => $initialValue,
                 'settings' => $inputSettings,
