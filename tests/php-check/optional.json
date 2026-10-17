@@ -1,0 +1,23 @@
+{
+    "Solspace\\Calendar\\Elements\\Event": "solspace/craft-calendar (optional element type)",
+    "benf\\neo\\Field": "spicyweb/craft-neo (optional nested field integration)",
+    "craft\\commerce\\elements\\Product": "craftcms/commerce (optional Commerce integration)",
+    "craft\\commerce\\elements\\Variant": "craftcms/commerce (optional Commerce integration)",
+    "craft\\shopify\\elements\\Product": "craftcms/shopify (optional element type)",
+    "lenz\\linkfield\\fields\\LinkField": "sebastianlenz/linkfield (legacy migration source)",
+    "presseddigital\\linkit\\fields\\LinkitField": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Asset": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Category": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Email": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Entry": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Facebook": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Instagram": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\LinkedIn": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Phone": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Product": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Twitter": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\Url": "presseddigital/linkit (legacy migration source)",
+    "presseddigital\\linkit\\models\\User": "presseddigital/linkit (legacy migration source)",
+    "verbb\\formie\\elements\\Form": "verbb/formie (optional element type)",
+    "verbb\\supertable\\fields\\SuperTableField": "verbb/super-table (legacy migration source)"
+}

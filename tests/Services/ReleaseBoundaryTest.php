@@ -13,14 +13,18 @@ it('creates the default config when an earlier beta has the same schema version 
     $pc = Craft::$app->getProjectConfig();
     $path = LinkTypeConfigs::PROJECT_CONFIG_PATH;
     $original = $pc->get($path);
+    $service = Hyper::$plugin->getLinkTypeConfigs();
     $external = new ReflectionProperty($pc, '_externalConfig');
     $savedExternal = $external->getValue($pc);
     try {
         $pc->set($path, []);
+        // Recreate the cold service state of an older installation without configs.
+        Hyper::$plugin->set('linkTypeConfigs', new LinkTypeConfigs());
         $external->setValue($pc, new ReadOnlyProjectConfigData(['plugins' => ['hyper' => ['schemaVersion' => '1.5.1']]]));
         expect((new m261001_000000_default_link_type_config())->safeUp())->toBeTrue();
         expect($pc->get($path))->not->toBeEmpty();
     } finally {
+        Hyper::$plugin->set('linkTypeConfigs', $service);
         $external->setValue($pc, $savedExternal);
         $pc->set($path, $original);
     }
