@@ -41,5 +41,8 @@
         "handle": "hyper",
         "changelogUrl": "https://raw.githubusercontent.com/verbb/hyper/craft-5/CHANGELOG.md",
         "class": "verbb\\hyper\\Hyper"
+    },
+    "scripts": {
+        "test:class-resolution-regressions": "@php tests/regression/class-resolution.php"
     }
 }

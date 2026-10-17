@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed custom fields being incorrectly identified in the field layout designer.
+
 ## 2.3.17 - 2026-10-15
 
 ### Changed
