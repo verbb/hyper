@@ -12,6 +12,7 @@ use craft\helpers\StringHelper;
 use craft\base\FieldLayoutElement;
 use craft\helpers\ArrayHelper;
 use craft\fieldlayoutelements\BaseField;
+use craft\fieldlayoutelements\CustomField;
 
 use DateTime;
 

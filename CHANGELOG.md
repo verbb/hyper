@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed custom fields being incorrectly identified in the field layout designer.
+
 ## 3.0.0
 
 > {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.

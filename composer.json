@@ -66,7 +66,8 @@
         "test:baseline:check": "ddev test --suite=baseline",
         "test": "ddev test",
         "test:all": "ddev test --suite=all",
-        "test:perf": "ddev test --suite=performance"
+        "test:perf": "ddev test --suite=performance",
+        "test:class-resolution-regressions": "@php tests/regression/class-resolution.php"
     },
     "extra": {
         "name": "Hyper",
