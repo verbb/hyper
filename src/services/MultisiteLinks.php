@@ -202,9 +202,18 @@ class MultisiteLinks extends Component
                 }
 
                 $localizedElement->setFieldValue($field->handle, $merged);
+                $wasPropagating = $localizedElement->propagating;
 
-                if (!Craft::$app->getElements()->saveElement($localizedElement, false, false, false)) {
-                    throw new \RuntimeException('Unable to propagate Hyper link structure.');
+                // Source selections were authorized before saving. This internal sibling
+                // save is propagation, even when the editor cannot access the target site.
+                $localizedElement->propagating = true;
+
+                try {
+                    if (!Craft::$app->getElements()->saveElement($localizedElement, false, false, false)) {
+                        throw new \RuntimeException('Unable to propagate Hyper link structure.');
+                    }
+                } finally {
+                    $localizedElement->propagating = $wasPropagating;
                 }
             }
         } finally {

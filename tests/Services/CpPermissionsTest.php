@@ -341,6 +341,52 @@ it('rejects inaccessible selections before saving an owner while permitting visi
     }
 });
 
+it('propagates permitted selections without requiring access to sibling sites', function(bool $draft, bool $custom) {
+    $f = $this->cpFixture;
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $field = $f['field'];
+    $field->multipleLinks = true;
+    $field->translationMethod = \craft\base\Field::TRANSLATION_METHOD_SITE;
+    $field->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($field))->toBeTrue();
+    $user = $f['users']['editor'];
+    $owner = Entry::find()->id($f['owner']->id)->siteId($f['site']->id)->one();
+    if ($draft) {
+        $owner = Craft::$app->drafts->createDraft($owner, $user->id, 'Restricted translator');
+    }
+    $payload = $custom
+        ? ['handle' => 'url', 'linkValue' => '/translated', 'fields' => [$related->handle => [$f['owner']->id]]]
+        : ['handle' => 'entry', 'linkValue' => [$f['owner']->id], 'linkSiteId' => $f['site']->id];
+    try {
+        $owner->setFieldValue($field->handle, [$payload]);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))->toBeTrue();
+        $sibling = Entry::find()->id($owner->id)->siteId($f['otherSite']->id)->drafts(null)->status(null)->one();
+        $links = $sibling->getFieldValue($field->handle)->getLinks();
+        expect($links)->toHaveCount(1);
+        $selected = $custom ? $links[0]->getFieldValue($related->handle)->one() : $links[0]->getElement();
+        expect($selected->siteId)->toBe($f['otherSite']->id);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($selected)))->toBeFalse();
+        if ($draft) {
+            $published = Entry::find()->id($f['owner']->id)->siteId($f['otherSite']->id)->one();
+            expect($published->getFieldValue($field->handle)->getLinks())->toBe([]);
+        }
+
+        // The internal propagation exemption must not survive into another authored save.
+        $owner->setFieldValue($field->handle, [[
+            'handle' => 'entry', 'linkValue' => [$f['owner']->id], 'linkSiteId' => $f['otherSite']->id,
+        ]]);
+        expect(fn() => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+    } finally {
+        Craft::$app->fields->deleteField($related);
+    }
+})->with([false, true])->with([false, true]);
+
 it('refreshes conditional link fields and tabs without replacing unchanged inputs', function() {
     $f = $this->cpFixture;
     $url = new Url();
