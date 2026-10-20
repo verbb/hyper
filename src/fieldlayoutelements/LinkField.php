@@ -7,6 +7,7 @@ use verbb\hyper\fields\HyperField;
 use Craft;
 use craft\base\ElementInterface;
 use craft\fieldlayoutelements\TextField;
+use craft\helpers\Html;
 
 class LinkField extends TextField
 {
@@ -58,7 +59,9 @@ class LinkField extends TextField
                 }
             }
 
-            return $this->link->getInputHtml($this, $this->field);
+            $render = fn() => $this->link->getInputHtml($this, $this->field);
+
+            return $static ? Html::disableInputs($render) : $render();
         }
 
         return null;

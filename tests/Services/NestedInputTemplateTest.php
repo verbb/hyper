@@ -33,6 +33,13 @@ it('renders nested revision fields as static without leaking into editable rende
                     expect($config['settings']['isStatic'])->toBe($static);
                 }
                 expect($html)->not->toContain('Link fields unavailable');
+                $dom = new DOMDocument();
+                @$dom->loadHTML($html);
+                $inputs = (new DOMXPath($dom))->query('//input[@value="/parent" or @value="/child"]');
+                expect($inputs->length)->toBe(2);
+                foreach ($inputs as $input) {
+                    expect($input->hasAttribute('disabled'))->toBe($static);
+                }
             }
         } finally {
             $view->setNamespace($namespace);

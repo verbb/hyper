@@ -12,6 +12,7 @@
 - Fixed conditional link fields and tabs not updating while editing.
 - Fixed nested revision fields remaining editable and read-only state leaking into later editors.
 - Fixed hidden native fields being initialized twice inside links.
+- Fixed link destination inputs remaining editable in read-only fields.
 - Fixed duplicate New Window controls when link layouts include the native field.
 - Fixed Link Text defaults preventing link inputs from rendering.
 - Fixed contradictory minimum and maximum link limits being accepted.
