@@ -191,7 +191,12 @@ class DraftConflicts
                 $message = $baseline === null
                     ? 'The original version of this field could not be verified. Your draft is saved. Copy your changes, discard this draft, then reopen the current entry and reapply your changes.'
                     : 'This field changed in the current entry while you were editing. Your draft is saved. Copy your changes, discard this draft, then reopen the current entry and reapply your changes.';
-                $draft->addError($field->handle, Craft::t('hyper', $message));
+                $message = Craft::t('hyper', $message);
+
+                if (!in_array($message, $draft->getErrors($field->handle), true)) {
+                    $draft->addError($field->handle, $message);
+                }
+
                 $conflict = true;
             }
         }

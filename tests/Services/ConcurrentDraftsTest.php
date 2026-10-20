@@ -188,6 +188,26 @@ it('retains independent localized content and blocks conflicts on another site',
     expect(Entry::find()->id($owner->id)->siteId($secondary->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/third');
 });
 
+it('reports one recovery message per field when a shared edit conflicts on multiple sites', function() {
+    [$primary, $secondary] = F::ensureSites(2);
+    $field = F::hyperField(['linkTypes' => [Url::class], 'translationMethod' => \craft\base\Field::TRANSLATION_METHOD_NONE]);
+    $owner = F::plainEntry(F::translatableEntrySection($field, 2), 'Shared conflict owner', [$field->handle => [F::urlLinkPayload('/original')]], $primary);
+    $user = User::find()->admin()->one();
+    $a = Craft::$app->drafts->createDraft($owner, $user->id, 'First shared edit');
+    $b = Craft::$app->drafts->createDraft($owner, $user->id, 'Second shared edit');
+    $a = hyperConcurrentEdit($a, $field->handle, [0 => '/published']);
+    $b = hyperConcurrentEdit($b, $field->handle, [0 => '/retained']);
+    Craft::$app->drafts->applyDraft($a);
+    $b = Entry::find()->id($b->id)->drafts(true)->siteId($secondary->id)->status(null)->one();
+
+    expect(fn() => Craft::$app->drafts->applyDraft($b))->toThrow(InvalidElementException::class, 'Your draft is saved');
+    expect($b->getErrors($field->handle))->toHaveCount(1);
+    foreach ([$primary, $secondary] as $site) {
+        expect(Entry::find()->id($owner->id)->siteId($site->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/published');
+        expect(Entry::find()->id($b->id)->drafts(true)->siteId($site->id)->status(null)->one()->getFieldValue($field->handle)->getUrl())->toBe('/retained');
+    }
+});
+
 it('blocks unverified legacy draft edits without deleting their content', function() {
     [$owner, $field, , , $draft] = hyperConcurrentFixture();
     Craft::$app->db->createCommand()->delete('{{%hyper_draft_baselines}}', ['draftId' => $draft->id])->execute();
