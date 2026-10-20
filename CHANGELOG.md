@@ -8,6 +8,7 @@
 ### Fixed
 - Fixed duplicate recovery messages when draft edits conflicted across multiple sites.
 - Fixed link propagation failing when editors could not access sibling sites.
+- Fixed element pickers offering destinations that restricted users could not save.
 - Fixed conditional link fields and tabs not updating while editing.
 - Fixed nested revision fields remaining editable and read-only state leaking into later editors.
 - Fixed hidden native fields being initialized twice inside links.

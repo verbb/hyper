@@ -11,9 +11,12 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\conditions\ConditionInterface;
+use craft\elements\Asset;
+use craft\elements\Entry;
 use craft\elements\conditions\ElementConditionInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\helpers\Cp;
+use craft\helpers\ElementHelper;
 use craft\helpers\StringHelper;
 
 abstract class ElementLink extends Link implements ElementLinkInterface
@@ -275,24 +278,48 @@ abstract class ElementLink extends Link implements ElementLinkInterface
 
     public function getAvailableSources(): string|array|null
     {
-        if (!$this->shouldLimitSourcesToElementsWithUri()) {
-            return $this->sources;
+        $sources = $this->sources;
+
+        if ($this->shouldLimitSourcesToElementsWithUri()) {
+            if ($sources === '*') {
+                $sources = array_column($this->getSourceOptions(), 'value') ?: ['-1'];
+            } elseif (is_array($sources)) {
+                $sources = array_values(array_filter($sources, fn(string $key): bool => $this->_sourceKeyHasElementUris($key))) ?: ['-1'];
+            }
         }
 
-        if ($this->sources === '*') {
-            return array_column($this->getSourceOptions(), 'value') ?: ['-1'];
-        }
+        // Modal sources are unrestricted in Craft. Use the viewable index sources
+        // without changing the selector's modal context or its configured sources.
+        if ($this->_hasViewableQuery() && !Craft::$app->getRequest()->getIsConsoleRequest()) {
+            $elementType = static::elementType();
 
-        if (is_array($this->sources)) {
-            $sources = array_values(array_filter(
-                $this->sources,
-                fn(string $sourceKey): bool => $this->_sourceKeyHasElementUris($sourceKey),
-            ));
+            if ($sources === '*' || $sources === null) {
+                $sources = array_column(Craft::$app->getElementSources()->getSources($elementType, 'index'), 'key');
+            } else {
+                $sources = array_values(array_filter((array)$sources, fn(string $key): bool => ElementHelper::findSource($elementType, $key, 'index') !== null));
+            }
 
             return $sources ?: ['-1'];
         }
 
-        return $this->sources;
+        return $sources;
+    }
+
+    public function getInputCriteria(): array
+    {
+        $criteria = ['status' => null];
+
+        if (!$this->allowElementsWithoutUri && static::supportsUriSelectorCriteria()) {
+            $criteria['uri'] = ':notempty:';
+        }
+
+        // Craft calls this criterion "editable", but it enforces view permissions,
+        // including peer entries/assets within an otherwise viewable source.
+        if ($this->_hasViewableQuery()) {
+            $criteria['editable'] = true;
+        }
+
+        return $criteria;
     }
 
     public function shouldLimitSourcesToElementsWithUri(): bool
@@ -474,6 +501,11 @@ abstract class ElementLink extends Link implements ElementLinkInterface
         $rules[] = [['selectionCondition'], 'safe'];
 
         return $rules;
+    }
+
+    private function _hasViewableQuery(): bool
+    {
+        return is_a(static::elementType(), Entry::class, true) || is_a(static::elementType(), Asset::class, true);
     }
 
     private function _sourceKeyHasElementUris(string $sourceKey): bool

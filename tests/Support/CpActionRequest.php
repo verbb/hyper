@@ -16,7 +16,9 @@ final class CpActionRequest
     public static function asUser(?User $identity, callable $callback): mixed
     {
         $app = Craft::$app;
-        $original = ['request' => $app->request, 'response' => $app->response, 'user' => $app->user];
+        $original = ['request' => $app->request, 'response' => $app->response, 'user' => $app->user, 'elementSources' => $app->elementSources];
+        $sourceCache = new \ReflectionProperty(\craft\base\Element::class, 'sources');
+        $previousSources = $sourceCache->getValue();
         $originalVite = Hyper::$plugin->getComponents()['vite'];
         $view = $app->view;
         $mode = $view->getTemplateMode();
@@ -39,9 +41,13 @@ final class CpActionRequest
             };
             $user->setIdentity($identity);
             $app->set('user', $user);
+            // Source lists must belong to this simulated HTTP request's identity.
+            $sourceCache->setValue(null, []);
+            $app->set('elementSources', new \craft\services\ElementSources());
 
             return $callback();
         } finally {
+            $sourceCache->setValue(null, $previousSources);
             Hyper::$plugin->set('vite', $originalVite);
             $view->setTemplateMode($mode);
             foreach ($original as $id => $component) {

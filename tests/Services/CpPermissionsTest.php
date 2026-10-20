@@ -443,3 +443,90 @@ it('keeps user-hidden fields out of conditional refresh responses', function() {
     $response = CpActionRequest::run('link-field-layout', $f['users']['editor'], $body);
     expect(Json::encode($response->data['tabs']))->not->toContain('Hidden label');
 });
+
+it('limits single and bulk entry pickers to sections the current user can view', function(bool $bulk, bool $reader) {
+    $f = $this->cpFixture;
+    $user = $f['users']['editor'];
+    if ($reader) {
+        $permissions = Craft::$app->userPermissions->getPermissionsByUserId($user->id);
+        Craft::$app->userPermissions->saveUserPermissions($user->id, array_values(array_filter($permissions, fn($permission) => !str_starts_with($permission, 'save'))));
+        $user = User::find()->id($user->id)->one();
+    }
+    $link = new \verbb\hyper\links\Entry(['allowElementsWithoutUri' => true]);
+    $field = $f['field'];
+    $field->setLinkTypes([F::linkTypeConfig($link)]);
+    $script = CpActionRequest::asUser($user, function() use ($bulk, $link, $field) {
+        $view = Craft::$app->getView();
+        $view->startJsBuffer();
+        try {
+            if ($bulk) {
+                $html = $field->getBulkElementSelectHtml($link->handle);
+            } else {
+                $html = $link->getInputHtml(new \verbb\hyper\fieldlayoutelements\LinkField(), $field);
+            }
+        } finally {
+            $script = $view->clearJsBuffer();
+        }
+        return $html . $script;
+    });
+    preg_match('/new Craft\\.BaseElementSelectInput\\((?:[^,{]+,\s*)?(\{[^\n]+\})\);/', $script, $matches);
+    expect($matches)->toHaveCount(2);
+    $settings = Json::decode($matches[1]);
+    // Exercise Craft's actual modal action with Hyper's rendered settings, not a hand-built context.
+    $response = CpActionRequest::run('body', $user, [
+        'elementType' => Entry::class,
+        'context' => $settings['modalSettings']['context'] ?? $settings['context'] ?? 'field',
+        'sources' => $settings['sources'],
+        'siteId' => $f['site']->id,
+    ], controllerClass: \craft\controllers\ElementSelectorModalsController::class);
+    expect($response->data['html'])
+        ->toContain('section:' . $f['owner']->getSection()->uid)
+        ->not->toContain('section:' . $f['otherOwner']->getSection()->uid);
+    $ids = CpActionRequest::asUser($user, fn() => Craft::configure(Entry::find(), $settings['criteria'])
+        ->siteId($f['site']->id)
+        ->id([$f['owner']->id, $f['otherOwner']->id])
+        ->ids());
+    expect(array_map('intval', $ids))->toBe([(int)$f['owner']->id]);
+})->with([false, true])->with([false, true]);
+
+it('limits single and bulk asset pickers to viewable volumes', function(bool $bulk) {
+    $f = $this->cpFixture;
+    $handle = F::handle('pickerFs');
+    $fs = new \craft\fs\Local(['name' => $handle, 'handle' => $handle, 'path' => sys_get_temp_dir() . '/' . $handle]);
+    expect(Craft::$app->fs->saveFilesystem($fs))->toBeTrue();
+    $volumes = [];
+    foreach (['allowed', 'denied'] as $role) {
+        $handle = F::handle('pickerVolume');
+        $volume = new \craft\models\Volume(['name' => $handle, 'handle' => $handle, 'fsHandle' => $fs->handle, 'subpath' => $role]);
+        expect(Craft::$app->volumes->saveVolume($volume))->toBeTrue();
+        $volumes[$role] = $volume;
+    }
+    $user = $f['users']['editor'];
+    Craft::$app->set('userPermissions', new \craft\services\UserPermissions());
+    $permissions = Craft::$app->userPermissions->getPermissionsByUserId($user->id);
+    expect(Craft::$app->userPermissions->saveUserPermissions($user->id, [...$permissions, 'viewAssets:' . $volumes['allowed']->uid]))->toBeTrue();
+    $user = User::find()->id($user->id)->one();
+    $link = new \verbb\hyper\links\Asset();
+    $field = $f['field'];
+    $field->setLinkTypes([F::linkTypeConfig($link)]);
+    $script = CpActionRequest::asUser($user, function() use ($bulk, $link, $field) {
+        $view = Craft::$app->getView();
+        $view->startJsBuffer();
+        try {
+            $html = $bulk ? $field->getBulkElementSelectHtml($link->handle) : $link->getInputHtml(new \verbb\hyper\fieldlayoutelements\LinkField(), $field);
+        } finally {
+            $script = $view->clearJsBuffer();
+        }
+        return $html . $script;
+    });
+    preg_match('/new Craft\\.BaseElementSelectInput\\((?:[^,{]+,\s*)?(\{[^\n]+\})\);/', $script, $matches);
+    expect($matches)->toHaveCount(2);
+    $settings = Json::decode($matches[1]);
+    expect($settings['criteria']['editable'])->toBeTrue();
+    $response = CpActionRequest::run('body', $user, [
+        'elementType' => Asset::class,
+        'context' => $settings['context'] ?? 'field',
+        'sources' => $settings['sources'],
+    ], controllerClass: \craft\controllers\ElementSelectorModalsController::class);
+    expect($response->data['html'])->toContain($volumes['allowed']->name)->not->toContain($volumes['denied']->name);
+})->with([false, true]);

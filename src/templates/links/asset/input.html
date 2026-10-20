@@ -3,10 +3,6 @@
 {% set selectId = 'link-url-' ~ random() %}
 {% set siteId = 'link-siteid-' ~ random() %}
 
-{% set criteria = {
-    status: null,
-} %}
-
 {% set jsSettings = {} %}
 {% set jsClass = 'Craft.BaseElementSelectInput' %}
 
@@ -30,7 +26,7 @@
     storageKey: 'hyper.' ~ field.handle ~ '.' ~ lowerElementType,
     elements: link.getElements(),
     selectionLabel: link.selectionLabel,
-    criteria: criteria,
+    criteria: link.getInputCriteria(),
     condition: link.getSelectionCondition(),
     jsClass: jsClass,
     jsSettings: jsSettings,

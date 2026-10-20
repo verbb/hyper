@@ -1163,13 +1163,6 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             return '';
         }
 
-        // Same URI/status constraint the per-link picker applies.
-        $criteria = ['status' => null];
-
-        if (!$linkType->allowElementsWithoutUri && $linkType::supportsUriSelectorCriteria()) {
-            $criteria['uri'] = ':notempty:';
-        }
-
         return Cp::elementSelectHtml([
             // Unique id so re-opening / switching types never collides with a prior mount.
             'id' => 'hyper-bulk-' . StringHelper::randomString(10),
@@ -1180,7 +1173,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'showSiteMenu' => $linkType->showSiteMenu,
             'storageKey' => 'hyper.bulk.' . $this->handle . '.' . $handle,
             'selectionLabel' => $linkType->selectionLabel ?: $linkType::defaultSelectionLabel(),
-            'criteria' => $criteria,
+            'criteria' => $linkType->getInputCriteria(),
             'condition' => $linkType->getSelectionCondition(),
         ]);
     }
