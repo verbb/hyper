@@ -21,6 +21,7 @@ try {
     await page.evaluate(() => {
         window.nativeInitializations = [];
         window.Craft = {
+            formatInputId: name => name.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z0-9_.]+/g, '-').replace(/-+$/, ''),
             initUiElements(root) {
                 nativeInitializations.push(root.dataset.linkId);
                 $(root).find('.nicetext').each(function () {

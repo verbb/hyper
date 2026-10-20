@@ -20,6 +20,7 @@ try {
     await page.evaluate(() => {
         window.requests = 0; window.notices = [];
         window.Craft = {
+            formatInputId: name => name.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z0-9_.]+/g, '-').replace(/-+$/, ''),
             initUiElements() {}, randomString: () => Math.random().toString(36).slice(2), t: (category, text) => text,
             cp: {displayNotice: text => notices.push(text), displayError: text => notices.push(text)},
             sendActionRequest: async () => {

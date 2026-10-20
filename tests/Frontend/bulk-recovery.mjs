@@ -24,6 +24,7 @@ try {
         });
         window.pending=[];window.notices=[];
         window.Craft={
+            formatInputId: name => name.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z0-9_.]+/g, '-').replace(/-+$/, ''),
             initUiElements(){},randomString:()=>Math.random().toString(36).slice(2),t:(_category,text)=>text,
             cp:{displayError:text=>notices.push(text),displayNotice:text=>notices.push(text)},
             sendActionRequest:async (_method,action,options)=>{

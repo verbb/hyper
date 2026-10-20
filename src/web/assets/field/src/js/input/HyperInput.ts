@@ -118,6 +118,17 @@ export class HyperInput {
             return;
         }
 
+        // Parent fields and Preview namespace the rendered inputs after PHP captures
+        // the config. Bind deferred widgets and layout requests to the final DOM name.
+        const storeName = this.storeInput.name;
+        if (storeName) {
+            const prefix = storeName.replace(/\[[^\]]+\]$/, '');
+            this.settings.inputNamePrefix = prefix === storeName ? '' : prefix;
+            this.settings.inputIdPrefix = this.settings.inputNamePrefix
+                ? Craft.formatInputId(this.settings.inputNamePrefix)
+                : '';
+        }
+
         this.initialStoreValue = this.storeInput.value;
 
         // Revisions and read-only layouts need display widgets, not authoring observers.

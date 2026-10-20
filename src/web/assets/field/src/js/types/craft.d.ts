@@ -64,6 +64,7 @@ interface CraftHyperNamespace {
 interface CraftGlobal {
     t(category: string, message: string, params?: Record<string, string | number>): string;
     randomString(length: number): string;
+    formatInputId(inputName: string): string;
     initUiElements(el: Element): void;
     appendBodyHtml(html: string): void;
     appendHeadHtml(html: string): void;

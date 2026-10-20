@@ -27,6 +27,7 @@ try {
     await page.evaluate(() => {
         window.samples = [];
         window.Craft = {
+            formatInputId: name => name.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z0-9_.]+/g, '-').replace(/-+$/, ''),
             initUiElements() {},
             randomString: () => 'abcdefghij',
             expandPostArray(flat) {

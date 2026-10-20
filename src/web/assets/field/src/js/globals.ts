@@ -33,11 +33,19 @@ export function registerHyperGlobals(): void {
             }
 
             const elementSelectInstance = $elementSelect.data('elementSelect') as {
+                settings?: { uploadFolderId?: number };
+                uploader?: { setParams(params: Record<string, unknown>): void };
                 on(event: string, handler: (event?: { elements?: Array<{ siteId: number }> }) => void): void;
             } | undefined;
 
             if (!elementSelectInstance) {
                 return;
+            }
+
+            // Native upload controls expect an Assets field ID. Hyper stores its
+            // destination on a link, so pass the resolved folder to Craft instead.
+            if (elementSelectInstance.settings?.uploadFolderId) {
+                elementSelectInstance.uploader?.setParams({ folderId: elementSelectInstance.settings.uploadFolderId });
             }
 
             elementSelectInstance.on('selectElements', (event) => {

@@ -3,17 +3,13 @@
 {% set selectId = 'link-url-' ~ random() %}
 {% set siteId = 'link-siteid-' ~ random() %}
 
-{% set jsSettings = {} %}
+{% set uploadSettings = link.getUploadSettings() %}
+{% set jsSettings = uploadSettings | filter((value, key) => key != 'uploadWarning') %}
 {% set jsClass = 'Craft.BaseElementSelectInput' %}
 
 {# Prefer Craft’s AssetSelectInput when a default upload volume is configured. #}
 {% if link.elementType() == 'craft\\elements\\Asset' and link.defaultUploadLocationSource %}
     {% set jsClass = 'Craft.AssetSelectInput' %}
-    {% set jsSettings = jsSettings | merge({
-        canUpload: true,
-        defaultUploadLocationSource: link.defaultUploadLocationSource,
-        defaultUploadLocationSubpath: link.defaultUploadLocationSubpath,
-    }) %}
 {% endif %}
 
 {{ forms.elementSelect({
@@ -31,6 +27,10 @@
     jsClass: jsClass,
     jsSettings: jsSettings,
 }) }}
+
+{% if uploadSettings.uploadWarning ?? false %}
+    <p class="warning">{{ uploadSettings.uploadWarning }}</p>
+{% endif %}
 
 {{ forms.hidden({
     id: siteId,

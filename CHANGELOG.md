@@ -9,9 +9,11 @@
 - Fixed duplicate recovery messages when draft edits conflicted across multiple sites.
 - Fixed link propagation failing when editors could not access sibling sites.
 - Fixed element pickers offering destinations that restricted users could not save.
+- Fixed direct asset uploads failing and upload buttons appearing without permission to upload.
 - Fixed conditional link fields and tabs not updating while editing.
 - Fixed nested revision fields remaining editable and read-only state leaking into later editors.
 - Fixed hidden native fields being initialized twice inside links.
+- Fixed element selectors and other native widgets not initializing in nested Hyper fields.
 - Fixed link destination inputs remaining editable in read-only fields.
 - Fixed duplicate New Window controls when link layouts include the native field.
 - Fixed Link Text defaults preventing link inputs from rendering.

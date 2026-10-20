@@ -34,6 +34,36 @@ try {
         window.Garnish={getPostData:()=>({})};
     });
     await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const assetUploadBridge = await page.evaluate(() => {
+        const original = {base: Garnish.Base, post: Garnish.getPostData, hyper: Craft.Hyper};
+        const host = $('<div id="upload-bridge"></div>').appendTo(document.body);
+        const site = $('<input id="upload-site">').appendTo(document.body);
+        const params = {siteId: 2};
+        const events = {};
+        try {
+            Garnish.Base = {extend(methods) {
+                return function(...args) { methods.init.apply(this, args); };
+            }};
+            Audit.registerHyperGlobals();
+            host.data('elementSelect', {
+                settings: {uploadFolderId: 42},
+                uploader: {setParams(value) { Object.assign(params, value); }},
+                on(event, callback) { events[event] = callback; },
+            });
+            new Craft.Hyper.ElementSelect('#upload-bridge', '#upload-site');
+            events.selectElements({elements: [{siteId: 2}]});
+            const selectedSite = site.val();
+            events.removeElements();
+            // Ordinary selectors and permission-disabled uploads have no uploader.
+            host.data('elementSelect', {settings: {}, on() {}});
+            new Craft.Hyper.ElementSelect('#upload-bridge', '#upload-site');
+            return {params, selectedSite, clearedSite: site.val()};
+        } finally {
+            host.remove(); site.remove();
+            Garnish.Base = original.base; Garnish.getPostData = original.post; Craft.Hyper = original.hyper;
+        }
+    });
+    assert.deepEqual(assetUploadBridge, {params: {siteId: 2, folderId: 42}, selectedSite: '2', clearedSite: ''});
     const deferredNamespace = await page.evaluate(() => Audit.resolveDeferredFieldJs(
         '<script id="__HYPER_INPUT_NAMESPACE__-hyper-entry-script">new Craft.BaseElementSelectInput({"id":"__HYPER_INPUT_NAMESPACE__-hyperData-row-entry","name":"__HYPER_INPUT_NAMESPACE__[hyperData][row][linkValue]","other":"fields[title]"});</script><script id="__HYPER_INPUT_NAMESPACE__-hyper-asset-script">new Craft.AssetSelectInput({"id":"__HYPER_INPUT_NAMESPACE__-hyperData-row-asset","name":"__HYPER_INPUT_NAMESPACE__[hyperData][row][assetValue]"});</script>',
         {
@@ -386,6 +416,8 @@ await import('./immediate-input.mjs');
 await import('./nested-templates.mjs');
 
 await import('./nested-input.mjs');
+
+await import('./nested-widgets.mjs');
 
 await import('./input-capacity.mjs');
 
