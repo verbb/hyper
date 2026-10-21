@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed upgrades failing when stored Hyper content belongs to an unavailable plugin's element type.
+
 ## 3.0.0 - 2026-10-21
 
 > {warning} Before upgrading to Hyper 3, review the [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2) guide for breaking changes and required migration steps.

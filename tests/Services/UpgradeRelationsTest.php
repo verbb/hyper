@@ -9,6 +9,9 @@ use Tests\Support\LegacyElementCacheSeeder;
 use verbb\hyper\migrations\LegacyContentRelationRebuilder;
 use verbb\hyper\migrations\m250703_010000_backfill_hyper_links_from_element_cache as Backfill;
 use verbb\hyper\migrations\m260912_000000_rebuild_link_relations_from_content as Rebuild;
+use verbb\hyper\content\ModifyOptions;
+use verbb\hyper\Hyper;
+use verbb\hyper\models\LinkCollection;
 use verbb\hyper\records\LinkRelation;
 
 it('rebuilds relations from legacy nested content before host-plugin conversion', function() {
@@ -254,6 +257,65 @@ it('preserves trashed owner content while excluding its relations during upgrade
     expect($read())->toBe($before);
     expect(LinkRelation::find()->where(['ownerId' => $owner->id])->exists())->toBeFalse();
 });
+
+it('preserves unavailable owner content and resumes indexing when its element type returns', function() {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $available = F::plainEntry($section, 'Available', [$field->handle => [F::entryLinkPayload($target, 'Available')]]);
+    $unavailable = F::plainEntry($section, 'Unavailable', [$field->handle => [F::entryLinkPayload($target, 'Preserved')]]);
+    $db = Craft::$app->db;
+    $readContent = fn() => (new Query())->select(['elementId', 'siteId', 'content'])->from('{{%elements_sites}}')->orderBy('id')->all();
+    $readOwners = fn() => array_map('intval', (new Query())->select('ownerId')->from('{{%hyper_links}}')->where(['fieldId' => $field->id])->orderBy('ownerId')->column());
+    $before = $readContent();
+
+    // Replay a plugin removed from Composer while its element and content rows remain.
+    $db->createCommand()->update('{{%elements}}', ['type' => 'unavailable\\hypertests\\Block'], ['id' => $unavailable->id])->execute();
+
+    try {
+        $relationsBefore = $readOwners();
+        expect(Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true)))->toBe(1);
+        expect($readOwners())->toBe($relationsBefore);
+        expect($readContent())->toBe($before);
+
+        expect((new Backfill())->safeUp())->toBeTrue();
+        expect($readOwners())->toBe([$available->id]);
+        expect($readContent())->toBe($before);
+        expect((new Rebuild())->safeUp())->toBeTrue();
+        expect((new Rebuild())->safeUp())->toBeTrue();
+        expect($readOwners())->toBe([$available->id]);
+        expect($readContent())->toBe($before);
+
+        // Content edits must still fail and roll back when their index owner is unavailable.
+        $transform = fn() => new LinkCollection($field, [F::entryLinkPayload($target, 'Changed')]);
+        expect(fn() => Hyper::$plugin->content->modify($field, $transform, new ModifyOptions(elementIds: [$unavailable->id])))
+            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+        expect($readContent())->toBe($before);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+        $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Entry::class], ['id' => $unavailable->id])->execute();
+    }
+
+    expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(2);
+    expect($readOwners())->toBe([$available->id, $unavailable->id]);
+    expect($readContent())->toBe($before);
+});
+
+it('still reports unresolved owners whose element type is available during reconciliation', function(bool $dryRun) {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $owner = F::plainEntry($section, 'Invalid owner', [$field->handle => [F::urlLinkPayload('/preserved')]]);
+    $db = Craft::$app->db;
+    // A loadable type with no corresponding row must not be treated as an absent plugin.
+    $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Asset::class], ['id' => $owner->id])->execute();
+
+    try {
+        expect(fn() => Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: $dryRun)))
+            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+    } finally {
+        $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Entry::class], ['id' => $owner->id])->execute();
+    }
+})->with([false, true]);
 
 it('rolls the entire relation rebuild back if a later owner cannot be indexed', function() {
     $field = F::hyperField();

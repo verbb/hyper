@@ -146,13 +146,13 @@ class Content extends Component
                 return false;
             }
 
+            $owner = $this->_resolveRelationOwner($ref, skipUnavailableType: true);
+
+            if (!$owner) {
+                return false;
+            }
+
             if ($options->dryRun) {
-                $owner = $this->_resolveRelationOwner($ref);
-
-                if (!$owner) {
-                    throw new RuntimeException('Unable to resolve Hyper relation owner.');
-                }
-
                 if (!$owner->trashed && !$owner->isProvisionalDraft && !ElementHelper::isDraftOrRevision($owner)
                     && $owner->getFieldLayout()?->getFieldById($field->id)) {
                     $synced++;
@@ -161,7 +161,7 @@ class Content extends Component
                 return false;
             }
 
-            if ($this->_syncRelations($field, $ref, $collection)) {
+            if ($this->_syncRelations($field, $ref, $collection, $owner)) {
                 $synced++;
             }
 
@@ -368,12 +368,12 @@ class Content extends Component
         return [$linkTypes, $changed];
     }
 
-    private function _syncRelations(HyperField $field, ContentRef $ref, LinkCollection $collection): bool
+    private function _syncRelations(HyperField $field, ContentRef $ref, LinkCollection $collection, ?ElementInterface $owner = null): bool
     {
         if (!$ref->hasDurableOwner) {
             return false;
         }
-        $owner = $this->_resolveRelationOwner($ref);
+        $owner ??= $this->_resolveRelationOwner($ref);
 
         if (!$owner) {
             throw new RuntimeException('Unable to resolve Hyper relation owner.');
@@ -393,7 +393,7 @@ class Content extends Component
         return true;
     }
 
-    private function _resolveRelationOwner(ContentRef $ref): ?ElementInterface
+    private function _resolveRelationOwner(ContentRef $ref, bool $skipUnavailableType = false): ?ElementInterface
     {
         $elementId = $ref->elementId;
         $siteId = $ref->siteId;
@@ -403,17 +403,24 @@ class Content extends Component
             $elementId = (int)$matches[1];
         }
 
-        // Craft signature: getElementById($id, $elementType = null, $siteId = null).
-        if ($siteId) {
-            // Content scans include recoverable trash. Resolve it explicitly so
-            // reconciliation can skip its index without treating it as lost data.
-            $owner = Craft::$app->getElements()->getElementById($elementId, null, $siteId, ['trashed' => null]);
+        $elements = Craft::$app->getElements();
+        $elementType = $elements->getElementTypeById($elementId);
 
-            return $owner;
+        // Removed plugins can leave durable content behind. Rebuilding the index
+        // must preserve it without requiring that plugin's element class to load.
+        if ($skipUnavailableType && $elementType !== null && !class_exists($elementType)) {
+            return null;
         }
 
-        // Fall back without site constraint so standalone modify() callers still sync.
-        return Craft::$app->getElements()->getElementById($elementId, null, null, ['trashed' => null]);
+        // Include recoverable trash so callers can exclude its relations. Without
+        // site context, retain standalone modify() callers' unconstrained lookup.
+        $owner = $elements->getElementById($elementId, $elementType, $siteId ?: null, ['trashed' => null]);
+
+        if (!$owner) {
+            throw new RuntimeException('Unable to resolve Hyper relation owner.');
+        }
+
+        return $owner;
     }
 
     private function _serializedValuesEqual(mixed $left, mixed $right): bool
