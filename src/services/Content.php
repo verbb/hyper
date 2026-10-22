@@ -17,6 +17,7 @@ use verbb\hyper\services\LinkTypeConfigs;
 use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
+use craft\db\Query;
 use craft\events\DeleteSiteEvent;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
@@ -404,7 +405,12 @@ class Content extends Component
         }
 
         $elements = Craft::$app->getElements();
-        $elementType = $elements->getElementTypeById($elementId);
+        $elementRow = (new Query())
+            ->select(['type', 'archived'])
+            ->from('{{%elements}}')
+            ->where(['id' => $elementId])
+            ->one();
+        $elementType = $elementRow['type'] ?? null;
 
         // Removed plugins can leave durable content behind. Rebuilding the index
         // must preserve it without requiring that plugin's element class to load.
@@ -414,7 +420,12 @@ class Content extends Component
 
         // Include recoverable trash so callers can exclude its relations. Without
         // site context, retain standalone modify() callers' unconstrained lookup.
-        $owner = $elements->getElementById($elementId, $elementType, $siteId ?: null, ['trashed' => null]);
+        // Craft still excludes archived elements when status is null. Match the
+        // stored archive flag so valid content owners can always be reindexed.
+        $owner = $elements->getElementById($elementId, $elementType, $siteId ?: null, [
+            'trashed' => null,
+            'archived' => (bool)($elementRow['archived'] ?? false),
+        ]);
 
         if (!$owner) {
             throw new RuntimeException('Unable to resolve Hyper relation owner.');

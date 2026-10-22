@@ -258,6 +258,64 @@ it('preserves trashed owner content while excluding its relations during upgrade
     expect(LinkRelation::find()->where(['ownerId' => $owner->id])->exists())->toBeFalse();
 });
 
+it('rebuilds archived owner relations without changing legacy content', function(string $migrationClass) {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $owner = F::plainEntry($section, 'Archived owner');
+    $owner->archived = true;
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+
+    $uid = $owner->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $where = ['elementId' => $owner->id, 'siteId' => $owner->siteId];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new yii\db\JsonExpression([
+        $uid => [F::entryLinkPayload($target, 'Retained archived link')],
+    ])], $where)->execute();
+    $readContent = fn() => (new Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+    $readTargets = fn() => array_map('intval', (new Query())->select('targetId')->from('{{%hyper_links}}')->where(['ownerId' => $owner->id])->column());
+    $before = $readContent();
+
+    try {
+        expect(Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true)))->toBe(1);
+        expect($readTargets())->toBe([]);
+        expect($readContent())->toBe($before);
+        expect((new $migrationClass())->safeUp())->toBeTrue();
+        expect($readTargets())->toBe([$target->id]);
+        expect($readContent())->toBe($before);
+        expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(1);
+        expect($readTargets())->toBe([$target->id]);
+        expect($readContent())->toBe($before);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+        $owner->archived = false;
+        Craft::$app->elements->saveElement($owner);
+    }
+})->with([Backfill::class, Rebuild::class]);
+
+it('synchronizes relation changes when modifying archived owner content', function() {
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $original = F::plainEntry($section, 'Original target');
+    $replacement = F::plainEntry($section, 'Replacement target');
+    $owner = F::plainEntry($section, 'Archived owner', [$field->handle => [F::entryLinkPayload($original)]]);
+    $owner->archived = true;
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+
+    try {
+        $result = Hyper::$plugin->content->modify($field,
+            fn() => new LinkCollection($field, [F::entryLinkPayload($replacement)]),
+            new ModifyOptions(elementIds: [$owner->id]),
+        );
+        expect($result->modified)->toBe(1);
+        $saved = Craft::$app->elements->getElementById($owner->id, craft\elements\Entry::class, $owner->siteId, ['archived' => true]);
+        expect($saved->getFieldValue($field->handle)->first()->getElement()?->id)->toBe($replacement->id);
+        expect(array_map('intval', (new Query())->select('targetId')->from('{{%hyper_links}}')->where(['ownerId' => $owner->id])->column()))->toBe([$replacement->id]);
+    } finally {
+        $owner->archived = false;
+        Craft::$app->elements->saveElement($owner);
+    }
+});
+
 it('preserves unavailable owner content and resumes indexing when its element type returns', function() {
     $field = F::hyperField();
     $section = F::entrySection($field);

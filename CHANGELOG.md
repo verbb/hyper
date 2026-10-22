@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed upgrades failing when Hyper content belongs to archived elements. ([#286](https://github.com/verbb/hyper/issues/286))
+
 ## 3.0.1 - 2026-10-22
 
 ### Fixed
