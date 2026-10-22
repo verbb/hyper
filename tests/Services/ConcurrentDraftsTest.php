@@ -5,6 +5,126 @@ use craft\elements\User;
 use craft\errors\InvalidElementException;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
 use verbb\hyper\links\Url;
+use verbb\hyper\services\DraftConflicts;
+
+function hyperLegacyConcurrentFixture(string $type = Url::class): array
+{
+    $field = F::hyperField(['linkTypes' => [$type], 'multipleLinks' => true]);
+    $owner = F::plainEntry(F::entrySection($field), 'Legacy concurrent owner');
+    $field = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+    $payload = [[
+        'type' => $type,
+        'handle' => 'default-' . ($type === Url::class ? 'verbb-hyper-links-url' : 'verbb-hyper-links-entry'),
+        'newWindow' => false,
+        'linkValue' => $type === Url::class ? '/legacy' : [$owner->id],
+        ...($type === Url::class ? [] : ['linkSiteId' => $owner->siteId]),
+    ]];
+    // Seed the stored v2 shape directly: saving through v3 would already persist a UID.
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$field->layoutElement->uid => $payload]),
+    ], ['elementId' => $owner->id, 'siteId' => $owner->siteId])->execute();
+
+    return [Entry::find()->id($owner->id)->one(), $field];
+}
+
+it('allows an immediate canonical edit of stored v2 links without a resave', function(string $type) {
+    [$owner, $field] = hyperLegacyConcurrentFixture($type);
+    $token = DraftConflicts::inputToken($field, $owner);
+    $posted = $field->serializeValueForDb($owner->getFieldValue($field->handle), $owner);
+    $posted[0]['linkText'] = 'Edited legacy link';
+    $fresh = Entry::find()->id($owner->id)->one();
+    $fresh->setFieldValue($field->handle, $posted);
+
+    \Tests\Support\CpActionRequest::asUser(User::find()->admin()->one(), function() use ($fresh, $field, $token) {
+        Craft::$app->request->setBodyParams(['fields' => [$field->handle . '__hyperDraftBaseline' => $token]]);
+        expect(Craft::$app->elements->saveElement($fresh))->toBeTrue();
+    });
+    $saved = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()[0];
+    expect($saved->linkText)->toBe('Edited legacy link')->and($saved->uid)->toBe($posted[0]['uid']);
+})->with([Url::class, \verbb\hyper\links\Entry::class]);
+
+it('publishes a draft of stored v2 content while retaining real conflict protection', function() {
+    [$owner, $field] = hyperLegacyConcurrentFixture();
+    $admin = User::find()->admin()->one();
+    $a = Craft::$app->drafts->createDraft($owner, $admin->id, 'Legacy A');
+    $b = Craft::$app->drafts->createDraft(Entry::find()->id($owner->id)->one(), $admin->id, 'Legacy B');
+    $a = hyperConcurrentEdit($a, $field->handle, [0 => '/legacy-a']);
+    $b = hyperConcurrentEdit($b, $field->handle, [0 => '/legacy-b']);
+    Craft::$app->drafts->applyDraft($a);
+
+    expect(fn() => Craft::$app->drafts->applyDraft($b))->toThrow(InvalidElementException::class, 'Your draft is saved');
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/legacy-a')
+        ->and(Entry::find()->id($b->id)->drafts(true)->status(null)->one()->getFieldValue($field->handle)->getUrl())->toBe('/legacy-b');
+});
+
+it('allows a legacy draft after a content-preserving resave persists canonical link IDs', function() {
+    [$owner, $field] = hyperLegacyConcurrentFixture();
+    $draft = Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Before resave');
+    $current = Entry::find()->id($owner->id)->one();
+    $current->setFieldValue($field->handle, $current->getFieldValue($field->handle));
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/after-resave']);
+    Craft::$app->drafts->applyDraft($draft);
+
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/after-resave');
+});
+
+it('keeps draft baselines captured before link IDs were excluded compatible', function() {
+    [$owner, $field, , $draft] = hyperConcurrentFixture();
+    $layoutField = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+    $sort = function($value) use (&$sort) {
+        if (!is_array($value)) {
+            return $value;
+        }
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+        return array_map($sort, $value);
+    };
+    $oldBaseline = hash('sha256', \craft\helpers\Json::encode($sort($layoutField->serializeValueForDb($owner->getFieldValue($field->handle), $owner))));
+    Craft::$app->db->createCommand()->update('{{%hyper_draft_baselines}}', ['baseline' => $oldBaseline], [
+        'draftId' => $draft->id, 'layoutUid' => $layoutField->layoutElement->uid,
+    ])->execute();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/old-baseline']);
+    Craft::$app->drafts->applyDraft($draft);
+
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/old-baseline');
+});
+
+it('compares nested legacy Hyper content without dropping custom UID values or link order', function() {
+    $inner = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true]);
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($inner)]);
+    $url->setFieldLayout($layout);
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($url)]);
+    $owner = F::plainEntry(F::entrySection($field), 'Nested legacy owner');
+    $field = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+    $childPlacement = $field->getLinkTypeByHandle('url')->getFieldLayout()->getFieldByHandle($inner->handle)->layoutElement->uid;
+    $payload = [[
+        ...F::urlLinkPayload('/parent'),
+        'uid' => \craft\helpers\StringHelper::UUID(),
+        'customAttributes' => ['uid' => 'custom-a'],
+        'fields' => [$childPlacement => [F::urlLinkPayload('/child-a'), F::urlLinkPayload('/child-b')]],
+    ]];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$field->layoutElement->uid => $payload]),
+    ], ['elementId' => $owner->id, 'siteId' => $owner->siteId])->execute();
+    $owner = Entry::find()->id($owner->id)->one();
+    $baseline = DraftConflicts::inputToken($field, $owner);
+    $fresh = Entry::find()->id($owner->id)->one();
+    expect(DraftConflicts::inputToken($field, $fresh))->toBe($baseline);
+
+    $parent = $fresh->getFieldValue($field->handle)->getLinks()[0];
+    $children = $parent->getFieldValue($inner->handle)->getLinks();
+    $parent->setFieldValue($inner->handle, array_reverse($children));
+    expect(DraftConflicts::inputToken($field, $fresh))->not->toBe($baseline);
+    $parent->setFieldValue($inner->handle, $children);
+    expect(DraftConflicts::inputToken($field, $fresh))->toBe($baseline);
+    $parent->customAttributes['uid'] = 'custom-b';
+    expect(DraftConflicts::inputToken($field, $fresh))->not->toBe($baseline);
+});
 
 function hyperConcurrentFixture(): array
 {

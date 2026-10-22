@@ -111,11 +111,11 @@ class DraftConflicts
         $publishedHash = self::_hash($field, $current);
         $proposedHash = self::_hash($field, $element);
 
-        if ($publishedHash === $proposedHash || $submitted['baseline'] === $publishedHash) {
+        if ($publishedHash === $proposedHash || self::_matchesBaseline($submitted['baseline'], $field, $current, $publishedHash)) {
             return true;
         }
 
-        if ($submitted['baseline'] === $proposedHash) {
+        if (self::_matchesBaseline($submitted['baseline'], $field, $element, $proposedHash)) {
             $field->copyValue($current, $element);
             return true;
         }
@@ -178,12 +178,12 @@ class DraftConflicts
                 $current = self::_hash($field, $canonical);
                 $proposed = self::_hash($field, $localized);
 
-                if ($current === $proposed || $baseline === $current) {
+                if ($current === $proposed || self::_matchesBaseline($baseline, $field, $canonical, $current)) {
                     continue;
                 }
 
                 // A reverted local edit must not roll back newer published content.
-                if ($baseline === $proposed || ($baseline === null && !$localized->isFieldModified($field->handle))) {
+                if (self::_matchesBaseline($baseline, $field, $localized, $proposed) || ($baseline === null && !$localized->isFieldModified($field->handle))) {
                     $copies[] = [$field, $canonical, $localized];
                     continue;
                 }
@@ -260,9 +260,39 @@ class DraftConflicts
         ], ['baseline' => $baseline, 'edited' => false])->execute();
     }
 
-    private static function _hash(HyperField $field, ElementInterface $element): string
+    private static function _matchesBaseline(?string $baseline, HyperField $field, ElementInterface $element, string $hash): bool
     {
-        $value = $field->serializeValueForDb($element->getFieldValue($field->handle), $element);
+        // Existing drafts and open editors may still carry the original fingerprint.
+        return $baseline === $hash || ($baseline !== null && $baseline === self::_hash($field, $element, true));
+    }
+
+    private static function _hash(HyperField $field, ElementInterface $element, bool $includeIdentity = false): string
+    {
+        $links = $field->normalizeValue($element->getFieldValue($field->handle), $element);
+        $value = $field->serializeValueForDb($links, $element);
+
+        if (!$includeIdentity) {
+            foreach (array_values($links->getLinks()) as $index => $link) {
+                // Legacy IDs are random on each read, then become ordinary IDs after
+                // a browser round trip or save. Compare content independently of both.
+                unset($value[$index]['uid']);
+
+                if (!$link instanceof ElementInterface) {
+                    continue;
+                }
+
+                foreach ($link->getFieldLayout()?->getCustomFieldElements() ?? [] as $placement) {
+                    $nestedField = $placement->getField();
+
+                    if ($nestedField instanceof HyperField) {
+                        // Only normalize known Hyper values; other custom fields may
+                        // have meaningful UID properties that must remain protected.
+                        $value[$index]['fields'][$placement->uid] = self::_hash($nestedField, $link);
+                    }
+                }
+            }
+        }
+
         return hash('sha256', Json::encode(self::_sortKeys($value)));
     }
 

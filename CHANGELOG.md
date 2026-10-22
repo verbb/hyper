@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed false draft conflicts preventing entries with Hyper 2 content from being saved. ([#284](https://github.com/verbb/hyper/issues/284))
 - Fixed upgrades failing when stored Hyper content belongs to an unavailable plugin's element type.
 
 ## 3.0.0 - 2026-10-21
