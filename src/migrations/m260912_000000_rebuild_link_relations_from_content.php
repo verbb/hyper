@@ -38,8 +38,15 @@ class m260912_000000_rebuild_link_relations_from_content extends Migration
 
         foreach (Craft::$app->getFields()->getAllFields(false) as $field) {
             if ($field instanceof HyperField) {
+                // These scans can take longer than the schema changes. Identify
+                // the active field and storage phase before starting each one.
+                $time = $this->beginCommand("rebuild Hyper relations for {$field->handle} (field {$field->id}) from element content");
                 Hyper::$plugin->getContent()->reconcileRelations($field);
+                $this->endCommand($time);
+
+                $time = $this->beginCommand("rebuild Hyper relations for {$field->handle} (field {$field->id}) from legacy content tables");
                 (new LegacyContentRelationRebuilder())->rebuild($field);
+                $this->endCommand($time);
             }
         }
 

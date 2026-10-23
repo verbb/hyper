@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- Upgrades now report the field and content storage being processed while rebuilding link relations. ([#287](https://github.com/verbb/hyper/issues/287))
+
 ### Fixed
 
+- Fixed redundant link hydration when rebuilding relations, including links in excluded drafts and revisions. ([#287](https://github.com/verbb/hyper/issues/287))
 - Fixed upgrades failing when Hyper content belongs to archived elements. ([#286](https://github.com/verbb/hyper/issues/286))
 - Fixed upgrades failing when stored draft or revision owners could not be loaded, including Neo revision blocks. ([#285](https://github.com/verbb/hyper/issues/285))
 

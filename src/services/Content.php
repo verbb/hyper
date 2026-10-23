@@ -111,7 +111,7 @@ class Content extends Component
             if (!$options->dryRun && $options->syncRelations) {
                 foreach ($result->modifications as $modification) {
                     if ($modification['value'] instanceof LinkCollection) {
-                        $this->_syncRelations($field, $modification['ref'], $modification['value']);
+                        $this->_syncRelations($field, $modification['ref']);
                     }
                 }
             }
@@ -132,17 +132,13 @@ class Content extends Component
             throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }
 
-        $adapter = new HyperFieldAdapter($field);
         $store = new ElementContentStore($options->db);
         $synced = 0;
 
-        $store->eachFieldValue($field, function(ContentRef $ref) use ($adapter, $field, $options, &$synced) {
-            $collection = $adapter->decode($ref->value, $ref);
-
-            if (!$collection instanceof LinkCollection) {
-                return false;
-            }
-
+        $store->eachFieldValue($field, function(ContentRef $ref) use ($field, $options, &$synced) {
+            // The index writer reads every placement from the persisted owner.
+            // Decoding this scan value would hydrate those links twice, and also
+            // hydrate links belonging to derivatives and synthetic owners we skip.
             if (!$ref->hasDurableOwner) {
                 return false;
             }
@@ -162,7 +158,7 @@ class Content extends Component
                 return false;
             }
 
-            if ($this->_syncRelations($field, $ref, $collection, $owner)) {
+            if ($this->_syncRelations($field, $ref, $owner)) {
                 $synced++;
             }
 
@@ -369,7 +365,7 @@ class Content extends Component
         return [$linkTypes, $changed];
     }
 
-    private function _syncRelations(HyperField $field, ContentRef $ref, LinkCollection $collection, ?ElementInterface $owner = null): bool
+    private function _syncRelations(HyperField $field, ContentRef $ref, ?ElementInterface $owner = null): bool
     {
         if (!$ref->hasDurableOwner) {
             return false;
