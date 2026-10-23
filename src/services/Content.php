@@ -147,7 +147,7 @@ class Content extends Component
                 return false;
             }
 
-            $owner = $this->_resolveRelationOwner($ref, skipUnavailableType: true);
+            $owner = $this->_resolveRelationOwner($ref, forReconciliation: true);
 
             if (!$owner) {
                 return false;
@@ -394,7 +394,7 @@ class Content extends Component
         return true;
     }
 
-    private function _resolveRelationOwner(ContentRef $ref, bool $skipUnavailableType = false): ?ElementInterface
+    private function _resolveRelationOwner(ContentRef $ref, bool $forReconciliation = false): ?ElementInterface
     {
         $elementId = $ref->elementId;
         $siteId = $ref->siteId;
@@ -406,15 +406,21 @@ class Content extends Component
 
         $elements = Craft::$app->getElements();
         $elementRow = (new Query())
-            ->select(['type', 'archived'])
+            ->select(['type', 'archived', 'draftId', 'revisionId'])
             ->from('{{%elements}}')
             ->where(['id' => $elementId])
             ->one();
         $elementType = $elementRow['type'] ?? null;
 
+        // Derivatives never enter the relation index. Exclude them before a
+        // plugin-specific query (such as Neo's) must hydrate their owner records.
+        if ($forReconciliation && (!empty($elementRow['draftId']) || !empty($elementRow['revisionId']))) {
+            return null;
+        }
+
         // Removed plugins can leave durable content behind. Rebuilding the index
         // must preserve it without requiring that plugin's element class to load.
-        if ($skipUnavailableType && $elementType !== null && !class_exists($elementType)) {
+        if ($forReconciliation && $elementType !== null && !class_exists($elementType)) {
             return null;
         }
 

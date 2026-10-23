@@ -11,7 +11,7 @@ use verbb\hyper\migrations\m250703_010000_backfill_hyper_links_from_element_cach
 use verbb\hyper\migrations\m260912_000000_rebuild_link_relations_from_content as Rebuild;
 use verbb\hyper\records\LinkRelation;
 
-it('preserves multisite derivative content while rebuilding only canonical owner relations', function(string $kind, string $migrationClass) {
+it('preserves multisite derivative content while rebuilding only canonical owner relations', function(string $kind, string $migrationClass, bool $loadable) {
     // Backfill only runs while the Hyper 2 cache table still exists.
     LegacyElementCacheSeeder::ensureLegacyTable();
     [$primary, $secondary] = F::ensureSites(2);
@@ -52,6 +52,15 @@ it('preserves multisite derivative content while rebuilding only canonical owner
     }
 
     try {
+        if (!$loadable) {
+            // Retained derivative content must not require its element-specific
+            // records to hydrate before the rebuild can exclude it.
+            Craft::$app->db->createCommand()->update('{{%elements}}', [
+                'type' => craft\elements\Asset::class,
+            ], ['id' => $derivativeId])->execute();
+            expect(Craft::$app->elements->getElementById($derivativeId, craft\elements\Asset::class, $primary->id))->toBeNull();
+        }
+
         expect(Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true)))->toBe(2);
         expect($readRelations())->toBe([]);
         expect($readContent())->toBe($before);
@@ -66,5 +75,6 @@ it('preserves multisite derivative content while rebuilding only canonical owner
         expect($readContent())->toBe($before);
     } finally {
         Rebuild::$rebuiltByBackfill = false;
+        Craft::$app->db->createCommand()->update('{{%elements}}', ['type' => Entry::class], ['id' => $derivativeId])->execute();
     }
-})->with(['draft', 'provisional', 'revision'])->with([Backfill::class, Rebuild::class]);
+})->with(['draft', 'provisional', 'revision'])->with([Backfill::class, Rebuild::class])->with(['loadable' => true, 'unloadable' => false]);

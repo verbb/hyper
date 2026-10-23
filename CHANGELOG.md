@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed upgrades failing when Hyper content belongs to archived elements. ([#286](https://github.com/verbb/hyper/issues/286))
+- Fixed upgrades failing when stored draft or revision owners could not be loaded, including Neo revision blocks. ([#285](https://github.com/verbb/hyper/issues/285))
 
 ## 3.0.1 - 2026-10-22
 
