@@ -359,21 +359,43 @@ it('preserves unavailable owner content and resumes indexing when its element ty
     expect($readContent())->toBe($before);
 });
 
-it('still reports unresolved owners whose element type is available during reconciliation', function(bool $dryRun) {
+it('identifies unresolved owners without changing content or relations', function(string $operation) {
+    LegacyElementCacheSeeder::ensureLegacyTable();
     $field = F::hyperField();
     $section = F::entrySection($field);
-    $owner = F::plainEntry($section, 'Invalid owner', [$field->handle => [F::urlLinkPayload('/preserved')]]);
+    $target = F::plainEntry($section, 'Target');
+    $owner = F::plainEntry($section, 'Invalid owner', [$field->handle => [F::entryLinkPayload($target, 'Preserved')]]);
     $db = Craft::$app->db;
+    $readContent = fn() => (new Query())->from('{{%elements_sites}}')->where(['elementId' => $owner->id, 'siteId' => $owner->siteId])->one();
+    $readRelations = fn() => (new Query())->from('{{%hyper_links}}')->where(['ownerId' => $owner->id])->orderBy('id')->all();
+    $contentBefore = $readContent();
+    $relationsBefore = $readRelations();
+    $placement = $owner->getFieldLayout()->getCustomFieldElements()[0]->uid;
     // A loadable type with no corresponding row must not be treated as an absent plugin.
     $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Asset::class], ['id' => $owner->id])->execute();
 
     try {
-        expect(fn() => Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: $dryRun)))
-            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+        $run = function() use ($operation, $field, $db) {
+            if ($operation === 'backfill' || $operation === 'rebuild') {
+                $migration = $operation === 'backfill' ? new Backfill() : new Rebuild();
+                // Match Craft's migration transaction while letting the exception reach the assertion.
+                return $db->transaction(fn() => $migration->safeUp());
+            }
+
+            return Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: $operation === 'dry-run'));
+        };
+        $message = sprintf(
+            'Unable to resolve Hyper relation owner. Element ID: %d; site ID: %d; type: %s; content row ID: %d; path: %s.',
+            $owner->id, $owner->siteId, craft\elements\Asset::class, $contentBefore['id'], $placement,
+        );
+        expect($run)->toThrow(RuntimeException::class, $message);
+        expect($readContent())->toBe($contentBefore)
+            ->and($readRelations())->toBe($relationsBefore);
     } finally {
+        Rebuild::$rebuiltByBackfill = false;
         $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Entry::class], ['id' => $owner->id])->execute();
     }
-})->with([false, true]);
+})->with(['reconcile', 'dry-run', 'backfill', 'rebuild']);
 
 it('rolls the entire relation rebuild back if a later owner cannot be indexed', function() {
     $field = F::hyperField();

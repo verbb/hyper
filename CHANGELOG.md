@@ -5,6 +5,7 @@
 ### Changed
 
 - Upgrades now report the field and content storage being processed while rebuilding link relations. ([#287](https://github.com/verbb/hyper/issues/287))
+- Errors rebuilding link relations now identify the element, site and content location when an owner cannot be loaded. ([#290](https://github.com/verbb/hyper/issues/290))
 
 ### Fixed
 

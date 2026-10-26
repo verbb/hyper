@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "17b298bf426f79b7be95204c2b8de284",
+    "content-hash": "86300179d0d8a8f9c46708520e03d249",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -7924,6 +7924,75 @@
             "time": "2026-04-27T14:27:52+00:00"
         },
         {
+            "name": "spicyweb/craft-neo",
+            "version": "5.5.13",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spicywebau/craft-neo.git",
+                "reference": "4a39ad2fa9ce7a057f6469f201ce3d7f62be08bc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spicywebau/craft-neo/zipball/4a39ad2fa9ce7a057f6469f201ce3d7f62be08bc",
+                "reference": "4a39ad2fa9ce7a057f6469f201ce3d7f62be08bc",
+                "shasum": ""
+            },
+            "require": {
+                "craftcms/cms": "^5.3.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "codeception/codeception": "^5.0.11",
+                "codeception/module-asserts": "^3.0.0",
+                "codeception/module-phpbrowser": "^3.0.0",
+                "codeception/module-rest": "^3.3.2",
+                "codeception/module-yii2": "^1.1.9",
+                "craftcms/ecs": "dev-main",
+                "craftcms/rector": "dev-main",
+                "vlucas/phpdotenv": "^5.0"
+            },
+            "type": "craft-plugin",
+            "extra": {
+                "name": "Neo",
+                "class": "benf\\neo\\Plugin",
+                "handle": "neo",
+                "downloadUrl": "https://github.com/spicywebau/craft-neo/archive/refs/tags/5.5.13.zip",
+                "changelogUrl": "https://github.com/spicywebau/craft-neo/blob/5.x/CHANGELOG.md",
+                "schemaVersion": "5.1.0.1"
+            },
+            "autoload": {
+                "psr-4": {
+                    "benf\\neo\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "proprietary"
+            ],
+            "authors": [
+                {
+                    "name": "Spicy Web",
+                    "homepage": "https://github.com/spicywebau"
+                }
+            ],
+            "description": "A Matrix-like field type with block hierarchy",
+            "keywords": [
+                "Neo",
+                "cms",
+                "craftcms",
+                "field",
+                "matrix",
+                "plugin"
+            ],
+            "support": {
+                "docs": "https://github.com/spicywebau/craft-neo/blob/5.5.13/README.md",
+                "issues": "https://github.com/spicywebau/craft-neo/issues",
+                "rss": "https://github.com/spicywebau/craft-neo/commits/5.x.atom",
+                "source": "https://github.com/spicywebau/craft-neo"
+            },
+            "time": "2026-09-07T09:46:36+00:00"
+        },
+        {
             "name": "spomky-labs/cbor-php",
             "version": "3.3.5",
             "source": {
@@ -11416,11 +11485,11 @@
         },
         {
             "name": "verbb/hyper",
-            "version": "3.0.0",
+            "version": "3.0.1",
             "dist": {
                 "type": "path",
                 "url": "../../..",
-                "reference": "9e8f27fda84f1e6e0794ae231186ad3394b257b9"
+                "reference": "49e4dbab1b7f768910b6f8b945b089d26d233525"
             },
             "require": {
                 "craftcms/cms": "^5.9",
@@ -11435,6 +11504,7 @@
                 "craftcms/generator": "^2.0.0",
                 "pestphp/pest": "^3.8",
                 "pestphp/pest-plugin": "^3.0",
+                "spicyweb/craft-neo": "5.5.13",
                 "verbb/vizy": "3.2.7",
                 "vlucas/phpdotenv": "^5.6",
                 "yiisoft/yii2-shell": "^2.0.3"
@@ -11480,6 +11550,9 @@
                 ],
                 "test:perf": [
                     "ddev test --suite=performance"
+                ],
+                "test:class-resolution-regressions": [
+                    "@php tests/regression/class-resolution.php"
                 ]
             },
             "license": [

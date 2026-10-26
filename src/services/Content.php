@@ -430,7 +430,15 @@ class Content extends Component
         ]);
 
         if (!$owner) {
-            throw new RuntimeException('Unable to resolve Hyper relation owner.');
+            // Identify the stored owner without including authored link content.
+            throw new RuntimeException(sprintf(
+                'Unable to resolve Hyper relation owner. Element ID: %d; site ID: %d; type: %s; content row ID: %d; path: %s.',
+                $elementId,
+                $siteId,
+                $elementType ?? 'unknown',
+                $ref->rowId,
+                $ref->jsonPath,
+            ));
         }
 
         return $owner;

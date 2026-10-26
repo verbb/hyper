@@ -5,6 +5,7 @@ Install [DDEV](https://docs.ddev.com/en/stable/users/install/ddev-installation/)
 ```sh
 ddev test
 ddev test --filter='a test name'
+ddev test --filter=UpgradeNeoOwnersTest
 ddev test --suite=all
 ddev test --suite=performance
 ddev test --suite=large-performance --default-time-limit=300
@@ -54,7 +55,7 @@ npm run test:stress:matrix-add
 
 The fixture uses the same `username`, `password`, `matrix.section`, `matrix.ownerId`, and optional `matrix.matrixHandle` shape as `cp-release.mjs`. For cold-load coverage, point it at an owner whose empty Matrix field is the only place Hyper occurs on the edit screen; the runner deliberately does not wait for Hyper's bundle before inserting the first entry. `HYPER_STRESS_ASSET_DELAY=250` can widen that first-load window by delaying Hyper's JavaScript responses. The target must expose `__audit_health` with `isolated-hyper-release`; override the expected marker with `HYPER_CP_HEALTH` only for another deliberately isolated app. Tune the run with `HYPER_STRESS_ITERATIONS`, `HYPER_STRESS_DELAYS` (comma-separated milliseconds), `HYPER_STRESS_READY_TIMEOUT`, `HYPER_STRESS_ASSET_DELAY`, `HYPER_BROWSER`, and `HYPER_HEADED=1`.
 
-CI runs `ddev test --suite=all`, including the normal performance budgets, followed by the Chromium boundary tests. The runtime installs the pinned Vizy development dependency so its nested-content conversion test runs through normal plugin registration. Missing integration setup fails that test rather than skipping it.
+CI runs `ddev test --suite=all`, including the normal performance budgets, followed by the Chromium boundary tests. The runtime installs the pinned Neo and Vizy development dependencies through normal plugin registration. Missing integration setup fails the relevant tests rather than skipping them.
 
 Feed Me mapping tests install the declared development dependency into the disposable app and exercise its registered Hyper mapper, including persisted custom fields and relation rows. The picker condition test follows settings from Hyper's ordinary and bulk picker renderers through Craft's element-index controller and a saved selection. It exercises those server contracts without simulating browser clicks.
 
