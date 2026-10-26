@@ -259,6 +259,8 @@ it('preserves trashed owner content while excluding its relations during upgrade
 });
 
 it('rebuilds archived owner relations without changing legacy content', function(string $migrationClass) {
+    // The backfill runs only when the Hyper 2 cache table exists.
+    LegacyElementCacheSeeder::ensureLegacyTable();
     $field = F::hyperField();
     $section = F::entrySection($field);
     $target = F::plainEntry($section, 'Target');
@@ -317,6 +319,7 @@ it('synchronizes relation changes when modifying archived owner content', functi
 });
 
 it('preserves unavailable owner content and resumes indexing when its element type returns', function() {
+    LegacyElementCacheSeeder::ensureLegacyTable();
     $field = F::hyperField();
     $section = F::entrySection($field);
     $target = F::plainEntry($section, 'Target');

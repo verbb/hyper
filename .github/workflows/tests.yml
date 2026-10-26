@@ -10,16 +10,28 @@ jobs:
   php-check:
     name: PHP 8.2.0 syntax and imports
     runs-on: ubuntu-22.04
+    # Pin the interpreter because setup-php selects a current patch release.
+    container: php:8.2.0-cli@sha256:fa840989efc52df732278f59377e780f65d6aa8c384bb9724babf190b49f4c35
+    env:
+      COMPOSER_ALLOW_SUPERUSER: 1
     timeout-minutes: 20
     steps:
+      # Git avoids the archive fallback, which omits files marked export-ignore.
+      - name: Install Git for checkout
+        run: |
+          sed -i 's|deb.debian.org/debian-security|archive.debian.org/debian-security|g; s|deb.debian.org/debian|archive.debian.org/debian|g; /bullseye-updates/d' /etc/apt/sources.list
+          apt-get -o Acquire::Check-Valid-Until=false update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates
       - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2.0'
-          extensions: bcmath, curl, dom, fileinfo, gd, iconv, intl, mbstring, pdo_mysql, sodium, zip
-          coverage: none
-          tools: composer:v2
-          ini-values: memory_limit=1G
+      - name: Verify complete checkout
+        run: |
+          # Checkout trusts the workspace only in its temporary Git configuration.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse --is-inside-work-tree)" = true
+          test -f .github/scripts/setup-minimum-php.sh
+          test -f tests/php-check/tests/run.php
+      - name: Install minimum PHP dependencies
+        run: bash .github/scripts/setup-minimum-php.sh
       - name: Verify exact minimum interpreter
         run: |
           php -r 'echo PHP_VERSION, PHP_EOL; exit(PHP_VERSION === "8.2.0" ? 0 : 1);'
@@ -37,8 +49,8 @@ jobs:
         run: composer update --working-dir=.cache/php-check --no-interaction --prefer-dist --no-progress --no-plugins --no-scripts
       - name: Verify dependency platform requirements
         run: composer check-platform-reqs --working-dir=.cache/php-check --no-plugins
-      - name: Check all production PHP
-        run: php tests/php-check/bin/check.php --project . --vendor .cache/php-check/vendor --optional tests/php-check/optional.json src
+      - name: Check production PHP and test runner
+        run: php tests/php-check/bin/check.php --project . --vendor .cache/php-check/vendor --optional tests/php-check/optional.json src tests/runtime/run.php
       - name: Dependency diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +61,11 @@ jobs:
             .cache/php-check/composer.json
             .cache/php-check/composer.lock
   pest:
+    name: PHP 8.3 (${{ matrix.order }})
+    strategy:
+      fail-fast: false
+      matrix:
+        order: [default, random]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -60,20 +77,25 @@ jobs:
       - name: Verify DDEV test runtime
         run: bash .github/scripts/configure-ddev.sh 8.3
       - name: Clean-install integration tests
-        run: ddev test --suite=all --fail-on-skipped
+        run: ddev test --suite=all --fail-on-skipped --order-by=${{ matrix.order }} --random-order-seed=9122026
       - uses: actions/setup-node@v4
+        if: matrix.order == 'default'
         with:
           node-version: "22"
           cache: npm
       - name: Install browser test dependencies
+        if: matrix.order == 'default'
         run: npm ci --workspaces=false
       - name: Type-check and build production assets
+        if: matrix.order == 'default'
         run: |
           npx tsc --noEmit
           npm run build
       - name: Install Chromium
+        if: matrix.order == 'default'
         run: npx playwright install --with-deps chromium
       - name: Browser boundary tests
+        if: matrix.order == 'default'
         env:
           HYPER_CRAFT_PATH: .cache/verbb-tests/app/vendor/craftcms/cms
         run: npm run test:browser
@@ -81,10 +103,49 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-diagnostics
+          name: test-diagnostics-php-8.3-${{ matrix.order }}
           include-hidden-files: true
           path: |
             .cache/verbb-tests/latest.log
             .cache/verbb-tests/junit.xml
             .cache/verbb-tests/result.json
+            .cache/verbb-tests/app/storage/logs/
+  pest-minimum:
+    name: PHP 8.2.0 (${{ matrix.order }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        order: [default, random]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ddev/github-action-setup-ddev@v1
+        with:
+          version: '1.25.4'
+          autostart: false
+      - name: Configure exact minimum service
+        run: cp .github/php-minimum/docker-compose.yaml .ddev/docker-compose.php-minimum.yaml
+      - name: Start isolated DDEV runtime
+        run: bash .github/scripts/configure-ddev.sh 8.3
+      - name: Verify exact minimum interpreter and integration lock
+        run: |
+          ddev exec --service php-minimum --raw -- php -r 'echo PHP_VERSION, PHP_EOL; exit(PHP_VERSION === "8.2.0" ? 0 : 1);'
+          ddev exec --service php-minimum --raw -- php .github/scripts/check-runtime-lock.php
+      - name: Clean-install integration and performance tests
+        run: ddev exec --service php-minimum --raw -- php tests/runtime/run.php --suite=all --fail-on-skipped --order-by=${{ matrix.order }} --random-order-seed=9122026
+      - name: Verify installed dependency platform requirements
+        run: ddev exec --service php-minimum --raw -- composer check-platform-reqs --working-dir=.cache/verbb-tests/app --no-plugins
+      - name: Test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-8.2.0-${{ matrix.order }}
+          include-hidden-files: true
+          path: |
+            .cache/verbb-tests/latest.log
+            .cache/verbb-tests/junit.xml
+            .cache/verbb-tests/result.json
+            .cache/verbb-tests/app/composer.json
+            .cache/verbb-tests/app/composer.lock
             .cache/verbb-tests/app/storage/logs/
