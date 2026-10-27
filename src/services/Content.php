@@ -402,15 +402,15 @@ class Content extends Component
 
         $elements = Craft::$app->getElements();
         $elementRow = (new Query())
-            ->select(['type', 'archived', 'draftId', 'revisionId'])
+            ->select(['type', 'archived', 'dateDeleted', 'draftId', 'revisionId'])
             ->from('{{%elements}}')
             ->where(['id' => $elementId])
             ->one();
         $elementType = $elementRow['type'] ?? null;
 
-        // Derivatives never enter the relation index. Exclude them before a
-        // plugin-specific query (such as Neo's) must hydrate their owner records.
-        if ($forReconciliation && (!empty($elementRow['draftId']) || !empty($elementRow['revisionId']))) {
+        // Trash and derivatives never enter the relation index. Exclude them
+        // before hydration, as their type-specific owner records may be gone.
+        if ($forReconciliation && (!empty($elementRow['dateDeleted']) || !empty($elementRow['draftId']) || !empty($elementRow['revisionId']))) {
             return null;
         }
 

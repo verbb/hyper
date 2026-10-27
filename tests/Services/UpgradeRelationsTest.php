@@ -400,6 +400,57 @@ it('identifies unresolved owners without changing content or relations', functio
     }
 })->with(['reconcile', 'dry-run', 'backfill', 'rebuild']);
 
+it('excludes trashed entries with missing entry records while retaining strict canonical checks', function(string $migrationClass, bool $trashed) {
+    LegacyElementCacheSeeder::ensureLegacyTable();
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $canonical = F::plainEntry($section, 'Canonical', [$field->handle => [F::entryLinkPayload($target)]]);
+    $owner = F::plainEntry($section, 'Missing entry record', [$field->handle => [F::entryLinkPayload($target)]]);
+    $db = Craft::$app->db;
+    $entryRow = (new Query())->from('{{%entries}}')->where(['id' => $owner->id])->one();
+    $readContent = fn() => (new Query())->select(['elementId', 'siteId', 'content'])->from('{{%elements_sites}}')
+        ->where(['elementId' => [$canonical->id, $owner->id]])->orderBy('id')->all();
+    $readRelations = fn() => (new Query())->from('{{%hyper_links}}')->where(['fieldId' => $field->id])->orderBy('id')->all();
+    $contentBefore = $readContent();
+    $relationsBefore = $readRelations();
+
+    // Reproduce retained element/content rows after the type-specific entry row is gone.
+    $db->createCommand()->delete('{{%entries}}', ['id' => $owner->id])->execute();
+    $db->createCommand()->update('{{%elements}}', [
+        'dateDeleted' => $trashed ? '2025-06-20 00:45:49' : null,
+    ], ['id' => $owner->id])->execute();
+
+    try {
+        $dryRun = fn() => Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true));
+        $migrate = fn() => $db->transaction(fn() => (new $migrationClass())->safeUp());
+
+        if ($trashed) {
+            expect($dryRun())->toBe(1);
+            expect($readRelations())->toBe($relationsBefore);
+            expect($migrate())->toBeTrue();
+            expect(array_map('intval', array_column($readRelations(), 'ownerId')))->toBe([$canonical->id]);
+            expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(1);
+        } else {
+            expect($dryRun)->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+            expect($migrate)->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+            expect($readRelations())->toBe($relationsBefore);
+        }
+
+        expect($readContent())->toBe($contentBefore);
+        expect((new Query())->from('{{%elements}}')->where(['id' => $owner->id])->exists())->toBeTrue();
+        expect((new Query())->from('{{%entries}}')->where(['id' => $owner->id])->exists())->toBeFalse();
+        // Reconciliation exclusions must not allow content edits to bypass owner validation.
+        expect(fn() => Hyper::$plugin->content->modify($field, fn() => new LinkCollection($field, []), new ModifyOptions(elementIds: [$owner->id])))
+            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+        expect($readContent())->toBe($contentBefore);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+        $db->createCommand()->insert('{{%entries}}', $entryRow)->execute();
+        $db->createCommand()->update('{{%elements}}', ['dateDeleted' => null], ['id' => $owner->id])->execute();
+    }
+})->with([Backfill::class, Rebuild::class])->with(['trashed' => true, 'canonical' => false]);
+
 it('rolls the entire relation rebuild back if a later owner cannot be indexed', function() {
     $field = F::hyperField();
     $section = F::entrySection($field);
