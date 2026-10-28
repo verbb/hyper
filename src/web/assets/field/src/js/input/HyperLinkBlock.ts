@@ -1,6 +1,6 @@
 import { isPortalContentMutation } from './portalMutations';
 import { destroyEmbedWidgets } from './embed';
-import { debounce } from 'lodash-es';
+import { debounce, isEqual } from 'lodash-es';
 
 import type { HyperInputSettings } from '../types';
 import { appendBlockJs, initBlockCraftUi, initMenuBtn } from './craftUi';
@@ -57,6 +57,8 @@ export class HyperLinkBlock {
 
     private portalWatchEnabled = false;
 
+    private lastPortalValue: LinkInstance | null = null;
+
     /** True while toggling layout tabs — pane `.hidden` must not sync the store / dirty EE. */
     private suppressPortalSync = false;
 
@@ -75,7 +77,7 @@ export class HyperLinkBlock {
         this.onCopy = options.onCopy;
         this.onCut = options.onCut;
         this.onPaste = options.onPaste;
-        this.emitChangeDebounced = debounce(() => this.onChange(), 50);
+        this.emitChangeDebounced = debounce(() => this.emitPortalChange(), 50);
 
         this.bindEvents();
         this.initMenu();
@@ -562,6 +564,8 @@ export class HyperLinkBlock {
             return;
         }
 
+        this.lastPortalValue = this.getLinkData();
+
         this.portalObserver = new MutationObserver((mutations) => {
             if (this.suppressPortalSync) {
                 return;
@@ -587,7 +591,7 @@ export class HyperLinkBlock {
                 return;
             }
 
-            this.onChange();
+            this.emitPortalChange();
         });
 
         // Element select / asset fields mutate the portal without input/change on the container.
@@ -596,8 +600,22 @@ export class HyperLinkBlock {
                 return;
             }
 
-            this.onChange();
+            this.emitPortalChange();
         });
+    }
+
+    private emitPortalChange(): void {
+        const value = this.getLinkData();
+
+        // Hidden Craft widgets can add hints/counters long after startup. Compare
+        // portal values with their own snapshot, not differently shaped server JSON.
+        // Synthetic widget events and DOM-only edits still publish changed values.
+        if (isEqual(value, this.lastPortalValue)) {
+            return;
+        }
+
+        this.lastPortalValue = value;
+        this.onChange();
     }
 
     static getTemplateHtml(

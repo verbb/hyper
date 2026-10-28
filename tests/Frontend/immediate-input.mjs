@@ -26,6 +26,7 @@ try {
     await page.addScriptTag({path: path.join(craftPath, 'src/web/assets/jquery/dist/jquery.js')});
     await page.evaluate(() => {
         window.samples = [];
+        window.resumedChecks = [];
         window.Craft = {
             formatInputId: name => name.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z0-9_.]+/g, '-').replace(/-+$/, ''),
             initUiElements() {},
@@ -47,6 +48,9 @@ try {
             async pause() { this.pauseLevel++; await pause; },
             resume() { this.pauseLevel--; window.resumed = true; },
             serializeForm() { return $('#owner').serialize(); },
+            async checkForm() {
+                resumedChecks.push(JSON.parse(document.querySelector('#edited [data-hyper-store]').value));
+            },
             formObserver: {_serialize() {}},
         });
         for (const id of ['edited', 'untouched']) {
@@ -108,9 +112,11 @@ try {
         await page.locator('#edited .url').fill(value);
         await page.locator('#edited .url').blur();
     }
+    await page.locator('#edited .url').fill('https://example.test/retained-during-init');
     // Finish real block initialization, then repeat after portal watches are attached.
     await page.evaluate(() => finishPause());
     await page.waitForFunction(() => window.resumed);
+    assert.equal(await page.evaluate(() => resumedChecks[0]?.[0].linkValue), 'https://example.test/retained-during-init', 'Resuming initialization must check a retained early edit against Craft’s persisted baseline');
     await page.locator('#queued [data-hyper-input].hyper-input--interactive').waitFor();
     assert.equal(
         await page.locator('#queued [data-hyper-link]').count(),
