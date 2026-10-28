@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed edits to new Matrix entries containing Hyper fields being lost during autosave, including changes to neighbouring fields.
+
 ## 3.0.2 - 2026-10-28
 
 ### Changed

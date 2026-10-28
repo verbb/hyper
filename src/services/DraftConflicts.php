@@ -6,6 +6,7 @@ use verbb\hyper\fields\HyperField;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\base\NestedElementInterface;
 use craft\db\Query;
 use craft\errors\InvalidElementException;
 use craft\events\DraftEvent;
@@ -96,6 +97,17 @@ class DraftConflicts
             return true;
         }
 
+        // New nested elements can be canonical while privately owned by a draft.
+        // Their own autosaves are not concurrent published edits. Follow primary
+        // ownership so a published child merely viewed through a draft stays protected.
+        $primaryOwner = $element;
+
+        while ($primaryOwner instanceof NestedElementInterface && ($primaryOwner = $primaryOwner->getPrimaryOwner())) {
+            if (!$primaryOwner->getIsCanonical() || $primaryOwner->getIsDraft() || $primaryOwner->getIsRevision()) {
+                return true;
+            }
+        }
+
         $submitted = self::_submittedBaseline($field, $element);
 
         if ($submitted === null) {
@@ -117,6 +129,7 @@ class DraftConflicts
 
         if (self::_matchesBaseline($submitted['baseline'], $field, $element, $proposedHash)) {
             $field->copyValue($current, $element);
+
             return true;
         }
 
@@ -147,6 +160,7 @@ class DraftConflicts
         }
 
         $element->addError($field->handle, Craft::t('hyper', 'This field changed in the current entry while you were editing. Your draft is saved. Copy your changes, discard this draft, then reopen the current entry and reapply your changes.'));
+
         return false;
     }
 
@@ -185,6 +199,7 @@ class DraftConflicts
                 // A reverted local edit must not roll back newer published content.
                 if (self::_matchesBaseline($baseline, $field, $localized, $proposed) || ($baseline === null && !$localized->isFieldModified($field->handle))) {
                     $copies[] = [$field, $canonical, $localized];
+
                     continue;
                 }
 
