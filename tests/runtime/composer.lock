@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e4b809eba2c315c6615e699a94f5edfa",
+    "content-hash": "16b4005775d2f242f6425c31f6667c7c",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -11485,11 +11485,11 @@
         },
         {
             "name": "verbb/hyper",
-            "version": "3.0.1",
+            "version": "3.0.2",
             "dist": {
                 "type": "path",
                 "url": "../../..",
-                "reference": "49e4dbab1b7f768910b6f8b945b089d26d233525"
+                "reference": "e4fe8ae66adcdcfb0fbe56200f9a531074841c5d"
             },
             "require": {
                 "craftcms/cms": "^5.9",
@@ -12642,7 +12642,8 @@
     "platform": {},
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.2.0"
+        "php": "8.2.0",
+        "php-64bit": "8.2.0"
     },
     "plugin-api-version": "2.6.0"
 }
