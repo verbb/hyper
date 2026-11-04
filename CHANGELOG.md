@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed Hyper link controls taking ten seconds to become interactive in Global Sets.
+
 ## 3.0.3 - 2026-11-01
 
 ### Fixed

@@ -131,6 +131,13 @@ export function waitForElementEditor(
         return Promise.resolve(existing);
     }
 
+    // Global Sets submit through an ordinary form and never create an ElementEditor.
+    // Waiting for one leaves the link headers unbound until the polling timeout.
+    const form = getFormForContainer(container);
+    if (form?.querySelector('input[name="action"][value="globals/save-content"]')) {
+        return Promise.resolve(undefined);
+    }
+
     return new Promise((resolve) => {
         const startedAt = Date.now();
 

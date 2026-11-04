@@ -136,6 +136,38 @@ try {
     assert.equal(await page.locator('#untouched [data-hyper-store]').inputValue(), untouched);
     await page.evaluate(() => instances.forEach(instance => instance.destroy()));
 
+    // Global Sets use an ordinary form and never acquire an ElementEditor. The
+    // header controls must bind without waiting for the missing editor timeout.
+    const globalStore = await page.evaluate(() => {
+        const form = document.createElement('form');
+        form.id = 'global-set';
+        form.innerHTML = '<input type="hidden" name="action" value="globals/save-content">' + document.querySelector('#untouched').outerHTML;
+        document.body.append(form);
+        const host = form.querySelector('[data-hyper-input]');
+        host.classList.remove('hyper-input--ready', 'hyper-input--interactive');
+        const block = host.querySelector('[data-hyper-link]');
+        const portal = block.querySelector('[data-hyper-portal]');
+        portal.innerHTML = '<div class="flex-fields"><input name="fields[hyperData][untouched][linkValue]" value="https://example.test/original"></div><div class="flex-fields hidden"><input name="fields[hyperData][untouched][linkText]" value="Saved text"></div>';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'hyper-wrapper';
+        wrapper.innerHTML = '<div class="hyper-header"><button type="button" data-hyper-action="select-tab" data-hyper-tab-index="0" aria-selected="true">Content</button><button type="button" data-hyper-action="select-tab" data-hyper-tab-index="1" aria-selected="false">Advanced</button><button type="button" data-hyper-action="toggle-new-window" data-hyper-new-window-switch aria-pressed="false">Open in new window</button></div><div data-hyper-body></div>';
+        wrapper.querySelector('[data-hyper-body]').append(portal);
+        block.append(wrapper);
+        window.globalInput = new ImmediateInput.HyperInput(host);
+        globalInput.init();
+        return form.querySelector('[data-hyper-store]').value;
+    });
+    const globalForm = page.locator('#global-set');
+    await globalForm.locator('[data-hyper-input].hyper-input--interactive').waitFor({timeout: 1500});
+    await globalForm.getByRole('button', {name: 'Advanced', exact: true}).click();
+    assert.equal(await globalForm.locator('[data-hyper-tab-index="1"]').getAttribute('aria-selected'), 'true');
+    await globalForm.getByRole('button', {name: 'Content', exact: true}).click();
+    assert.equal(await globalForm.locator('[data-hyper-tab-index="0"]').getAttribute('aria-selected'), 'true');
+    assert.equal(await globalForm.locator('[data-hyper-store]').inputValue(), globalStore, 'Tab changes must preserve the saved payload');
+    await globalForm.getByRole('button', {name: 'Open in new window'}).click();
+    assert.equal(JSON.parse(await globalForm.locator('[data-hyper-store]').inputValue())[0].newWindow, true);
+    await page.evaluate(() => { globalInput.destroy(); document.querySelector('#global-set').remove(); });
+
     // Static revision rows may represent deleted Matrix entries. Mount their display
     // widgets without waking Craft's form/layout refresh or projecting disabled inputs.
     const revision = await page.evaluate(async () => {
@@ -180,7 +212,7 @@ try {
     });
     assert.deepEqual(revision, {ready: true, interactive: false, pauses: 0, checks: 0, hooked: false, unchanged: true});
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'queued add during init', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained', 'static revision display without editor refresh']}));
+    console.log(JSON.stringify({ok: true, scenarios: ['early edit', 'early clear', 'early revert', 'queued add during init', 'ready edit', 'same-event parent read', 'passive startup', 'unrendered fields retained', 'Global Set header readiness', 'static revision display without editor refresh']}));
 } finally {
     await browser.close();
 }
