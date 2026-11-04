@@ -390,10 +390,23 @@ class Content extends Component
         return true;
     }
 
+    /**
+     * Resolve a stored content owner, excluding unavailable sites during index rebuilds.
+     *
+     * @param ContentRef $ref
+     * @param bool $forReconciliation
+     * @return ElementInterface|null
+     */
     private function _resolveRelationOwner(ContentRef $ref, bool $forReconciliation = false): ?ElementInterface
     {
         $elementId = $ref->elementId;
         $siteId = $ref->siteId;
+
+        // Deleted sites can retain content rows that Craft can no longer hydrate.
+        // Disabled sites remain indexable, matching Craft's site-ID normalization.
+        if ($forReconciliation && $siteId && Craft::$app->getSites()->getSiteById($siteId, true) === null) {
+            return null;
+        }
 
         // Nested Matrix/Neo owners are identified by block entry id in the JSON path.
         if (preg_match('/\.(\d+)\.fields\./', $ref->jsonPath, $matches)) {

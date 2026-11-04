@@ -151,6 +151,13 @@ class LegacyContentRelationRebuilder
         return [$ownTable, $tables];
     }
 
+    /**
+     * Check that a legacy row belongs to an indexable element and an undeleted site.
+     *
+     * @param int $ownerId
+     * @param int $ownerSiteId
+     * @return bool
+     */
     private function _isIndexableOwner(int $ownerId, int $ownerSiteId): bool
     {
         $owner = (new Query())
@@ -164,8 +171,9 @@ class LegacyContentRelationRebuilder
         }
 
         return (new Query())
-            ->from(Table::ELEMENTS_SITES)
-            ->where(['elementId' => $ownerId, 'siteId' => $ownerSiteId])
+            ->from(['content' => Table::ELEMENTS_SITES])
+            ->innerJoin(['sites' => Table::SITES], '[[sites.id]] = [[content.siteId]]')
+            ->where(['content.elementId' => $ownerId, 'content.siteId' => $ownerSiteId, 'sites.dateDeleted' => null])
             ->exists($this->_db);
     }
 
