@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed upgrades failing when deleted sites retain Hyper content, without changing stored content or excluding disabled sites.
+
 ## 3.0.3 - 2026-11-01
 
 ### Fixed

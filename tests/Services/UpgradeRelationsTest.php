@@ -318,6 +318,90 @@ it('synchronizes relation changes when modifying archived owner content', functi
     }
 });
 
+it('excludes deleted sites but retains disabled sites when rebuilding current and legacy relations', function(string $migrationClass, bool $deleted) {
+    LegacyElementCacheSeeder::ensureLegacyTable();
+    [$primary, $secondary] = F::ensureSites(2);
+    $field = F::hyperField();
+    $section = F::entrySection($field, allSites: true);
+    $target = F::plainEntry($section, 'Target');
+    $owner = F::plainEntry($section, 'Current owner');
+    $legacyOwner = F::plainEntry($section, 'Legacy owner');
+    $db = Craft::$app->db;
+    $sites = Craft::$app->getSites();
+    $siteBefore = (new Query())->select(['dateDeleted', 'enabled'])->from('{{%sites}}')->where(['id' => $secondary->id])->one();
+    $uid = $owner->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $table = '{{%hyper_test_deleted_site_content}}';
+    $column = sprintf('field_%s%s', $field->handle, $field->columnSuffix ? '_' . $field->columnSuffix : '');
+    $migration = new class extends Migration {
+        public function safeUp(): bool
+        {
+            return true;
+        }
+
+        public function safeDown(): bool
+        {
+            return true;
+        }
+    };
+    $migration->createTable($table, [
+        'id' => $migration->primaryKey(),
+        'elementId' => $migration->integer()->notNull(),
+        'siteId' => $migration->integer()->notNull(),
+        $column => $migration->text(),
+    ]);
+    $db->getSchema()->refresh();
+
+    try {
+        foreach ([$primary, $secondary] as $site) {
+            $payload = [F::entryLinkPayload($target, 'Retained site link')];
+            expect($db->createCommand()->update('{{%elements_sites}}', [
+                'content' => new yii\db\JsonExpression([$uid => $payload]),
+            ], ['elementId' => $owner->id, 'siteId' => $site->id])->execute())->toBe(1);
+            $db->createCommand()->insert($table, [
+                'elementId' => $legacyOwner->id,
+                'siteId' => $site->id,
+                $column => Json::encode($payload),
+            ])->execute();
+        }
+
+        $readContent = fn() => (new Query())->select(['elementId', 'siteId', 'content'])->from('{{%elements_sites}}')
+            ->where(['elementId' => [$owner->id, $legacyOwner->id]])->orderBy('id')->all();
+        $readLegacy = fn() => (new Query())->from($table)->orderBy('id')->all();
+        $readRelations = fn() => (new Query())->select(['ownerId', 'ownerSiteId', 'targetId'])->from('{{%hyper_links}}')
+            ->where(['fieldId' => $field->id])->orderBy(['ownerId' => SORT_ASC, 'ownerSiteId' => SORT_ASC])->all();
+        $contentBefore = $readContent();
+        $legacyBefore = $readLegacy();
+        $relationsBefore = $readRelations();
+
+        // Retain both content stores exactly as they can remain after site deletion.
+        $db->createCommand()->update('{{%sites}}', $deleted
+            ? ['dateDeleted' => '2025-07-01 00:00:00']
+            : ['enabled' => false], ['id' => $secondary->id])->execute();
+        $sites->refreshSites();
+        expect($sites->getSiteById($secondary->id, true) === null)->toBe($deleted);
+
+        expect(Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true)))->toBe($deleted ? 1 : 2);
+        expect($readRelations())->toBe($relationsBefore);
+        expect((new $migrationClass())->safeUp())->toBeTrue();
+
+        $siteIds = $deleted ? [$primary->id] : [$primary->id, $secondary->id];
+        sort($siteIds);
+        foreach ([$owner, $legacyOwner] as $indexedOwner) {
+            $rows = array_values(array_filter($readRelations(), fn(array $row) => (int)$row['ownerId'] === $indexedOwner->id));
+            expect(array_map('intval', array_column($rows, 'ownerSiteId')))->toBe($siteIds);
+            expect(array_map('intval', array_column($rows, 'targetId')))->toBe(array_fill(0, count($siteIds), $target->id));
+        }
+        expect($readContent())->toBe($contentBefore);
+        expect($readLegacy())->toBe($legacyBefore);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+        $db->createCommand()->update('{{%sites}}', $siteBefore, ['id' => $secondary->id])->execute();
+        $sites->refreshSites();
+        $migration->dropTableIfExists($table);
+        $db->getSchema()->refresh();
+    }
+})->with([Backfill::class, Rebuild::class])->with(['deleted' => true, 'disabled' => false]);
+
 it('preserves unavailable owner content and resumes indexing when its element type returns', function() {
     LegacyElementCacheSeeder::ensureLegacyTable();
     $field = F::hyperField();
