@@ -18,12 +18,14 @@ use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
 use craft\db\Query;
+use craft\elements\Entry;
 use craft\events\DeleteSiteEvent;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 
 use RuntimeException;
+use Throwable;
 
 class Content extends Component
 {
@@ -456,16 +458,54 @@ class Content extends Component
         if (!$owner) {
             // Identify the stored owner without including authored link content.
             throw new RuntimeException(sprintf(
-                'Unable to resolve Hyper relation owner. Element ID: %d; site ID: %d; type: %s; content row ID: %d; path: %s.',
+                'Unable to resolve Hyper relation owner. Element ID: %d; site ID: %d; type: %s; content row ID: %d; path: %s. Diagnostics: %s',
                 $elementId,
                 $siteId,
                 $elementType ?? 'unknown',
                 $ref->rowId,
                 $ref->jsonPath,
+                $this->_relationOwnerDiagnostics($elementId, $elementType, $elementRow),
             ));
         }
 
         return $owner;
+    }
+
+    private function _relationOwnerDiagnostics(int $elementId, ?string $elementType, ?array $elementRow): string
+    {
+        $diagnostics = ['element' => ['exists' => $elementRow !== null] + ($elementRow ?? [])];
+
+        // Read only allowlisted metadata after a failed lookup. Hydrating the
+        // owner again would hide the same broken records we need to identify.
+        try {
+            if ($elementType !== null && is_a($elementType, Entry::class, true)) {
+                $entry = (new Query())
+                    ->select(['sectionId', 'typeId', 'fieldId', 'primaryOwnerId'])
+                    ->from('{{%entries}}')
+                    ->where(['id' => $elementId])
+                    ->one();
+                $diagnostics['entry'] = ['exists' => $entry !== null] + ($entry ?? []);
+
+                if (!empty($entry['primaryOwnerId'])) {
+                    $primaryOwner = (new Query())
+                        ->select(['id', 'type', 'archived', 'dateDeleted', 'draftId', 'revisionId'])
+                        ->from('{{%elements}}')
+                        ->where(['id' => $entry['primaryOwnerId']])
+                        ->one();
+                    $diagnostics['primaryOwner'] = ['exists' => $primaryOwner !== null] + ($primaryOwner ?? []);
+                    $diagnostics['primaryOwnerMappingExists'] = (new Query())
+                        ->from('{{%elements_owners}}')
+                        ->where(['elementId' => $elementId, 'ownerId' => $entry['primaryOwnerId']])
+                        ->exists();
+                }
+            }
+        } catch (Throwable $exception) {
+            // Diagnostics must not replace the original failure or expose SQL,
+            // connection details or authored values in a secondary exception.
+            $diagnostics['collectionError'] = $exception::class;
+        }
+
+        return Json::encode($diagnostics);
     }
 
     private function _serializedValuesEqual(mixed $left, mixed $right): bool

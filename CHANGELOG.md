@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Errors rebuilding link relations now include stored element state and entry ownership details to help diagnose owners that cannot be loaded.
+
 ## 3.0.4 - 2026-11-05
 
 ### Fixed
