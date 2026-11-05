@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed upgrades failing when deleted sites retain Hyper content, without changing stored content or excluding disabled sites.
 - Fixed upgrades failing when Hyper content remained for elements that no longer exist. ([#294](https://github.com/verbb/hyper/issues/294))
 - Fixed Hyper link controls taking ten seconds to become interactive in Global Sets.
 
