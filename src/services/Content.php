@@ -45,6 +45,7 @@ class Content extends Component
         if ($options->syncRelations && $db !== Craft::$app->getDb()) {
             throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }
+
         return $db->transaction(function() use ($field, $transform, $options, $db): ModifyResult {
             $result = (new ElementContentStore($db))->eachFieldValue($field, function(ContentRef $ref) use ($transform): bool {
                 $change = $transform($ref->value, $ref);
@@ -57,13 +58,16 @@ class Content extends Component
                 if ($change['action'] === 'unchanged' || $ref->value === $change['value']) {
                     return false;
                 }
+
                 $ref->value = $change['value'];
+
                 return true;
             }, $options);
 
             if (!$options->dryRun && $options->syncRelations && $result->modified > 0) {
                 $this->reconcileRelations($field, $options);
             }
+
             return $result;
         });
     }
@@ -370,6 +374,7 @@ class Content extends Component
         if (!$ref->hasDurableOwner) {
             return false;
         }
+
         $owner ??= $this->_resolveRelationOwner($ref);
 
         if (!$owner) {
@@ -407,6 +412,12 @@ class Content extends Component
             ->where(['id' => $elementId])
             ->one();
         $elementType = $elementRow['type'] ?? null;
+
+        // Broken FK cascades can leave content without an element. Preserve the
+        // orphaned content, but do not require an owner when rebuilding its index.
+        if ($forReconciliation && $elementRow === null) {
+            return null;
+        }
 
         // Trash and derivatives never enter the relation index. Exclude them
         // before hydration, as their type-specific owner records may be gone.

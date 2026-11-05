@@ -451,6 +451,53 @@ it('excludes trashed entries with missing entry records while retaining strict c
     }
 })->with([Backfill::class, Rebuild::class])->with(['trashed' => true, 'canonical' => false]);
 
+it('preserves orphaned content while rebuilding relations for existing owners', function(string $migrationClass) {
+    LegacyElementCacheSeeder::ensureLegacyTable();
+    $field = F::hyperField();
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $canonical = F::plainEntry($section, 'Canonical', [$field->handle => [F::entryLinkPayload($target)]]);
+    $owner = F::plainEntry($section, 'Missing element record', [$field->handle => [F::entryLinkPayload($target)]]);
+    $db = Craft::$app->db;
+    $elementRow = (new Query())->from('{{%elements}}')->where(['id' => $owner->id])->one();
+    $readContent = fn() => (new Query())->from('{{%elements_sites}}')
+        ->where(['elementId' => [$canonical->id, $owner->id]])->orderBy('id')->all();
+    $readRelations = fn() => (new Query())->from('{{%hyper_links}}')->where(['fieldId' => $field->id])->orderBy('id')->all();
+    $contentBefore = $readContent();
+    $relationsBefore = $readRelations();
+
+    // Reproduce a deletion without FK cascades, retaining the orphan's content and stale index.
+    $db->createCommand()->checkIntegrity(false, '', '{{%elements}}')->execute();
+
+    try {
+        $db->createCommand()->delete('{{%elements}}', ['id' => $owner->id])->execute();
+    } finally {
+        $db->createCommand()->checkIntegrity(true, '', '{{%elements}}')->execute();
+    }
+
+    try {
+        expect((new Query())->from('{{%elements}}')->where(['id' => $owner->id])->exists())->toBeFalse();
+        expect($readContent())->toBe($contentBefore);
+        expect(Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true)))->toBe(1);
+        expect($readRelations())->toBe($relationsBefore);
+        expect($db->transaction(fn() => (new $migrationClass())->safeUp()))->toBeTrue();
+        expect(array_map('intval', array_column($readRelations(), 'ownerId')))->toBe([$canonical->id]);
+        expect(array_map('intval', array_column($readRelations(), 'targetId')))->toBe([$target->id]);
+        expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(1);
+        expect($readContent())->toBe($contentBefore);
+
+        // Index rebuilding can skip an absent owner; content edits must still fail and roll back.
+        $relationsAfter = $readRelations();
+        expect(fn() => Hyper::$plugin->content->modify($field, fn() => new LinkCollection($field, []), new ModifyOptions(elementIds: [$owner->id])))
+            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+        expect($readContent())->toBe($contentBefore);
+        expect($readRelations())->toBe($relationsAfter);
+    } finally {
+        Rebuild::$rebuiltByBackfill = false;
+        $db->createCommand()->insert('{{%elements}}', $elementRow)->execute();
+    }
+})->with([Backfill::class, Rebuild::class]);
+
 it('rolls the entire relation rebuild back if a later owner cannot be indexed', function() {
     $field = F::hyperField();
     $section = F::entrySection($field);
