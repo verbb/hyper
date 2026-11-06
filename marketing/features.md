@@ -23,7 +23,7 @@ Let authors link to entries, assets, categories, users, products and other nativ
 
 Arrange native or custom fields with Craft’s field layout designer so each link can carry the supporting content the project needs. Keep the field compact when a destination is enough, or build a structured call to action with additional authoring controls.
 
-![A Hyper link settings slideout with extra content fields.](../screenshots/hyper-field-layout.png)
+![A Hyper link’s Advanced tab with additional link settings.](../screenshots/hyper-link-advanced.png)
 <!-- feature-section-end -->
 
 <!-- feature-grid -->
