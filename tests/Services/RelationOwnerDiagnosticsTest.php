@@ -40,12 +40,8 @@ it('reports stored relation owner metadata without exposing content or changing 
     $beforeContent = $readContent();
     $beforeRelations = $readRelations();
 
-    if ($state === 'missing') {
-        $db->createCommand()->delete('{{%entries}}', ['id' => $owner->id])->execute();
-    }
-
     // A query customization can hide an otherwise intact entry. Diagnostics must
-    // distinguish that case from an absent entry record without using hydration.
+    // report its stored records without using hydration.
     $hideOwner = static function(CancelableEvent $event) use ($owner): void {
         if ($event->sender->id == $owner->id) {
             $event->isValid = false;
@@ -72,12 +68,10 @@ it('reports stored relation owner metadata without exposing content or changing 
             ->and($diagnostics['element']['dateDeleted'])->toBeNull()
             ->and($diagnostics['element']['draftId'])->toBeNull()
             ->and($diagnostics['element']['revisionId'])->toBeNull()
-            ->and($diagnostics['entry']['exists'])->toBe($state !== 'missing');
+            ->and($diagnostics['entry']['exists'])->toBeTrue();
 
-        if ($state !== 'missing') {
-            foreach (['sectionId', 'typeId', 'fieldId', 'primaryOwnerId'] as $key) {
-                expect($diagnostics['entry'][$key])->toBe($entryRow[$key]);
-            }
+        foreach (['sectionId', 'typeId', 'fieldId', 'primaryOwnerId'] as $key) {
+            expect($diagnostics['entry'][$key])->toBe($entryRow[$key]);
         }
 
         if ($parent) {
@@ -94,19 +88,15 @@ it('reports stored relation owner metadata without exposing content or changing 
     } finally {
         Event::off(EntryQuery::class, EntryQuery::EVENT_BEFORE_PREPARE, $hideOwner);
         Rebuild::$rebuiltByBackfill = false;
-
-        if ($state === 'missing') {
-            $db->createCommand()->insert('{{%entries}}', $entryRow)->execute();
-        }
     }
-})->with([Backfill::class, Rebuild::class])->with(['missing', 'present', 'nested']);
+})->with([Backfill::class, Rebuild::class])->with(['present', 'nested']);
 
 it('retains the original owner error when diagnostic queries fail', function() {
     $field = F::hyperField();
     $owner = F::plainEntry(F::entrySection($field), 'Private owner', [$field->handle => [F::urlLinkPayload('https://private.example')]]);
     $db = Craft::$app->getDb();
     $unavailableDb = $this->getMockBuilder(craft\db\Connection::class)->onlyMethods(['getQueryBuilder'])->getMock();
-    $unavailableDb->expects($this->once())->method('getQueryBuilder')->willThrowException(new RuntimeException('Private connection details'));
+    $unavailableDb->expects($this->atLeastOnce())->method('getQueryBuilder')->willThrowException(new RuntimeException('Private connection details'));
     $hideOwner = static function(CancelableEvent $event) use ($owner, $unavailableDb): void {
         if ($event->sender->id == $owner->id) {
             $event->isValid = false;

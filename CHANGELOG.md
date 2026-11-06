@@ -6,6 +6,10 @@
 
 - Errors rebuilding link relations now include stored element state and entry ownership details to help diagnose owners that cannot be loaded.
 
+### Fixed
+
+- Fixed upgrades failing when Hyper content remained for incomplete elements that Craft's garbage collection deletes, such as entries missing their entry record.
+
 ## 3.0.4 - 2026-11-05
 
 ### Fixed

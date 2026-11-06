@@ -2,6 +2,8 @@
 
 use craft\db\Migration;
 use craft\db\Query;
+use craft\elements\db\EntryQuery;
+use craft\events\CancelableEvent;
 use craft\fieldlayoutelements\CustomField;
 use craft\helpers\Json;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
@@ -13,6 +15,7 @@ use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\Hyper;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\records\LinkRelation;
+use yii\base\Event;
 
 it('rebuilds relations from legacy nested content before host-plugin conversion', function() {
     $field = F::hyperField();
@@ -458,8 +461,13 @@ it('identifies unresolved owners without changing content or relations', functio
     $contentBefore = $readContent();
     $relationsBefore = $readRelations();
     $placement = $owner->getFieldLayout()->getCustomFieldElements()[0]->uid;
-    // A loadable type with no corresponding row must not be treated as an absent plugin.
-    $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Asset::class], ['id' => $owner->id])->execute();
+    // An intact owner that cannot load is not a partial element and must not be skipped.
+    $hideOwner = static function(CancelableEvent $event) use ($owner): void {
+        if ($event->sender->id == $owner->id) {
+            $event->isValid = false;
+        }
+    };
+    Event::on(EntryQuery::class, EntryQuery::EVENT_BEFORE_PREPARE, $hideOwner);
 
     try {
         $run = function() use ($operation, $field, $db) {
@@ -473,18 +481,18 @@ it('identifies unresolved owners without changing content or relations', functio
         };
         $message = sprintf(
             'Unable to resolve Hyper relation owner. Element ID: %d; site ID: %d; type: %s; content row ID: %d; path: %s.',
-            $owner->id, $owner->siteId, craft\elements\Asset::class, $contentBefore['id'], $placement,
+            $owner->id, $owner->siteId, craft\elements\Entry::class, $contentBefore['id'], $placement,
         );
         expect($run)->toThrow(RuntimeException::class, $message);
         expect($readContent())->toBe($contentBefore)
             ->and($readRelations())->toBe($relationsBefore);
     } finally {
+        Event::off(EntryQuery::class, EntryQuery::EVENT_BEFORE_PREPARE, $hideOwner);
         Rebuild::$rebuiltByBackfill = false;
-        $db->createCommand()->update('{{%elements}}', ['type' => craft\elements\Entry::class], ['id' => $owner->id])->execute();
     }
 })->with(['reconcile', 'dry-run', 'backfill', 'rebuild']);
 
-it('excludes trashed entries with missing entry records while retaining strict canonical checks', function(string $migrationClass, bool $trashed) {
+it('excludes trashed and live entries with missing entry records while keeping content edits strict', function(string $migrationClass, bool $trashed) {
     LegacyElementCacheSeeder::ensureLegacyTable();
     $field = F::hyperField();
     $section = F::entrySection($field);
@@ -500,6 +508,7 @@ it('excludes trashed entries with missing entry records while retaining strict c
     $relationsBefore = $readRelations();
 
     // Reproduce retained element/content rows after the type-specific entry row is gone.
+    // Craft's garbage collection deletes these partial elements whether or not they are trashed.
     $db->createCommand()->delete('{{%entries}}', ['id' => $owner->id])->execute();
     $db->createCommand()->update('{{%elements}}', [
         'dateDeleted' => $trashed ? '2025-06-20 00:45:49' : null,
@@ -509,31 +518,39 @@ it('excludes trashed entries with missing entry records while retaining strict c
         $dryRun = fn() => Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true));
         $migrate = fn() => $db->transaction(fn() => (new $migrationClass())->safeUp());
 
-        if ($trashed) {
-            expect($dryRun())->toBe(1);
-            expect($readRelations())->toBe($relationsBefore);
-            expect($migrate())->toBeTrue();
-            expect(array_map('intval', array_column($readRelations(), 'ownerId')))->toBe([$canonical->id]);
-            expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(1);
-        } else {
-            expect($dryRun)->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
-            expect($migrate)->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
-            expect($readRelations())->toBe($relationsBefore);
-        }
-
+        expect($dryRun())->toBe(1);
+        expect($readRelations())->toBe($relationsBefore);
+        expect($migrate())->toBeTrue();
+        expect(array_map('intval', array_column($readRelations(), 'ownerId')))->toBe([$canonical->id]);
+        expect(array_map('intval', array_column($readRelations(), 'targetId')))->toBe([$target->id]);
+        expect(Hyper::$plugin->content->reconcileRelations($field))->toBe(1);
         expect($readContent())->toBe($contentBefore);
         expect((new Query())->from('{{%elements}}')->where(['id' => $owner->id])->exists())->toBeTrue();
         expect((new Query())->from('{{%entries}}')->where(['id' => $owner->id])->exists())->toBeFalse();
+
         // Reconciliation exclusions must not allow content edits to bypass owner validation.
-        expect(fn() => Hyper::$plugin->content->modify($field, fn() => new LinkCollection($field, []), new ModifyOptions(elementIds: [$owner->id])))
-            ->toThrow(RuntimeException::class, 'Unable to resolve Hyper relation owner.');
+        $relationsAfter = $readRelations();
+        $exception = null;
+
+        try {
+            Hyper::$plugin->content->modify($field, fn() => new LinkCollection($field, []), new ModifyOptions(elementIds: [$owner->id]));
+        } catch (RuntimeException $error) {
+            $exception = $error;
+        }
+
+        expect($exception)->toBeInstanceOf(RuntimeException::class);
+        expect($exception->getMessage())->toContain('Unable to resolve Hyper relation owner.');
+        $diagnostics = Json::decode(explode(' Diagnostics: ', $exception->getMessage(), 2)[1]);
+        expect($diagnostics['element']['exists'])->toBeTrue()
+            ->and($diagnostics['entry']['exists'])->toBeFalse();
         expect($readContent())->toBe($contentBefore);
+        expect($readRelations())->toBe($relationsAfter);
     } finally {
         Rebuild::$rebuiltByBackfill = false;
         $db->createCommand()->insert('{{%entries}}', $entryRow)->execute();
         $db->createCommand()->update('{{%elements}}', ['dateDeleted' => null], ['id' => $owner->id])->execute();
     }
-})->with([Backfill::class, Rebuild::class])->with(['trashed' => true, 'canonical' => false]);
+})->with([Backfill::class, Rebuild::class])->with(['trashed' => true, 'live' => false]);
 
 it('preserves orphaned content while rebuilding relations for existing owners', function(string $migrationClass) {
     LegacyElementCacheSeeder::ensureLegacyTable();
