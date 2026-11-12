@@ -4,15 +4,13 @@
 <p align="center"><img src="https://assets.verbb.io/plugins/hyper/hyper-icon.svg" width="100" height="100" alt="Hyper icon"></p>
 <h1 align="center">Hyper for Craft CMS</h1>
 
-Hyper is a Craft CMS plugin for building consistent, links that are easy to edit with one configurable field.
+Hyper is a Craft CMS plugin for building consistent, easy-to-edit links with one configurable field.
 
 Hyper handles simple URLs, native Craft elements and calls to action with their own supporting fields through the same editing experience. Choose the allowed link types, use a single or multiple-link field, and add supporting fields with Craft's field layout designer.
 
 ## Features
 
-- Link to entries, assets, categories, users, products and other Craft elements.
-- Link directly to Calendar events and Formie forms when those plugins are installed.
-- Support URLs, email addresses, phone numbers and embedded content.
+- Link to Craft elements, Calendar events, Formie forms, URLs, email addresses, phone numbers and embedded content.
 - Configure single or multiple links in each field.
 - Reuse named Link Type Configs across fields or choose settings for one field.
 - Add native and custom fields to individual link types.
@@ -41,7 +39,7 @@ Hyper handles simple URLs, native Craft elements and calls to action with their 
 - Site
 - URL
 - User
-- Variant (for [Commerce](https://plugins.craftcms.com/commerce))
+- Variant (for Commerce)
 
 ## Documentation
 
@@ -49,7 +47,7 @@ Visit the [Hyper Plugin page](https://verbb.io/craft-plugins/hyper) for all docu
 
 ## Support
 
-Get in touch with us via the [Hyper Support page](https://verbb.io/craft-plugins/hyper/support) or by [creating a Github issue](https://github.com/verbb/hyper/issues)
+Get in touch with us via the [Hyper Support page](https://verbb.io/craft-plugins/hyper/support) or by [creating a GitHub issue](https://github.com/verbb/hyper/issues).
 
 <h2></h2>
 

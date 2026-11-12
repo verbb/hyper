@@ -3,7 +3,7 @@ A user-friendly field for creating single links or collections of links to URLs,
 <!-- feature-intro-end -->
 
 <!-- feature-section media-size="large" media-shadow="false" -->
-## Single or multi
+## Single links or link collections
 
 Configure Hyper for one focused destination or a sortable collection. Authors get the same link-picking workflow in either mode, with multi-link fields keeping destinations in the order the page needs.
 
@@ -19,7 +19,7 @@ Let authors link to entries, assets, categories, users, products and other nativ
 <!-- feature-section-end -->
 
 <!-- feature-section media-shadow="false" -->
-## Ultimate flexibility with fields
+## Add custom fields to each link
 
 Arrange native or custom fields with Craft’s field layout designer so each link can carry the supporting content the project needs. Keep the field compact when a destination is enough, or build a structured call to action with additional authoring controls.
 

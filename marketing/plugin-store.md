@@ -1,12 +1,10 @@
-Build consistent, links that are easy to edit with one configurable field.
+Build consistent, easy-to-edit links with one configurable field.
 
 Hyper handles simple URLs, native Craft elements and calls to action with their own supporting fields through the same editing experience. Choose the allowed link types, use a single or multiple-link field, and add supporting fields with Craft's field layout designer.
 
 ## Features
 
-- Link to entries, assets, categories, users, products and other Craft elements.
-- Link directly to Calendar events and Formie forms when those plugins are installed.
-- Support URLs, email addresses, phone numbers and embedded content.
+- Link to Craft elements, Calendar events, Formie forms, URLs, email addresses, phone numbers and embedded content.
 - Configure single or multiple links in each field.
 - Reuse named Link Type Configs across fields or choose settings for one field.
 - Add native and custom fields to individual link types.
@@ -35,4 +33,4 @@ Hyper handles simple URLs, native Craft elements and calls to action with their 
 - Site
 - URL
 - User
-- Variant (for [Commerce](https://plugins.craftcms.com/commerce))
+- Variant (for Commerce)
