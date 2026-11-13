@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed new link types added to a field's custom link type config being lost on save, and the first link type being moved to the end and enabled. ([#295](https://github.com/verbb/hyper/issues/295))
+
 ## 3.0.5 - 2026-11-10
 
 ### Changed

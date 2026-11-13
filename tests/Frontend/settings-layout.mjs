@@ -205,7 +205,63 @@ try {
     });
     assert.deepEqual(remount, {requests: 10, generated: 10, disposed: 10, menuClicks: 10, layout: 'edited-9'});
 
-    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes', 'field layout error retry', 'removal during pending request', 'native designer disposal', 'ten settings remounts', 'removal during queued footer preserves pristine layout']}));
+    // Field settings namespace every input. A new link type must post under its own handle in
+    // that namespace without its cloned sidebar row overwriting the row it was copied from.
+    const namespacedAdd = await page.evaluate(async () => {
+        const ns = 'types[verbb-hyper-fields-HyperField]';
+        const form = document.createElement('form');
+        const root = document.createElement('div');
+        root.dataset.hyperSettingsConfig = JSON.stringify({
+            fieldId: 1,
+            namespacedName: `${ns}[__PREFIX__]`,
+            registeredLinkTypes: [{value: 'entry', label: 'Entry'}],
+            linkTypeTemplates: [{
+                type: 'entry',
+                displayName: 'Entry',
+                htmlTemplate: `<input name="${ns}[linkTypes][__LINK_TYPE__][type]" value="entry"><input name="${ns}[linkTypes][__LINK_TYPE__][label]" value="New Entry" data-label-field><input name="${ns}[linkTypes][__LINK_TYPE__][handle]" data-handle-field>`,
+                layoutConfig: 'template layout',
+            }],
+        });
+        root.innerHTML = `<button data-hyper-settings-add-trigger>New type</button><div data-hyper-settings-add-list><ul data-hyper-settings-add-options></ul></div>
+            <div data-hyper-settings-sidebar><div data-hyper-settings-item data-link-type-handle="entry">
+                <div class="lightswitch"><input type="hidden" name="${ns}[linkTypes][entry][enabled]" value=""></div>
+                <input name="${ns}[linkTypes][entry][sortOrder]" value="0" data-hyper-settings-sort-order>
+                <span data-hyper-settings-label>Entry</span>
+            </div></div>
+            <div data-hyper-settings-pane><div data-hyper-settings-link-pane data-link-type-handle="entry">
+                <input name="${ns}[linkTypes][entry][type]" value="entry"><input name="${ns}[linkTypes][entry][label]" value="Entry" data-label-field>
+                <input name="${ns}[linkTypes][entry][handle]" value="entry" data-handle-field>
+            </div></div>`;
+        form.append(root);
+        document.body.append(form);
+        Craft.initUiElements = () => {};
+        Craft.asciiString = value => value;
+        Craft.filterArray = values => values.filter(Boolean);
+        const settings = new LayoutTest.HyperSettings(root);
+        settings.init();
+        document.querySelector('[data-hyper-settings-add-type="entry"]').click();
+        await new Promise(done => setTimeout(done, 10));
+        const handle = [...root.querySelectorAll('[data-hyper-settings-item]')].at(-1).dataset.linkTypeHandle;
+        const entries = [...new FormData(form).entries()].map(([name, value]) => [name.replace(ns, ''), value]);
+        settings.destroy();
+        form.remove();
+        return {handle, entries: Object.fromEntries(entries)};
+    });
+    assert.notEqual(namespacedAdd.handle, 'entry');
+    assert.deepEqual(namespacedAdd.entries, {
+        '[linkTypes][entry][enabled]': '',
+        '[linkTypes][entry][sortOrder]': '0',
+        '[linkTypes][entry][type]': 'entry',
+        '[linkTypes][entry][label]': 'Entry',
+        '[linkTypes][entry][handle]': 'entry',
+        [`[linkTypes][${namespacedAdd.handle}][enabled]`]: '1',
+        [`[linkTypes][${namespacedAdd.handle}][sortOrder]`]: '1',
+        [`[linkTypes][${namespacedAdd.handle}][type]`]: 'entry',
+        [`[linkTypes][${namespacedAdd.handle}][label]`]: 'New Entry',
+        [`[linkTypes][${namespacedAdd.handle}][handle]`]: namespacedAdd.handle,
+    });
+
+    console.log(JSON.stringify({ok: true, scenarios: ['pristine layout chrome', 'immediate layout save', 'type-switch flush without duplicate writes', 'field layout error retry', 'removal during pending request', 'native designer disposal', 'ten settings remounts', 'removal during queued footer preserves pristine layout', 'namespaced new link type keeps its own row']}));
 } finally {
     await browser.close();
 }

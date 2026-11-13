@@ -195,6 +195,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                     isset($normalized['handle'])
                 ) {
                     $config['defaultLinkType'] = $normalized['handle'];
+
                     break;
                 }
             }
@@ -472,6 +473,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         if ($label === null || $label === '') {
             $label = $first->getUrl() ?? Craft::t('hyper', 'Link');
         }
+
         $html = Html::encode((string)$label);
 
         // Multi-link Matrix/card preview: show first label plus remaining count.
@@ -698,6 +700,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             foreach ($value->getLinks() as $link) {
                 \verbb\hyper\services\EmbeddedFields::afterSave($link);
             }
+
             LinkFieldLifecycle::finalizeUploads($value, $element);
             Hyper::$plugin->getLinkRelations()->syncFromLinkCollection($this, $element, $value);
             Hyper::$plugin->getMultisiteLinks()->propagateLinkStructure($this, $element, $value);
@@ -745,6 +748,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         foreach ($this->_serializedLinkTypes as $config) {
             if ($config instanceof LinkInterface) {
                 $definitions[] = LinkTypeDefinition::fromLinkType($config);
+
                 continue;
             }
 
@@ -979,6 +983,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             if ($registeredLinkTypes && is_array($config) && !in_array($config['type'] ?? null, $registeredLinkTypes, true)) {
                 $linkType = Hyper::$plugin->getLinks()->createSettingsPrototype($config);
                 $this->_linkTypes[] = $linkType;
+
                 continue;
             }
 
@@ -1279,6 +1284,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             if (isset($linkData['unsupportedPayload'])) {
                 $initial['unsupportedPayload'] = $linkData['unsupportedPayload'];
             }
+
             $initialValue[] = $initial;
 
             $linkType = $this->getLinkTypeByHandle($handle);
@@ -1800,6 +1806,11 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             'isCustom' => true,
         ]);
         $jsTemplate = $view->clearJsBuffer();
+
+        // The template travels as JSON, which Craft's outer namespacing never reaches. Apply the
+        // active namespace here so new link types post with the field settings and their IDs
+        // match the already-namespaced JS. This is a no-op on the Link Type Config page.
+        $htmlTemplate = $view->namespaceInputs($htmlTemplate);
 
         return array_merge($linkType->getSettingsConfig(), [
             'displayName' => $linkType::displayName(),

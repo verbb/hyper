@@ -373,11 +373,7 @@ export class HyperSettings {
                     || input instanceof HTMLSelectElement
                     || input instanceof HTMLTextAreaElement
                 ) {
-                    // Handle both bracket styles: SSR `linkTypes[<h>]` and the fully
-                    // namespaced `…[linkTypes][<h>]` names the designer builds via getName().
-                    input.name = input.name
-                        .replace(`[linkTypes][${oldHandle}]`, `[linkTypes][${newHandle}]`)
-                        .replace(`linkTypes[${oldHandle}]`, `linkTypes[${newHandle}]`);
+                    input.name = this.renameLinkTypeInput(input.name, oldHandle, newHandle);
                 }
             });
         });
@@ -401,6 +397,16 @@ export class HyperSettings {
         }
     }
 
+    /**
+     * Point an input name at another link type. Handles both bracket styles: the bare
+     * `linkTypes[<h>]` on the Link Type Config page and the field-namespaced `…[linkTypes][<h>]`.
+     */
+    private renameLinkTypeInput(name: string, oldHandle: string, newHandle: string): string {
+        return name
+            .replace(`[linkTypes][${oldHandle}]`, `[linkTypes][${newHandle}]`)
+            .replace(`linkTypes[${oldHandle}]`, `linkTypes[${newHandle}]`);
+    }
+
     private createSidebarItem(handle: string, label: string): HTMLElement {
         const sidebar = this.container.querySelector('[data-hyper-settings-sidebar]');
         const prototype = this.container.querySelector('[data-hyper-settings-item]');
@@ -410,6 +416,7 @@ export class HyperSettings {
         }
 
         const sortOrder = sidebar.querySelectorAll('[data-hyper-settings-item]').length;
+        const prototypeHandle = prototype.dataset.linkTypeHandle ?? '';
         const item = prototype.cloneNode(true) as HTMLElement;
 
         item.classList.remove('sel', 'has-errors');
@@ -421,9 +428,11 @@ export class HyperSettings {
             labelEl.textContent = label;
         }
 
+        // The clone still posts under the prototype's handle; it would overwrite that row's
+        // enabled state and sort order if left unchanged.
         item.querySelectorAll('[name]').forEach((input) => {
             if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
-                input.name = input.name.replace(/linkTypes\[[^\]]+\]/, `linkTypes[${handle}]`);
+                input.name = this.renameLinkTypeInput(input.name, prototypeHandle, handle);
             }
         });
 
