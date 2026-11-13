@@ -2,7 +2,7 @@
 
 You can customise Hyper’s settings using a PHP configuration file. This is optional: each setting has a default, so you only need to include the values you want to change.
 
-To override a setting, create `hyper.php` in your Craft project’s `/config` directory and return an array of setting names and values. For example, the following enables higher-resolution embed image selection:
+To override a setting, create `hyper.php` in your Craft project’s `/config` directory and return an array of setting names and values. For example, the following will enable higher-resolution embed image selection:
 
 ```php
 <?php
@@ -131,9 +131,3 @@ These limits mean a provider requiring many requests or a slow response can fail
 ## Additional URI Schemes
 
 If your site links into an application using a scheme such as `slack:`, add it to `allowedUriSchemes`. This applies to rendered Custom links as well as URL links; choosing Custom does not bypass the shared policy.
-
-## Control Panel
-
-Open Hyper’s settings to manage [Link Type Configs](/feature-tour/link-type-configs) and access migration tools. The General Settings page does not provide controls for the PHP options above; edit `config/hyper.php` to change those values.
-
-[Custom Fields Inside Links](/feature-tour/custom-fields-inside-links) covers link layouts, nested Matrix fields and asset uploads.
