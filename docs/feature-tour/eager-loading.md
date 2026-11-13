@@ -51,4 +51,4 @@ Hyper fields inside Vizy can resolve individual destinations with `getElement()`
 
 Compare the page’s database queries before and after adding the path, using Craft’s debug toolbar in development. The links and thumbnails should remain the same while repeated target-field queries decrease. [Checking Link Performance](/guides/developers/checking-link-performance) walks through that comparison.
 
-GraphQL has its own selection syntax and uses Hyper’s target batching. See [GraphQL](/developers/graphql) for an example query.
+GraphQL has its own selection syntax and uses Hyper’s target batching. See [GraphQL](/graphql/queries) for an example query.

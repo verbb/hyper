@@ -59,4 +59,4 @@ Additional types are available when their required plugins are installed and ena
 
 A selectable element still needs a URL or your own template behaviour to become a useful frontend link. For example, selecting a Formie form can let your template access that form, but does not create a form page automatically.
 
-For PHP class names, see [Built-in Classes](/reference/link#built-in-classes). To add destination behaviour, follow [Creating Link Types](/developers/creating-link-types).
+For PHP class names, see [Built-in Classes](/reference/link#built-in-classes). To add destination behaviour, follow [Custom Link Types](/developers/custom-link-types).

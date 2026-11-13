@@ -1,6 +1,6 @@
-# LinkCollection
+# Link Collection
 
-A Hyper field returns a `LinkCollection` in both single-link and multiple-link mode. Use it to render the first link, loop over links, or select links by their type and custom fields. **Enable Multiple Links** controls authoring; the template API stays the same.
+A Hyper field returns a `LinkCollection` in both single-link and multiple-link mode. Use it to render the first link, loop over links, or select links by their type and custom fields. **Enable Multiple Links** controls authoring, and the template API stays the same.
 
 The examples below belong in an entry’s Twig template and assume a Hyper field with the handle `myLinkField`.
 
@@ -20,7 +20,7 @@ Render every non-empty link in the saved order:
 {% endfor %}
 ```
 
-A link is empty when it cannot resolve a non-blank URL. Labels, classes and custom fields alone do not give it a destination. Links to unavailable entries and Passive labels are empty under this definition. Hyper resolves the destination locally; it does not request an external website to check whether it exists.
+A link is empty when it cannot resolve a non-blank URL. Labels, classes and custom fields alone do not give it a destination. Links to unavailable entries and Passive labels are empty under this definition. Hyper resolves the destination locally and doesn’t request an external website to check whether it exists.
 
 Iteration, array access, `first()`, `count()`, `exists()` and rendering shortcuts all use the current selection. Loop metadata such as `loop.length` and `loop.last` describes that selection. With no matches, `first()` returns `null`, `getLink()` outputs nothing and a loop’s `{% else %}` branch runs.
 
@@ -34,7 +34,7 @@ Suppose you have a custom URL type with the handle `externalResource`, with a Li
 {% endfor %}
 ```
 
-`handle` identifies a configured link type, so two custom URL types can be selected independently. The native `type` attribute contains the PHP class name; for example, `{ type: 'verbb\\hyper\\links\\Url' }` selects URL links across their configured handles.
+`handle` identifies a configured link type, so two custom URL types can be selected independently. The native `type` attribute contains the PHP class name. For example, `{ type: 'verbb\\hyper\\links\\Url' }` selects URL links across their configured handles.
 
 Conditions can read native link attributes and normalised custom fields by handle. Prefix a custom field handle with `fields.` when it overlaps a native attribute, such as `'fields.title'`. A field absent from a link’s layout reads as `null`. Comparisons support text, numbers, booleans and date values. Relation queries and complex field values need their own field APIs rather than scalar comparisons.
 
@@ -52,9 +52,9 @@ For example, with a Number field called `priority` on that type:
 {% endfor %}
 ```
 
-Filters return a new selection and leave the original collection unchanged. `where()` replaces the ordinary conditions; `andWhere()` and `orWhere()` combine them. The empty-link scope is separate, so replacing conditions or adding an OR branch does not include empty links accidentally. Equal sort values keep their saved order, and overlapping OR branches return each occurrence once without collapsing repeated links.
+Filters return a new selection and leave the original collection unchanged. `where()` replaces the ordinary conditions, while `andWhere()` and `orWhere()` combine them. The empty-link scope is separate, so replacing conditions or adding an OR branch does not include empty links accidentally. Equal sort values keep their saved order, and overlapping OR branches return each occurrence once without collapsing repeated links.
 
-You can iterate a selection directly. Call `all()` when another API needs an array; it returns the same links. No `query()` call is required.
+You can iterate a selection directly. Call `all()` when another API needs an array. It returns the same links. No `query()` call is required.
 
 ### Empty Links
 
@@ -62,7 +62,7 @@ Use `empty()` to control which destinations are included:
 
 | Selection | Result |
 | --- | --- |
-| `empty(false)` | Links with a resolved URL; the default. |
+| `empty(false)` | Links with a resolved URL. This is the default. |
 | `empty(true)` | Links without a resolved URL. |
 | `empty(null)` | Every link, regardless of its destination. |
 
@@ -92,16 +92,18 @@ Hash conditions combine attributes with AND. An array value is an IN condition: 
 | `between`, `not between` | `['between', 'priority', 10, 20]` |
 | `like`, `not like` | `['like', 'linkText', 'download']` |
 
-`like` checks for a case-insensitive substring; it does not use SQL wildcard syntax. Date comparisons accept date objects, for example `['>=', 'publishDate', now]` when the selected type has a Date field named `publishDate`. These filters operate on this field’s links in memory, rather than searching links across entries.
+`like` checks for a case-insensitive substring and doesn’t use SQL wildcard syntax. Date comparisons accept date objects, for example `['>=', 'publishDate', now]` when the selected type has a Date field named `publishDate`. These filters operate on this field’s links in memory, rather than searching links across entries.
 
 ## Methods
 
 ::: reference
-### `getLink(array $attributes = [])`
+### `getLink()`
+
+**Arguments:** `$attributes` (`array`, optional), extra attributes for the anchor.
 
 **Returns:** `Twig\Markup|null`
 
-Render the first selected link with Hyper’s saved label and attributes. Return `null` if there is no selected link or its destination is empty. Template attributes override saved rendering attributes.
+Returns the first selected link as an `<a>` element, using Hyper’s saved label and attributes. This is null when nothing is selected or the first link has no destination. Attributes you pass override the saved ones.
 :::
 
 ::: reference
@@ -109,10 +111,11 @@ Render the first selected link with Hyper’s saved label and attributes. Return
 
 **Returns:** `verbb\hyper\base\LinkInterface|null`
 
-Return the first selected link object, or `null`. Use it for custom fields and type-specific methods:
+Returns the first selected [Link](/reference/link), or null when nothing is selected. Use it to read custom fields and call type-specific methods.
 
 ```twig
 {% set link = entry.myLinkField.first() %}
+
 {% if link %}
     {{ link.getLink() }}
 {% endif %}
@@ -124,66 +127,162 @@ Return the first selected link object, or `null`. Use it for custom fields and t
 
 **Returns:** `array`
 
-Return the selected Link objects as a zero-indexed array, with filtering, ordering, offset and limit applied.
+Returns the selected [Link](/reference/link) objects as a zero-indexed array, with filtering, ordering, offset and limit applied.
 :::
 
 ::: reference
-### `empty(?bool $empty = false)`
+### `empty()`
+
+**Arguments:** `$empty` (`bool|null`, defaults to `false`).
 
 **Returns:** `self`
 
-Return a new selection containing non-empty links (`false`), empty links (`true`), or either (`null`). Preserve the other selection options.
+Selects links by whether they have a destination, returning a new selection. Pass `false` for links with a URL (the default), `true` for links without one, or `null` for either. The other selection options stay the same.
 :::
 
 ::: reference
-### `where(array $condition)`
+### `where()`
+
+**Arguments:** `$condition` (`array`), a hash or operator condition.
 
 **Returns:** `self`
 
-Return a new selection with the supplied conditions replacing previous conditions. Preserve the empty scope, ordering, offset and limit.
+Filters the links by the given conditions, returning a new selection. The conditions replace any earlier ones, while the empty scope, ordering, offset and limit stay the same.
 :::
 
 ::: reference
-### `andWhere(array $condition)` / `orWhere(array $condition)`
+### `andWhere()`
+
+**Arguments:** `$condition` (`array`), a hash or operator condition.
 
 **Returns:** `self`
 
-Return a new selection combining existing conditions with the supplied condition using AND or OR. With no existing conditions, use the supplied condition.
+Adds a condition that links must also match, returning a new selection. With no earlier conditions, the given condition is used on its own.
 :::
 
 ::: reference
-### `orderBy(array|string $columns)`
+### `orWhere()`
+
+**Arguments:** `$condition` (`array`), a hash or operator condition.
 
 **Returns:** `self`
 
-Replace the selection’s ordering. Use a string such as `'priority DESC, linkText ASC'`, or a PHP array mapping attributes to `SORT_ASC` or `SORT_DESC`. An empty array restores saved order.
+Adds a condition that links can match instead, returning a new selection. With no earlier conditions, the given condition is used on its own.
 :::
 
 ::: reference
-### `limit(?int $limit)` / `offset(int $offset)`
+### `orderBy()`
+
+**Arguments:** `$columns` (`array|string`).
 
 **Returns:** `self`
 
-Limit the result size or skip a number of matches after filtering and sorting. Values must be non-negative. `limit(0)` selects nothing; `limit(null)` removes the limit. The default offset is `0`.
+Sets the order of the selected links, returning a new selection. Use a string such as `'priority DESC, linkText ASC'`, or a PHP array mapping attributes to `SORT_ASC` or `SORT_DESC`. An empty array restores the saved order.
 :::
 
 ::: reference
-### `count()` / `exists()` / `isEmpty()`
+### `limit()`
 
-**Returns:** `int` / `bool` / `bool`
+**Arguments:** `$limit` (`int|null`), a non-negative number.
 
-Count selected links, check whether any are selected, or check whether none are selected. These methods include the effects of offset and limit. Twig’s `length` and `empty` tests use the same selection.
+**Returns:** `self`
+
+Limits how many links are selected, after filtering and sorting, and returns a new selection. `limit(0)` selects nothing and `limit(null)` removes the limit.
 :::
 
 ::: reference
-### First-Link Getters
+### `offset()`
+
+**Arguments:** `$offset` (`int`), a non-negative number.
+
+**Returns:** `self`
+
+Skips a number of matching links, after filtering and sorting, and returns a new selection. The default offset is `0`.
+:::
+
+::: reference
+### `count()`
+
+**Returns:** `int`
+
+Returns the number of selected links, including the effect of offset and limit. Twig’s `length` filter uses the same count.
+:::
+
+::: reference
+### `exists()`
+
+**Returns:** `bool`
+
+Returns whether any links are selected.
+:::
+
+::: reference
+### `isEmpty()`
+
+**Returns:** `bool`
+
+Returns whether no links are selected. Twig’s `empty` test uses the same check. On an individual Link, `isEmpty()` instead checks for a destination.
+:::
+
+::: reference
+### `getUrl()`
 
 **Returns:** `string|null`
 
-`getUrl()`, `getText(?string $defaultText = null)`, `getTarget()`, `getTitle()`, `getLinkText()`, `getCustomLinkText()` and `getLinkUrl()` read the first selected link and return `null` when there is none. Their corresponding properties, such as `url` and `text`, are available too. String conversion returns its resolved URL or an empty string.
-
-These are explicit collection conveniences. Read custom fields and call type-specific methods on an actual Link from `first()` or iteration. See [Link](/reference/link) for each value’s meaning.
+Returns the first selected link’s URL, or null when nothing is selected. Converting the collection to a string returns the same URL, or an empty string.
 :::
+
+::: reference
+### `getText()`
+
+**Arguments:** `$defaultText` (`string|null`, optional).
+
+**Returns:** `string|null`
+
+Returns the first selected link’s label, or null when nothing is selected. Pass a default to use when the link has no label.
+:::
+
+::: reference
+### `getTarget()`
+
+**Returns:** `string|null`
+
+Returns the first selected link’s `target` attribute, or null when nothing is selected or it doesn’t open in a new window.
+:::
+
+::: reference
+### `getTitle()`
+
+**Returns:** `string|null`
+
+Returns the first selected link’s `title` attribute, or null when nothing is selected.
+:::
+
+::: reference
+### `getLinkText()`
+
+**Returns:** `string|null`
+
+Returns the first selected link’s Link Text with its fallbacks, or null when nothing is selected.
+:::
+
+::: reference
+### `getCustomLinkText()`
+
+**Returns:** `string|null`
+
+Returns the Link Text an editor entered on the first selected link, with no fallbacks, or null when it’s blank or nothing is selected.
+:::
+
+::: reference
+### `getLinkUrl()`
+
+**Returns:** `string|null`
+
+Returns the first selected link’s type-specific destination, before the URL prefix and suffix, or null when nothing is selected.
+:::
+
+The first-link getters also have matching properties, such as `url` and `text`. Read custom fields and call type-specific methods on an actual Link from `first()` or a loop. [Link](/reference/link) explains what each value means.
 
 ## Editing Stored Content
 
@@ -194,7 +293,7 @@ Selection methods affect reads. They never remove links from the editor or from 
 
 **Returns:** `array`
 
-Return every stored Link object, including incomplete links and unavailable types. Use this in editing and migration code. Use `all()` for template selections.
+Returns every stored Link object, including incomplete links and unavailable types, whatever the selection. Use it in editing and migration code, and `all()` for template selections.
 :::
 
 ::: reference
@@ -202,17 +301,29 @@ Return every stored Link object, including incomplete links and unavailable type
 
 **Returns:** `array`
 
-Serialise every stored link for saving or propagation. Applying a selection before serialising does not delete the excluded content.
+Returns every stored link in the format Hyper saves, for saving or propagation. Applying a selection before serialising doesn’t delete the excluded content.
 :::
 
 ::: reference
-### `setLinks(array $links)` / `withLinks(array $links)`
+### `setLinks()`
 
-**Returns:** `void` / `self`
+**Arguments:** `$value` (`array`), the replacement links as Link objects or link data.
 
-Replace the stored links in place, or return a new collection containing the replacement links. To intentionally save only a selection, pass that selection’s `all()` result to `withLinks()` before assigning it to the owner.
+**Returns:** `void`
+
+Replaces the stored links in this collection.
 :::
 
-Array reads use zero-based selected positions. Replacing or unsetting a position changes that selected record; appending adds a stored link, which appears in the selection only if it matches. Selection objects share their Link objects, so editing a selected Link changes that object. Explicitly cloning a collection clones its Link objects as well.
+::: reference
+### `withLinks()`
+
+**Arguments:** `$links` (`array`), the replacement links as Link objects or link data.
+
+**Returns:** `self`
+
+Creates a new collection containing the replacement links and leaves this one unchanged. To save only a selection on purpose, pass that selection’s `all()` result to `withLinks()` before assigning it to the owner.
+:::
+
+Array reads use zero-based selected positions. Replacing or unsetting a position changes that selected record, while appending adds a stored link, which appears in the selection only if it matches. Selection objects share their Link objects, so editing a selected Link changes that object. Explicitly cloning a collection clones its Link objects as well.
 
 Service code can type-hint `LinkCollectionInterface` for selection and stored-content methods. [Creating Links Programmatically](/guides/developers/creating-links-programmatically) shows how to construct links and save the collection on an owner.

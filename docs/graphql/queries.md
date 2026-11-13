@@ -1,10 +1,10 @@
-# GraphQL
+# Queries
 
-Use GraphQL when a separate frontend needs the destinations and labels stored in Hyper fields. Query the entry containing the field, then select the link properties your frontend needs.
+Use GraphQL when a separate frontend needs the destinations and labels stored in Hyper fields. Hyper doesn't add its own top-level queries. Instead, you query the element that holds the field through Craft's own queries, such as `entries`, and select the link properties your frontend needs.
 
 ## Prepare an Entry and Schema
 
-This example assumes a News section with the handle `news`, an entry type with the handle `newsPost`, and a Hyper field with the handle `resourceLinks` attached to that entry type. A handle is the name used in code; replace these sample handles with your site’s values.
+This example assumes a News section with the handle `news`, an entry type with the handle `newsPost`, and a Hyper field with the handle `resourceLinks` attached to that entry type. A handle is the name used in code. Replace these sample handles with your site’s values.
 
 Save a published News entry with one URL link: `https://example.test/contact`, with Link Text set to `Contact us`.
 
@@ -56,7 +56,15 @@ If Craft reports an unknown field or type, check the entry type handle, field pl
 
 ## Include Empty Destinations
 
-The `empty` argument follows the collection’s destination rules: `false` returns links with a resolved URL and is the default, `true` returns links without one, and `null` includes either. For example, include Passive labels and URL-less User selections in an entry fragment with:
+A Hyper field accepts one argument, `empty`, which follows the collection’s destination rules.
+
+| Value | Returns |
+| --- | --- |
+| `false` | Links with a resolved URL. This is the default. |
+| `true` | Links without a resolved URL. |
+| `null` | Links with or without a resolved URL. |
+
+For example, include Passive labels and URL-less User selections in an entry fragment with:
 
 ```graphql
 resourceLinks(empty: null) {
@@ -90,44 +98,12 @@ query ResourceSummaries {
 
 For the built-in URL handle `url`, the type name ends in `Url_LinkType`. A custom link type uses its handle converted to PascalCase. Inspect the schema in GraphiQL to find the exact name.
 
-The result includes `summary` on matching URL links. If your frontend needs a common representation across different layouts, request `fields` to receive permitted custom values as a JSON string instead. See [GraphQL Fields](/reference/graphql-fields) for the returned format.
+The result includes `summary` on matching URL links. If your frontend needs a common representation across different layouts, request `fields` to receive permitted custom values as a JSON string instead. See [Interfaces & Types](/graphql/interfaces-types#concrete-link-types-and-custom-fields) for the returned format.
 
 ## Read Embed Metadata
 
 For a field containing Embed links, request `html`, `iframeSrc`, `embedImage` and `providerName` alongside `url` and `text`. You can add these to the `resourceLinks` selection in the first query without a type fragment. They return null when the stored link has no corresponding metadata.
 
-Check the stored embed in the editor before relying on its HTML or thumbnail. [Rendering Links](/feature-tour/rendering-links#embed-links) explains the difference between an anchor and embedded output; the [HyperLinkInterface reference](#the-hyperlinkinterface-interface) below lists the available response fields.
+Check the stored embed in the editor before relying on its HTML or thumbnail. [Rendering Links](/feature-tour/rendering-links#embed-links) explains the difference between an anchor and embedded output. The [HyperLinkInterface reference](/graphql/interfaces-types#the-hyperlinkinterface-interface) lists the available response fields.
 
-## The `HyperLinkInterface` Interface
-
-Every Hyper link implements `HyperLinkInterface`. These fields can be selected directly on any Hyper field, without a concrete link-type fragment. All interface fields are nullable. `ArrayType` is a JSON scalar and does not take a nested selection.
-
-| Field | Type | Description
-| - | - | -
-| `ariaLabel`| `String` | The `aria-label` attribute for the link.
-| `classes`| `String` | The `class` attribute for the link.
-| `element`| `ElementInterface` | The element (if provided) for the link.
-| `isElement`| `Boolean` | Whether the chosen link value is an element.
-| `isEmpty`| `Boolean` | Whether the link has no resolved destination.
-| `link`| `String` | The HTML output for an `<a>` element.
-| `linkText`| `String` | Link Text with layout defaults and type-specific fallbacks, including element titles.
-| `customLinkText`| `String` | Only the Link Text field value, with no fallbacks. Null when blank—use for explicit defaults in your API client.
-| `linkUrl`| `String` | The URL for the link.
-| `linkValue`| `String` | Raw link data as a JSON string (full embed metadata for Embed links).
-| `html`| `String` | Embed HTML (`code`) when this is an Embed link; otherwise null.
-| `iframeSrc`| `String` | The `src` of the first iframe in embed HTML, when present.
-| `embedImage`| `String` | Thumbnail/image URL from embed metadata, when present.
-| `providerName`| `String` | oEmbed provider name for Embed links (e.g. YouTube), when present.
-| `fields`| `String` | Custom layout field values as a JSON object keyed by handle (no type cast required).
-| `newWindow`| `Boolean` | Whether the link should open in a new window.
-| `target`| `String` | The `target` attribute for the link.
-| `text`| `String` | The fully derived link label (custom text, type fallbacks, then field placeholder or plugin default).
-| `title`| `String` | The `title` attribute for the link.
-| `type`| `String` | The link type.
-| `url`| `String` | The URL for the link.
-| `urlPrefix`| `String` | The URL prefix for the link.
-| `urlSuffix`| `String` | The URL suffix for the link.
-| `linkUri`| `String` | The link URI, if an element-based link.
-| `customAttributes`| `ArrayType` | The custom attributes for the link.
-
-Use a concrete link-type fragment for custom layout fields. [GraphQL Fields](/reference/graphql-fields#concrete-types-and-custom-fields) explains type names, layout aliases, schema restrictions, and unavailable link types.
+Every link in the list implements `HyperLinkInterface`, and each link type has its own concrete type for custom fields. [Interfaces & Types](/graphql/interfaces-types) lists every field you can select and explains how the concrete type names are built.

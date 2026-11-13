@@ -16,7 +16,7 @@ Migrate Craft 5.3+ native Link fields and content to Hyper.
 
 Migrate wrav/oembed fields to Hyper Embed links.
 
-## [Entrification](/guides/migrations-upgrades/entrification-category-entry)
+## [Converting Category Links to Entry Links](/guides/migrations-upgrades/converting-category-links-to-entry-links)
 
 Remap Hyper Category links to Entry links after Craft entrification.
 

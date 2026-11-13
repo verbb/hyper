@@ -31,7 +31,7 @@ Pass attributes to `getLink()` to override the saved values for this rendering:
 }) }}
 ```
 
-This renders the link with your button class and data attribute. Changing the template does not change the saved link. For individual native attributes and their meaning, see [Link](/reference/link#attributes).
+This renders the link with your button class and data attribute. Changing the template does not change the saved link. For individual native attributes and their meaning, see [Link](/reference/link).
 
 ## Choose a Label
 

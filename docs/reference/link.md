@@ -1,6 +1,6 @@
 # Link
 
-A Link represents one destination and its saved label, attributes and custom fields. Obtain one with `entry.myLinkField.first()` or by looping over a Hyper field. `first()` can return null; the field itself is a [LinkCollection](/reference/link-collection).
+A Link represents one destination and its saved label, attributes and custom fields. Obtain one with `entry.myLinkField.first()` or by looping over a Hyper field. `first()` can return null, and the field itself is a [LinkCollection](/reference/link-collection).
 
 [Rendering Links](/feature-tour/rendering-links) provides template examples. This page describes the individual object and its saved content.
 
@@ -13,7 +13,7 @@ A Link represents one destination and its saved label, attributes and custom fie
 
 **Type:** `string`
 
-Link class name, such as `verbb\hyper\links\Entry`.
+The link type’s class name, such as `verbb\hyper\links\Entry`. [Built-in Classes](#built-in-classes) lists the classes Hyper includes.
 :::
 
 ::: reference
@@ -29,7 +29,7 @@ The link type object that supplies settings for this link.
 
 **Type:** `string|null`
 
-Resolved destination after applying the prefix, suffix and URL-policy checks. Returns null when the destination is absent or unavailable; a suffix alone does not create a destination. Stored destinations are literal text; environment-variable references and Craft aliases are not expanded.
+The resolved destination, after Hyper applies the URL prefix, suffix and URL checks. This is null when the destination is absent or unavailable, and a suffix alone doesn’t create a destination. Stored destinations are literal text, so environment variables and Craft aliases aren’t expanded.
 :::
 
 ::: reference
@@ -37,7 +37,7 @@ Resolved destination after applying the prefix, suffix and URL-policy checks. Re
 
 **Type:** `string|null`
 
-Display label using entered text, layout defaults and type-specific fallbacks. Ordinary links return null without a usable URL. Passive links can return a label without a URL.
+The label to show, using the entered Link Text, then layout defaults and type-specific fallbacks such as an entry’s title. Ordinary links return null without a usable URL, while Passive links can return a label without one.
 :::
 
 ::: reference
@@ -45,7 +45,7 @@ Display label using entered text, layout defaults and type-specific fallbacks. O
 
 **Type:** `string|null`
 
-`_blank` when the link opens in a new window; otherwise null.
+The `target` attribute, which is `_blank` when the link opens in a new window and null otherwise.
 :::
 
 ::: reference
@@ -53,7 +53,7 @@ Display label using entered text, layout defaults and type-specific fallbacks. O
 
 **Type:** `bool|null`
 
-Saved new-window choice; `target` uses the resolved choice including applicable field defaults.
+Whether the editor chose to open the link in a new window, or null when no choice was saved. `target` uses the resolved choice, including any field default.
 :::
 
 ::: reference
@@ -61,7 +61,7 @@ Saved new-window choice; `target` uses the resolved choice including applicable 
 
 **Type:** `string|null`
 
-Type-specific destination before prefix and suffix.
+The type-specific destination before Hyper adds the URL prefix and suffix.
 :::
 
 ::: reference
@@ -69,7 +69,7 @@ Type-specific destination before prefix and suffix.
 
 **Type:** `string|null`
 
-URI of the resolved element, if available.
+The URI of the linked element, or null when the link has no element or the element has no URI.
 :::
 
 ::: reference
@@ -77,7 +77,7 @@ URI of the resolved element, if available.
 
 **Type:** `mixed`
 
-Type-specific stored value: a URL string, element ID, site UID or embed metadata.
+The value stored for the link type, such as a URL string, an element ID, a site UID or embed metadata.
 :::
 
 ::: reference
@@ -85,7 +85,7 @@ Type-specific stored value: a URL string, element ID, site UID or embed metadata
 
 **Type:** `string|null`
 
-Link Text with layout defaults and type-specific fallbacks.
+The Link Text, falling back to layout defaults and type-specific values such as an element’s title.
 :::
 
 ::: reference
@@ -93,7 +93,7 @@ Link Text with layout defaults and type-specific fallbacks.
 
 **Type:** `string|null`
 
-Only the editor-entered Link Text; null when blank.
+The Link Text an editor entered, with no fallbacks. This is null when the field is blank.
 :::
 
 ::: reference
@@ -101,7 +101,7 @@ Only the editor-entered Link Text; null when blank.
 
 **Type:** `string|null`
 
-HTML `aria-label` value.
+The value for the link’s `aria-label` attribute.
 :::
 
 ::: reference
@@ -109,15 +109,15 @@ HTML `aria-label` value.
 
 **Type:** `string|null`
 
-Suffix such as a query string or fragment.
+The suffix added to the URL, such as a query string or fragment.
 :::
 
 ::: reference
 ### `linkTitle`
 
-**Type:** `string|null`, `title`
+**Type:** `string|null`
 
-HTML `title` value, not the title of a selected entry.
+The value for the link’s `title` attribute, which you can also read as `title`. This isn’t the title of a selected entry.
 :::
 
 ::: reference
@@ -125,7 +125,7 @@ HTML `title` value, not the title of a selected entry.
 
 **Type:** `string|null`
 
-HTML `class` value.
+The value for the link’s `class` attribute.
 :::
 
 ::: reference
@@ -133,7 +133,7 @@ HTML `class` value.
 
 **Type:** `array`
 
-Additional HTML attribute name/value pairs, subject to attribute-name validation.
+The extra HTML attributes for the link, as name and value pairs. Hyper validates the attribute names.
 :::
 
 
@@ -142,37 +142,45 @@ Custom layout fields are accessible by their handles. Values on the selected des
 ## Methods
 
 ::: reference
-### `getElement($status)`
+### `getElement()`
+
+**Arguments:** `$status` (`mixed`, optional), the element status to require.
 
 **Returns:** `craft\base\ElementInterface|null`
 
-Selected Craft element or null. Entry links default to live entries; other element types use their applicable enabled status.
+Returns the linked Craft element, or null when there isn’t one or it doesn’t match the status. Element links require an enabled element by default, and Entry links require a live entry.
 :::
 
 ::: reference
-### `hasElement($status)`
+### `hasElement()`
+
+**Arguments:** `$status` (`mixed`, optional), the element status to require.
 
 **Returns:** `bool`
 
-Whether the selected element can be resolved with the requested status.
+Returns whether the linked element can be loaded with the requested status. Links that aren’t element links always return `false`.
 :::
 
 ::: reference
-### `getLink(array $attributes = [])`
+### `getLink()`
+
+**Arguments:** `$attributes` (`array`, optional), extra attributes for the anchor.
 
 **Returns:** `Twig\Markup|null`
 
-Twig markup for an anchor, or null without a usable URL. The special `text` key overrides its label. Ordinary strings are escaped; trusted Twig markup is preserved.
+Returns the link as an `<a>` element, or null when it has no usable URL. The special `text` key overrides its label. Ordinary strings are escaped, and trusted Twig markup is kept as it is.
 
 Passed classes are added to saved classes. Other passed attributes override saved values with the same name.
 :::
 
 ::: reference
-### `getLinkAttributes(array $attributes = [], bool $asString = false)`
+### `getLinkAttributes()`
+
+**Arguments:** `$attributes` (`array`, optional), extra attributes to merge in, and `$asString` (`bool`, defaults to `false`).
 
 **Returns:** `Twig\Markup|array`
 
-Attribute array, or Twig markup containing the attribute string when `asString` is true.
+Returns the link’s attributes as an array, or as Twig markup containing the attribute string when `$asString` is `true`. Use it to build your own anchor or button.
 :::
 
 ::: reference
@@ -180,7 +188,7 @@ Attribute array, or Twig markup containing the attribute string when `asString` 
 
 **Returns:** `string|null`
 
-Editor-entered text only, or null when blank.
+Returns the Link Text an editor entered, with no fallbacks, or null when it’s blank.
 :::
 
 ::: reference
@@ -188,7 +196,7 @@ Editor-entered text only, or null when blank.
 
 **Returns:** `bool`
 
-Whether the link resolves to no non-blank URL. Labels, attributes and custom fields do not make a destination-less link non-empty. Unavailable targets and Passive links are empty; stored content is still retained.
+Returns whether the link has no usable URL. Labels, attributes and custom fields don’t count as a destination, so unavailable targets and Passive links are empty, although their stored content is kept.
 :::
 
 
@@ -201,7 +209,7 @@ Element links also expose `linkSiteId`, the selected destination’s site ID. Fo
 
 **Returns:** `Twig\Markup|null`
 
-Stored embed HTML as Twig markup, or null.
+Returns the stored embed HTML as Twig markup, or null when the link has no embed HTML.
 :::
 
 ::: reference
@@ -209,7 +217,7 @@ Stored embed HTML as Twig markup, or null.
 
 **Returns:** `string|null`
 
-First iframe source in stored embed HTML, or null.
+Returns the `src` of the first iframe in the embed HTML, or null when there isn’t one.
 :::
 
 ::: reference
@@ -217,7 +225,7 @@ First iframe source in stored embed HTML, or null.
 
 **Returns:** `string|null`
 
-Stored thumbnail/image URL, or null.
+Returns the embed’s thumbnail or image URL, or null when the embed has none.
 :::
 
 ::: reference
@@ -225,7 +233,7 @@ Stored thumbnail/image URL, or null.
 
 **Returns:** `string|null`
 
-Stored provider name, or null.
+Returns the embed provider’s name, such as YouTube, or null when the link has no embed.
 :::
 
 ::: reference
@@ -233,9 +241,7 @@ Stored provider name, or null.
 
 **Returns:** `array|null`
 
-Available on Embed links.
-
-Embed metadata on an Embed link.
+Returns all the stored embed metadata for an Embed link, or null when there is none. Only Embed links have this method.
 :::
 
 

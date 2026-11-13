@@ -1,4 +1,5 @@
-# Entrification (Category → Entry)
+# Converting Category Links to Entry Links
+
 After Craft’s [entrification](https://craftcms.com/blog/entrification) converts category groups to sections, Hyper **Category** links still store the Category link type. Remap them to **Entry** links.
 
 Craft’s `entrify/categories` keeps the **same element ID** (`entries.id = categories.id`), so Hyper only flips the link type/handle — no ID mapping file.

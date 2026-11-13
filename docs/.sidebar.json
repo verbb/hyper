@@ -35,10 +35,18 @@
         "title": "Developers",
         "collapsable": false,
         "children": [
-            "developers/creating-link-types",
             "developers/events",
-            "developers/graphql",
+            "developers/custom-link-types",
+            "developers/console-commands",
             "developers/managing-embedded-content"
+        ]
+    },
+    {
+        "title": "GraphQL",
+        "collapsable": false,
+        "children": [
+            "graphql/queries",
+            "graphql/interfaces-types"
         ]
     },
     {
@@ -50,8 +58,6 @@
             "reference/link-type-settings",
             "reference/link-type-config",
             "reference/loading-links",
-            "reference/graphql-fields",
-            "reference/link-type-api",
             "reference/migration-tools"
         ]
     },
@@ -81,7 +87,7 @@
                 "children": [
                     "guides/migrations-upgrades/migrating-from-craft-link",
                     "guides/migrations-upgrades/migrating-from-oembed",
-                    "guides/migrations-upgrades/entrification-category-entry",
+                    "guides/migrations-upgrades/converting-category-links-to-entry-links",
                     "guides/migrations-upgrades/migrating-from-link",
                     "guides/migrations-upgrades/migrating-from-linkit",
                     "guides/migrations-upgrades/migrating-from-typed-link"

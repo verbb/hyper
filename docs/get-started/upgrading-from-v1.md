@@ -12,7 +12,7 @@ Read [Upgrading from v2](/get-started/upgrading-from-v2) for Hyper 3’s templat
 
 ## Upgrade Craft and Hyper Together
 
-When updating your project’s Composer requirements for Craft 5, select Hyper 3 rather than Hyper 2. During the beta, use `^3.0@beta` for `verbb/hyper`; after the stable release, use `^3.0`. Resolve the Craft and plugin dependencies together as described in Craft’s guide.
+When updating your project’s Composer requirements for Craft 5, select Hyper 3 rather than Hyper 2. Use `^3.0` for `verbb/hyper`. Resolve the Craft and plugin dependencies together as described in Craft’s guide.
 
 After Composer finishes, run the pending updates from your Craft project directory:
 

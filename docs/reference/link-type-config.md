@@ -1,6 +1,6 @@
 # Link Type Config
 
-A named link type config holds reusable link definitions and layouts. Fields refer to its UID; the service also accepts its handle when selecting a config in PHP. See [Link Type Configs](/feature-tour/link-type-configs) for the control-panel workflow.
+A named link type config holds reusable link definitions and layouts. Fields refer to its UID, and the service also accepts its handle when selecting a config in PHP. See [Link Type Configs](/feature-tour/link-type-configs) for the control-panel workflow.
 
 ## Create and Select a Config
 
@@ -31,20 +31,28 @@ if (!Craft::$app->getFields()->saveField($field)) {
 }
 ```
 
-The field and config are saved, but the field still needs adding to the relevant element layout before editors can use it. The stock set contains the available registered link types; inspect and configure their enabled states for your site.
+The field and config are saved, but the field still needs adding to the relevant element layout before editors can use it. The stock set contains the available registered link types, so inspect and configure their enabled states for your site.
 
 ## Field Methods
+
+These methods are on the Hyper field (`verbb\hyper\fields\HyperField`), for choosing where the field gets its link types.
 
 ::: reference
 ### `enableCustomLinkTypes()`
 
-Select Custom and copy the currently selected shared definitions into the field.
+**Returns:** `void`
+
+Switches the field to Custom link types, starting from a copy of the shared config it currently uses. If the field already uses Custom link types, its definitions are replaced with a copy of the Default config.
 :::
 
 ::: reference
-### `useLinkTypeConfig($uidOrHandle)`
+### `useLinkTypeConfig()`
 
-Select a named config by UID or handle.
+**Arguments:** `$handle` (`string|null`, optional), the UID or handle of a named config.
+
+**Returns:** `void`
+
+Switches the field to a named config. Passing null or `custom` selects the Default config.
 :::
 
 ::: reference
@@ -52,15 +60,16 @@ Select a named config by UID or handle.
 
 **Returns:** `array`
 
-Read the field’s resolved definitions.
+Returns the link type definitions the field uses, from its shared config or its own Custom settings.
 :::
 
 ::: reference
 ### `hasCustomLinkTypes()`
 
-Check whether the field manages its own types.
-:::
+**Returns:** `bool`
 
+Returns whether the field manages its own link types instead of using a shared config.
+:::
 
 Save the field after changing its selection in PHP. Keep config and link type handles stable when other code refers to them.
 

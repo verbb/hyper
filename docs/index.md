@@ -12,14 +12,14 @@ Once an editor has saved a link, follow [Rendering Links](/feature-tour/renderin
 
 [Eager Loading](/feature-tour/eager-loading) explains how to load linked content together when displaying several links. [Reverse Relations](/feature-tour/reverse-relations) helps you find entries that link to a particular element. [Checking Link Performance](/guides/developers/checking-link-performance) shows how to compare queries on a working page.
 
-For a separate frontend, use [GraphQL](/developers/graphql) to retrieve link data. To bring content into Craft, follow the [Feed Me guide](/guides/integrations/importing-links-with-feed-me).
+For a separate frontend, use [GraphQL](/graphql/queries) to retrieve link data. To bring content into Craft, follow the [Feed Me guide](/guides/integrations/importing-links-with-feed-me).
 
 ## Extending Hyper
 
-You can [create links in PHP](/guides/developers/creating-links-programmatically), [create Hyper fields in a migration](/guides/developers/creating-hyper-fields-programmatically), or add a custom destination with [Link Types](/developers/creating-link-types).
+You can [create links in PHP](/guides/developers/creating-links-programmatically), [create Hyper fields in a migration](/guides/developers/creating-hyper-fields-programmatically), or add a custom destination with [Link Types](/developers/custom-link-types).
 
 The [Link](/reference/link), [LinkCollection](/reference/link-collection), and [Link Type Settings](/reference/link-type-settings) pages explain the objects and settings used by those examples.
 
 ## Moving an Existing Site
 
-Use [Migrations](/guides/migrations-upgrades/) when replacing another link plugin. If the site already uses Hyper, follow [Upgrading from v1](/get-started/upgrading-from-v1) for a Craft 4 site, or [Upgrading from v2](/get-started/upgrading-from-v2) for a Craft 5 site.
+Use [Migrations](/guides/migrations-upgrades/) when replacing another link plugin. If the site already uses Hyper, follow the upgrade guide for a [Craft 4 site](/get-started/upgrading-from-v1) or a [Craft 5 site](/get-started/upgrading-from-v2).

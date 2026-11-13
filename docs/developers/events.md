@@ -1,8 +1,22 @@
 # Events
 
-Hyper provides a collection of events for extending its functionality. Modules and plugins can register event listeners, typically in their `init()` methods, to modify Hyper’s behaviour.
+Hyper provides events for extending its functionality. Modules and plugins can register event listeners, typically in their `init()` methods, to change Hyper’s behaviour.
 
-For registering a new Hyper link type, follow [Creating Link Types](/developers/creating-link-types). This page covers mapping source types during conversion.
+## Link Type Events
+
+### The `registerLinkTypes` Event
+The event that is triggered when Hyper builds the list of available link types. Append your class to `$event->types` to register it. [Custom Link Types](/developers/custom-link-types) shows a complete link type class.
+
+```php
+use craft\events\RegisterComponentTypesEvent;
+use modules\sitemodule\DocumentationUrl;
+use verbb\hyper\services\Links;
+use yii\base\Event;
+
+Event::on(Links::class, Links::EVENT_REGISTER_LINK_TYPES, function(RegisterComponentTypesEvent $event) {
+    $event->types[] = DocumentationUrl::class;
+});
+```
 
 <span id="map-a-custom-source-type"></span>
 
