@@ -116,7 +116,7 @@ class DraftConflicts
 
         $current = $element::find()->id($element->id)->siteId($element->siteId)->status(null)->trashed(null)->ignorePlaceholders()->one();
 
-        if (!$current) {
+        if (!$current || !self::_hasField($field, $current)) {
             return true;
         }
 
@@ -188,6 +188,10 @@ class DraftConflicts
             }
 
             foreach (self::_fields($localized) as $field) {
+                if (!self::_hasField($field, $canonical)) {
+                    continue;
+                }
+
                 $baseline = self::_row($field, $localized)['baseline'] ?? null;
                 $current = self::_hash($field, $canonical);
                 $proposed = self::_hash($field, $localized);
@@ -256,6 +260,13 @@ class DraftConflicts
     private static function _fields(ElementInterface $element): array
     {
         return array_filter($element->getFieldLayout()?->getCustomFields() ?? [], static fn($field) => $field instanceof HyperField && $field->layoutElement?->uid);
+    }
+
+    private static function _hasField(HyperField $field, ElementInterface $element): bool
+    {
+        // A changed entry type can add a field the current entry has no value for,
+        // so there is nothing for an edit to conflict with.
+        return $element->getFieldLayout()?->getFieldByHandle($field->handle)?->id === $field->id;
     }
 
     private static function _key(HyperField $field, ElementInterface $draft): array

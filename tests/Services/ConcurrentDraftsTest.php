@@ -386,3 +386,46 @@ it('blocks an immediate canonical save and preserves all edits in a provisional 
         ->and(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/admin-a');
     expect(fn() => Craft::$app->drafts->applyDraft($retained))->toThrow(InvalidElementException::class);
 });
+
+function hyperEntryTypeChangeFixture(): array
+{
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    $section = F::entrySection();
+    $hyperType = new \craft\models\EntryType(['name' => 'Hyper type', 'handle' => F::handle('hyperTypeChange'), 'hasTitleField' => true]);
+    expect(Craft::$app->entries->saveEntryType($hyperType))->toBeTrue();
+    F::attachFieldToEntryType($hyperType, $field);
+    $section->setEntryTypes([...$section->getEntryTypes(), $hyperType]);
+    expect(Craft::$app->entries->saveSection($section))->toBeTrue();
+
+    return [F::plainEntry($section, 'Type change owner'), $field, $hyperType];
+}
+
+it('applies a draft that changes to an entry type with a Hyper field the current entry lacks', function() {
+    [$owner, $field, $hyperType] = hyperEntryTypeChangeFixture();
+    $draft = Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Type change');
+    $draft->setTypeId($hyperType->id);
+    $draft->setFieldValue($field->handle, [F::urlLinkPayload('/type-change-draft')]);
+    expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+    Craft::$app->drafts->applyDraft(Entry::find()->id($draft->id)->drafts(true)->status(null)->one());
+
+    $published = Entry::find()->id($owner->id)->one();
+    expect($published->typeId)->toBe($hyperType->id)
+        ->and($published->getFieldValue($field->handle)->getUrl())->toBe('/type-change-draft');
+});
+
+it('saves an entry directly after changing to an entry type with a Hyper field the current entry lacks', function() {
+    [$owner, $field, $hyperType] = hyperEntryTypeChangeFixture();
+    $entry = Entry::find()->id($owner->id)->one();
+    $entry->setTypeId($hyperType->id);
+    $entry->setFieldValue($field->handle, [F::urlLinkPayload('/type-change-save')]);
+    $token = DraftConflicts::inputToken($entry->getFieldLayout()->getFieldByHandle($field->handle), $entry);
+
+    \Tests\Support\CpActionRequest::asUser(User::find()->admin()->one(), function() use ($entry, $field, $token) {
+        Craft::$app->request->setBodyParams(['fields' => [$field->handle . '__hyperDraftBaseline' => $token]]);
+        expect(Craft::$app->elements->saveElement($entry))->toBeTrue();
+    });
+
+    $published = Entry::find()->id($owner->id)->one();
+    expect($published->typeId)->toBe($hyperType->id)
+        ->and($published->getFieldValue($field->handle)->getUrl())->toBe('/type-change-save');
+});
