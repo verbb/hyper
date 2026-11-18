@@ -143,6 +143,24 @@ it('finalizes only temporary uploads owned by the current control-panel user', f
         $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
         $owner->setFieldValue($f['field']->handle, [[
             'handle' => 'url',
+            'linkValue' => 'https://example.test/guest-upload',
+            'fields' => [$assetField->handle => [$own->id]],
+        ]]);
+        expect(fn() => CpActionRequest::asUser(null, fn() => Craft::$app->elements->saveElement($owner, false)))
+            ->toThrow(ForbiddenHttpException::class);
+        expect(Asset::find()->id($own->id)->one()->volumeId)->toBeNull();
+
+        // The web installer saves project config elements before any user exists.
+        $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
+            'linkValue' => 'https://example.test/guest-no-upload',
+        ]]);
+        expect(CpActionRequest::asUser(null, fn() => Craft::$app->elements->saveElement($owner, false)))->toBeTrue();
+
+        $owner = Entry::find()->id($f['owner']->id)->status(null)->one();
+        $owner->setFieldValue($f['field']->handle, [[
+            'handle' => 'url',
             'linkValue' => 'https://example.test/own-upload',
             'fields' => [$assetField->handle => [$own->id]],
         ]]);

@@ -128,7 +128,8 @@ class LinkFieldLifecycle
     {
         $request = Craft::$app->getRequest();
 
-        if ($request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
+        // The web installer saves project config elements before any user exists.
+        if (!$pending || $request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
             return;
         }
 

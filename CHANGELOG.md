@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed an error when applying a draft or saving an entry that changes to an entry type with a Hyper field the original type doesn't have. ([#296](https://github.com/verbb/hyper/issues/296))
+- Fixed the web installer failing when project config contains elements with Hyper fields. ([#297](https://github.com/verbb/hyper/issues/297))
 
 ## 3.0.6 - 2026-11-14
 
