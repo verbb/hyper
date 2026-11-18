@@ -70,7 +70,7 @@ it('dispatches Craft element methods and attached behavior methods on links', fu
 
 it('visits each translated owner once when propagating link structure', function(int $siteCount) {
     $sites = F::ensureSites($siteCount);
-    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true, 'translationMethod' => craft\base\Field::TRANSLATION_METHOD_SITE]);
+    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => craft\base\Field::TRANSLATION_METHOD_SITE]);
     $owner = F::plainEntry(F::translatableEntrySection($field, $siteCount), 'Translated navigation', [
         $field->handle => [F::urlLinkPayload('https://example.test/first', 'First')],
     ], $sites[0]);

@@ -369,6 +369,7 @@ it('propagates permitted selections without requiring access to sibling sites', 
     $url->setFieldLayout($layout);
     $field = $f['field'];
     $field->multipleLinks = true;
+    $field->syncLinksAcrossSites = true;
     $field->translationMethod = \craft\base\Field::TRANSLATION_METHOD_SITE;
     $field->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
     expect(Craft::$app->fields->saveField($field))->toBeTrue();

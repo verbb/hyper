@@ -137,7 +137,9 @@ class MultisiteLinks extends Component
 
     public function propagateLinkStructure(HyperField $field, ElementInterface $element, LinkCollectionInterface $collection): void
     {
-        if (!$field->multipleLinks || $element->propagating) {
+        // Opt-in, because Craft otherwise keeps each site's translated value independent
+        // after the owner first propagates.
+        if (!$field->multipleLinks || !$field->syncLinksAcrossSites || $element->propagating) {
             return;
         }
 

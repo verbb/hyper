@@ -8,9 +8,17 @@ Before configuring Hyper, make sure the owning entry’s section is available in
 
 Open the Hyper field in **Settings → Fields** and choose its translation method. Use **Not translatable** when the field should share its value. Use **Translate for each site** when editors need to enter site-specific values.
 
-A multi-link Hyper field on an entry has an additional behaviour with **Translate for each site**: editing and saving that field synchronises the link list’s structure to the entry’s other sites. Added, removed and reordered links are reflected there too. Labels already translated for matching links are retained, including a deliberately blank label. Existing custom-field content for matching links is retained when present; other link attributes follow the source link.
+With **Translate for each site**, a new entry copies its links to the entry’s other sites when it’s first saved. After that, each site keeps its own list, so editors can add, remove, reorder and change links on one site without affecting the others.
 
-This is useful for a shared related-resources list, but it does not provide independently arranged lists for each language. Saving an unrelated field does not trigger this structural synchronisation. Single-link fields follow Craft’s translation and propagation behaviour without the multi-link structure merge.
+## Sync Links Across Sites
+
+Turn on **Sync Links Across Sites** for a multi-link field using **Translate for each site** when every site should show the same list with translated labels, such as a shared navigation. Editing and saving the field on one site then adds, removes and reorders the matching links on the entry’s other sites.
+
+Labels already translated for matching links are retained, including a deliberately blank label. Links match when one was copied from the other, so a link added separately on each site doesn't match, even with the same destination, and takes the edited site’s link text. Links from Hyper 2 never match across sites, so for upgraded content the first sync replaces the other sites’ lists and their translated link text with the edited site’s. Re-enter the translations after that first sync. Existing custom-field content for matching links is retained when present. Other link attributes, including URLs, follow the site you edited, so a site-specific URL is replaced the next time another site’s list is saved. Leave the setting off when sites need different lists or destinations.
+
+Syncing works in both directions, so the most recently saved site wins. If a translator edits the French list, the English list follows it. Turning the setting on for a field with existing content has no immediate effect, but the next save of that field on any site brings the entry’s other sites into line with it, removing links that only exist on another site.
+
+Saving an unrelated field does not sync the list. The setting only applies to entries, and has no effect on single-link fields or other translation methods. Inside a Matrix field, it syncs a nested entry’s links when the Matrix field saves its entries to all of the owner’s sites. Syncing applies to every save that changes the field, including imports and GraphQL mutations, as well as the control panel.
 
 ## Select a Destination Site
 
@@ -26,6 +34,6 @@ A URL link remains the address the editor entered. Hyper cannot infer a translat
 
 On a development site with two enabled languages, add two Entry links to a multi-link Hyper field using **Translate for each site**, then save the entry. Switch to the other language and enter translated Link Text for both links.
 
-Return to the first language, reorder the links and save. Open the second language again: the order should match, while its labels stay with their corresponding links. View the frontend pages in both languages and follow the links to confirm the destination sites and URLs.
+If the field has **Sync Links Across Sites** turned on, return to the first language, reorder the links and save. Open the second language again. The order should match, while its labels stay with their corresponding links. View the frontend pages in both languages and follow the links to confirm the destination sites and URLs.
 
 If a destination is missing or unavailable, check its publication status and site availability before changing the link. [Element Links](/feature-tour/element-links) explains nullable element access, and [Reverse Relations](/feature-tour/reverse-relations#work-with-multiple-sites) explains how site selection affects incoming-link queries.

@@ -219,9 +219,9 @@ See [Eager Loading](/feature-tour/eager-loading) and [Checking Link Performance]
 
 ### Multisite Propagation
 
-Multisite propagation is fixed in v3. Element links now localise during Craft propagation (`normalizeValue()` / `propagateValue()`), matching native Link/Entries field behaviour. Multi-link **structure** sync to sibling sites runs only when the Hyper field was edited on the saving site.
+Multisite propagation is fixed in v3. Element links now localise during Craft propagation (`normalizeValue()` / `propagateValue()`), matching native Link/Entries field behaviour.
 
-For multi-link fields on entries using **Translate for each site**, editing the field synchronises its structure to the other sites while retaining translated labels for matching links. See [Working with Multiple Sites](/feature-tour/working-with-multiple-sites) for the conditions and destination-site behaviour.
+Multi-link fields on entries using **Translate for each site** keep a separate list on each site, as they did in v2. Turn on **Sync Links Across Sites** to keep the list the same on each site while retaining translated labels for matching links. Links from Hyper 2 don’t match across sites, so the first sync replaces the other sites’ lists, including their translated labels, and you’ll need to re-enter those translations once. See [Working with Multiple Sites](/feature-tour/working-with-multiple-sites#sync-links-across-sites) for the conditions and destination-site behaviour.
 
 ### Removed Twig Page Preload
 

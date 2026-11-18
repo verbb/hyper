@@ -83,6 +83,14 @@
         on: field.enableBulkAdd,
         errors: field.getErrors('enableBulkAdd'),
     }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Sync Links Across Sites' | t('hyper'),
+        instructions: 'Whether adding, removing or reordering links on one site does the same on the entry’s other sites, replacing their URLs and keeping translated link text where links match. Only applies to fields set to “Translate for each site”.' | t('hyper'),
+        name: 'syncLinksAcrossSites',
+        on: field.syncLinksAcrossSites,
+        errors: field.getErrors('syncLinksAcrossSites'),
+    }) }}
 </div>
 
 {% set configOptions = [] %}

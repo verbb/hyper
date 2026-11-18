@@ -16,7 +16,7 @@ Use **Default Link Type** to choose the destination type selected when an editor
 
 Leave **Enable Multiple Links** off for a single button or destination. Turn it on for a resource list or navigation, where editors need to add, reorder and remove several links in one field. Set the minimum and maximum number of links when the content needs a particular limit.
 
-With multiple links enabled, **Enable Bulk Add** allows editors to select several elements or enter one URL, email address or phone number per line for types that support bulk creation. **View Mode** controls how links are presented in the editor; it does not change your template output.
+With multiple links enabled, **Enable Bulk Add** allows editors to select several elements or enter one URL, email address or phone number per line for types that support bulk creation. **Sync Links Across Sites** keeps an entry’s list the same on each site for fields using **Translate for each site**. See [Working with Multiple Sites](/feature-tour/working-with-multiple-sites#sync-links-across-sites). **View Mode** controls how links are presented in the editor; it does not change your template output.
 
 ### Link Types
 

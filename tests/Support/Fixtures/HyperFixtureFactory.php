@@ -66,6 +66,7 @@ class HyperFixtureFactory
      * @param array{
      *     handle?: string,
      *     multipleLinks?: bool,
+     *     syncLinksAcrossSites?: bool,
      *     linkTypes?: list<class-string>,
      *     enabled?: bool,
      * } $options
@@ -88,6 +89,7 @@ class HyperFixtureFactory
             'name' => StringHelper::titleize($handle),
             'handle' => $handle,
             'multipleLinks' => $multipleLinks,
+            'syncLinksAcrossSites' => $options['syncLinksAcrossSites'] ?? false,
             'linkTypes' => $linkTypes,
             'defaultLinkType' => $defaultLinkType,
             'translationMethod' => $options['translationMethod'] ?? Field::TRANSLATION_METHOD_NONE,
@@ -561,6 +563,7 @@ class HyperFixtureFactory
             'name' => StringHelper::titleize($handle),
             'handle' => $handle,
             'multipleLinks' => $options['multipleLinks'] ?? false,
+            'syncLinksAcrossSites' => $options['syncLinksAcrossSites'] ?? false,
             'linkTypes' => $linkTypeConfigs,
             'defaultLinkType' => $defaultLinkType,
             'translationMethod' => $options['translationMethod'] ?? Field::TRANSLATION_METHOD_NONE,

@@ -13,6 +13,7 @@ it('localizes category links during owner propagation and structure updates', fu
     [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([
         'multipleLinks' => $multiple,
+        'syncLinksAcrossSites' => true,
         'translationMethod' => Field::TRANSLATION_METHOD_SITE,
         'linkTypes' => [\verbb\hyper\links\Category::class],
     ]);
@@ -66,7 +67,7 @@ it('localizes category links during owner propagation and structure updates', fu
 it('preserves cleared translated text when a sibling adds another link', function(?string $cleared) {
     [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([
-        'multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Url::class],
+        'multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Url::class],
     ]);
     $section = HyperFixtureFactory::translatableEntrySection($field, 2);
     $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [
@@ -103,7 +104,7 @@ it('keeps an empty translated custom-field bag when a sibling adds a link', func
     $tab->setElements([...$tab->getElements(), new \craft\fieldlayoutelements\CustomField($caption)]);
     $url->setFieldLayout($layout);
     $field = HyperFixtureFactory::hyperFieldWithLinkTypes([HyperFixtureFactory::linkTypeConfig($url)], [
-        'multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE,
+        'multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE,
     ]);
     $section = HyperFixtureFactory::translatableEntrySection($field, 2);
     $payload = HyperFixtureFactory::urlLinkPayload('https://example.test', 'Source label') + ['fields' => [$caption->handle => 'Source caption']];
@@ -132,6 +133,7 @@ it('propagates multi-link structure to sibling sites while preserving translated
     $sites = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([
         'multipleLinks' => true,
+        'syncLinksAcrossSites' => true,
         'linkTypes' => [Url::class, EntryLink::class],
         'translationMethod' => Field::TRANSLATION_METHOD_SITE,
     ]);
@@ -177,6 +179,48 @@ it('propagates multi-link structure to sibling sites while preserving translated
     expect($linksB->getLinks()[0]->getCustomLinkText())->toBe('Accueil');
     expect($linksB->getLinks()[1]->getElement()?->id)->toBe($targets['secondary']->id);
     expect($linksB->getLinks()[2]->getCustomLinkText())->toBe('Contact');
+});
+
+it('keeps each site’s multi-link list independent unless syncing is enabled', function() {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField([
+        'multipleLinks' => true,
+        'linkTypes' => [Url::class],
+        'translationMethod' => Field::TRANSLATION_METHOD_SITE,
+    ]);
+    expect($field->syncLinksAcrossSites)->toBeFalse();
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $owner = HyperFixtureFactory::plainEntry($section, 'Independent nav', [
+        $field->handle => [
+            HyperFixtureFactory::urlLinkPayload('https://example.test/home', 'Home'),
+            HyperFixtureFactory::urlLinkPayload('https://example.test/about', 'About'),
+        ],
+    ], $primary);
+    $reload = fn($site) => Entry::find()->id($owner->id)->siteId($site->id)->status(null)->one();
+    $urls = fn($site) => array_map(fn($link) => $link->getUrl(), $reload($site)->getFieldValue($field->handle)->getLinks());
+
+    // A new site still receives the initial value through Craft's propagation.
+    expect($urls($secondary))->toBe(['https://example.test/home', 'https://example.test/about']);
+
+    $localized = $reload($secondary);
+    $links = $localized->getFieldValue($field->handle);
+    $links->getLinks()[0]->linkValue = 'https://example.test/fr/accueil';
+    $localized->setFieldValue($field->handle, $links->withLinks([
+        ...$links->getLinks(),
+        Hyper::$plugin->links->createLinkFromSerialized($field, HyperFixtureFactory::urlLinkPayload('https://example.test/fr/only', 'Seulement')),
+    ]));
+    expect(Craft::$app->elements->saveElement($localized))->toBeTrue();
+
+    $source = $reload($primary);
+    $links = $source->getFieldValue($field->handle);
+    $source->setFieldValue($field->handle, $links->withLinks([
+        ...$links->getLinks(),
+        Hyper::$plugin->links->createLinkFromSerialized($field, HyperFixtureFactory::urlLinkPayload('https://example.test/contact', 'Contact')),
+    ]));
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+
+    expect($urls($primary))->toBe(['https://example.test/home', 'https://example.test/about', 'https://example.test/contact']);
+    expect($urls($secondary))->toBe(['https://example.test/fr/accueil', 'https://example.test/about', 'https://example.test/fr/only']);
 });
 
 it('localizes entry links to sibling sites on initial entry creation', function() {
@@ -241,6 +285,7 @@ it('does not sync multi-link structure when the field was not edited', function(
     $sites = HyperFixtureFactory::ensureSites(2);
     $field = HyperFixtureFactory::hyperField([
         'multipleLinks' => true,
+        'syncLinksAcrossSites' => true,
         'linkTypes' => [Url::class],
         'translationMethod' => Field::TRANSLATION_METHOD_SITE,
     ]);
@@ -333,3 +378,78 @@ it('localizes element links when propagateValue is called for shared fields', fu
     expect($linkB->getElement()?->id)->toBe($targets['secondary']->id);
     expect($linkB->getElement()?->siteId)->toBe($sites[1]->id);
 });
+
+it('stores the sync setting and treats fields saved without it as not syncing', function() {
+    $field = HyperFixtureFactory::hyperField(['multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE]);
+    expect($field->syncLinksAcrossSites)->toBeTrue();
+    expect($field->getSettings()['syncLinksAcrossSites'])->toBeTrue();
+
+    $settings = $field->getSettings();
+    unset($settings['syncLinksAcrossSites']);
+    expect((new \verbb\hyper\fields\HyperField($settings))->syncLinksAcrossSites)->toBeFalse();
+});
+
+it('does not sync when the field is single-link or uses another translation method', function(bool $multiple, string $method) {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField([
+        'multipleLinks' => $multiple, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Url::class],
+    ]);
+
+    // A per-site custom key gives each site its own value without the sync.
+    if ($method === Field::TRANSLATION_METHOD_CUSTOM) {
+        $field->translationMethod = $method;
+        $field->translationKeyFormat = '{site.handle}';
+        expect(Craft::$app->fields->saveField($field))->toBeTrue();
+    }
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [
+        $field->handle => [HyperFixtureFactory::urlLinkPayload('https://example.test/one', 'One')],
+    ], $primary);
+    $reload = fn($site) => Entry::find()->id($owner->id)->siteId($site->id)->status(null)->one();
+    $localized = $reload($secondary);
+    $localized->setFieldValue($field->handle, [HyperFixtureFactory::urlLinkPayload('https://example.test/fr', 'Un')]);
+    expect(Craft::$app->elements->saveElement($localized))->toBeTrue();
+
+    $source = $reload($primary);
+    $source->setFieldValue($field->handle, [HyperFixtureFactory::urlLinkPayload('https://example.test/two', 'Two')]);
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+
+    expect(array_map(fn($link) => $link->getUrl(), $reload($secondary)->getFieldValue($field->handle)->getLinks()))->toBe(['https://example.test/fr']);
+})->with([
+    'single link' => [false, Field::TRANSLATION_METHOD_SITE],
+    'custom per-site key' => [true, Field::TRANSLATION_METHOD_CUSTOM],
+]);
+
+it('syncs links on nested Matrix entries only when the setting is on', function(bool $sync) {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField([
+        'multipleLinks' => true, 'syncLinksAcrossSites' => $sync, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Url::class],
+    ]);
+    $fixture = HyperFixtureFactory::matrixFieldWithHyper($field);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    HyperFixtureFactory::attachFieldToEntryType($section->getEntryTypes()[0], $fixture['matrix']);
+    $owner = HyperFixtureFactory::plainEntry($section, 'Matrix owner', [], $primary);
+    $nested = new Entry([
+        'fieldId' => $fixture['matrix']->id, 'ownerId' => $owner->id, 'typeId' => $fixture['blockEntryType']->id, 'siteId' => $primary->id, 'title' => 'Nested',
+    ]);
+    $nested->setFieldValue($field->handle, [HyperFixtureFactory::urlLinkPayload('https://example.test/one', 'One')]);
+    expect(Craft::$app->elements->saveElement($nested))->toBeTrue();
+    $reload = fn($site) => Entry::find()->id($nested->id)->siteId($site->id)->status(null)->one();
+
+    $localized = $reload($secondary);
+    $links = $localized->getFieldValue($field->handle);
+    $links->getLinks()[0]->linkText = 'Un';
+    $localized->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($localized))->toBeTrue();
+
+    $source = $reload($primary);
+    $links = $source->getFieldValue($field->handle);
+    $source->setFieldValue($field->handle, $links->withLinks([
+        ...$links->getLinks(),
+        Hyper::$plugin->links->createLinkFromSerialized($field, HyperFixtureFactory::urlLinkPayload('https://example.test/two', 'Two')),
+    ]));
+    expect(Craft::$app->elements->saveElement($source))->toBeTrue();
+
+    $texts = array_map(fn($link) => $link->getCustomLinkText(), $reload($secondary)->getFieldValue($field->handle)->getLinks());
+    expect($texts)->toBe($sync ? ['Un', 'Two'] : ['Un']);
+})->with([true, false]);

@@ -42,7 +42,7 @@ it('recovers an unavailable legacy class when its link type is restored', functi
 
 it('keeps a cleared passive translation when structure is propagated', function() {
     [$primary, $secondary] = F::ensureSites(2);
-    $field = F::hyperField(['multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Passive::class]]);
+    $field = F::hyperField(['multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE, 'linkTypes' => [Passive::class]]);
     $section = F::translatableEntrySection($field, 2);
     $owner = F::plainEntry($section, 'Passive owner', [$field->handle => [F::passiveLinkPayload('Original')]], $primary);
     $target = F::localizedEntryForSite($owner, $secondary);

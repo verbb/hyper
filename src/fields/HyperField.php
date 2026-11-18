@@ -154,6 +154,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     public ?int $minLinks = null;
     public ?int $maxLinks = null;
     public bool $enableBulkAdd = false;
+    public bool $syncLinksAcrossSites = false;
     public ?int $fieldLayoutId = null;
     public array $migrationData = [];
     public string $viewMode = self::VIEW_MODE_BLOCKS;
@@ -1201,7 +1202,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $rules[] = ['maxLinks', 'compare', 'compareAttribute' => 'minLinks', 'operator' => '>=', 'type' => 'number',
             'when' => fn() => $this->multipleLinks && $this->minLinks > 0 && $this->maxLinks > 0,
         ];
-        $rules[] = [['enableBulkAdd'], 'boolean'];
+        $rules[] = [['enableBulkAdd', 'syncLinksAcrossSites'], 'boolean'];
         $rules[] = ['linkTypes', 'validateLinkTypes'];
         $rules[] = [['viewMode'], 'in', 'range' => [
             self::VIEW_MODE_BLOCKS,

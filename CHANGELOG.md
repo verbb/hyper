@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- Added a **Sync Links Across Sites** setting for multi-link fields using **Translate for each site**. ([#219](https://github.com/verbb/hyper/issues/219))
+
+### Changed
+
+- Multi-link fields using **Translate for each site** now keep a separate list on each site again, matching Craft and Hyper 2. Turn on **Sync Links Across Sites** to keep syncing added, removed and reordered links across an entry’s sites, as in 3.0.0. ([#219](https://github.com/verbb/hyper/issues/219))
+
 ### Fixed
 
 - Fixed an error when applying a draft or saving an entry that changes to an entry type with a Hyper field the original type doesn't have. ([#296](https://github.com/verbb/hyper/issues/296))

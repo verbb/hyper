@@ -8,7 +8,7 @@ use verbb\hyper\links\Url;
 
 it('keeps translated draft structure edits separate from published owners', function() {
     [$primary, $secondary] = F::ensureSites(2);
-    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE]);
+    $field = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true, 'syncLinksAcrossSites' => true, 'translationMethod' => Field::TRANSLATION_METHOD_SITE]);
     $owner = F::plainEntry(F::translatableEntrySection($field, 2), 'Published owner', [
         $field->handle => [F::urlLinkPayload('https://example.test/published')],
     ], $primary);
