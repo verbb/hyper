@@ -30,6 +30,19 @@ it('retains unavailable legacy types instead of substituting the default link ty
     }
 });
 
+it('keeps saved links of a disabled link type resolving as that type', function() {
+    $field = F::hyperFieldWithLinkTypes([
+        F::linkTypeConfig(\verbb\hyper\links\Entry::class),
+        F::linkTypeConfig(Url::class, false),
+    ]);
+    // Hyper 2 content stored the verbose stock handle alongside the class.
+    $raw = ['type' => Url::class, 'handle' => 'default-verbb-hyper-links-url', 'linkValue' => 'https://example.test/disabled', 'linkText' => 'Read more'];
+    $link = (new LinkCollection($field, [$raw]))->getLinks()[0];
+    expect($link)->toBeInstanceOf(Url::class);
+    expect($link->getUrl())->toBe('https://example.test/disabled');
+    expect($link->getSerializedValues()['linkTypeHandle'])->toBe('url');
+});
+
 it('recovers an unavailable legacy class when its link type is restored', function() {
     $field = F::hyperField(['linkTypes' => [Url::class]]);
     $raw = ['type' => \verbb\hyper\links\Email::class, 'linkValue' => 'hello@example.test'];

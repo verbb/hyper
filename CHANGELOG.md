@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fixed existing links showing as an unsupported link type, and not rendering, when their link type is disabled on the field. ([#298](https://github.com/verbb/hyper/issues/298))
+
 ## 3.0.7 - 2026-11-21
 
 ### Added

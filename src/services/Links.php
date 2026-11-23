@@ -91,6 +91,7 @@ class Links extends Component
 
                 if (!Hyper::$plugin->getService()->isPluginInstalledAndEnabled($handle)) {
                     unset($event->types[$linkTypeKey]);
+
                     continue;
                 }
 
@@ -98,6 +99,7 @@ class Links extends Component
 
                 if (!$plugin) {
                     unset($event->types[$linkTypeKey]);
+
                     continue;
                 }
 
@@ -164,7 +166,8 @@ class Links extends Component
         $requestedHandle = $instance->linkTypeHandle;
         $prototype = $field->getLinkTypeByHandle($requestedHandle);
 
-        if (!$prototype || $prototype instanceof linkTypes\MissingLink || !$prototype->enabled) {
+        // Disabling a type only stops new links of it. Saved links keep resolving as that type.
+        if (!$prototype || $prototype instanceof linkTypes\MissingLink) {
             // Retain opaque unresolved content through read/serialize (Astra H3-A07).
             return $this->_createUnsupportedContentLink($field, $instance);
         }
