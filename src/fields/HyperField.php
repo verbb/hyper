@@ -28,6 +28,7 @@ use craft\base\MergeableFieldInterface;
 use craft\base\PreviewableFieldInterface;
 use craft\base\ThumbableFieldInterface;
 use craft\db\Query;
+use craft\db\QueryParam;
 use craft\elements\db\ElementQueryInterface;
 use craft\fields\conditions\EmptyFieldConditionRule;
 use craft\fields\Matrix;
@@ -42,6 +43,7 @@ use craft\models\FieldLayout;
 use craft\validators\ArrayValidator;
 use craft\web\View;
 
+use yii\db\ExpressionInterface;
 use yii\db\Schema;
 
 use Exception;
@@ -84,6 +86,26 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         Craft::$app->getDeprecator()->log(static::class . '::normalizeEditorMode', 'Field `normalizeEditorMode()` has been deprecated. Use `normalizeViewMode()` instead.');
 
         return self::normalizeViewMode($mode);
+    }
+
+    public static function queryCondition(array $instances, mixed $value, array &$params): array|string|ExpressionInterface|false|null
+    {
+        $condition = parent::queryCondition($instances, $value, $params);
+        $isEmptyParam = self::_parseEmptyQueryParam($value);
+
+        if ($isEmptyParam === null || !is_array($condition)) {
+            return $condition;
+        }
+
+        // A field cleared after its first save for a site stores `[]`, which Craft's default `:empty:` check (NULL or '') never matches.
+        // Treat it as empty, like `isValueEmpty()` and Craft's relation fields, so queries and the empty condition rule agree.
+        $valueSql = static::valueSql($instances);
+
+        if ($isEmptyParam) {
+            return ['or', $condition, [$valueSql => '[]']];
+        }
+
+        return ['and', $condition, ['not', [$valueSql => '[]']]];
     }
 
     private static function _preserveScalarLinkValues(array $values): array
@@ -130,6 +152,34 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
 
         return (string)$glued_string;
+    }
+
+    /**
+     * Returns true for an `:empty:` query param, false for `:notempty:` or `not :empty:`, and null for any other value, which keeps Craft's default handling.
+     */
+    private static function _parseEmptyQueryParam(mixed $value): ?bool
+    {
+        if (is_array($value) && isset($value['value'])) {
+            $value = $value['value'];
+        }
+
+        $param = QueryParam::parse($value);
+
+        if (count($param->values) !== 1 || !is_string($param->values[0])) {
+            return null;
+        }
+
+        $isEmpty = match (strtolower(trim($param->values[0]))) {
+            ':empty:' => true,
+            ':notempty:', 'not :empty:' => false,
+            default => null,
+        };
+
+        if ($isEmpty === null || $param->operator !== QueryParam::NOT) {
+            return $isEmpty;
+        }
+
+        return !$isEmpty;
     }
 
 

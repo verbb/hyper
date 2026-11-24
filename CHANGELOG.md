@@ -8,6 +8,7 @@
 - Fixed relation rebuilds, upgrades and content migrations failing when Neo blocks remained after applying a draft, or when other plugins' elements were missing their element record.
 - Fixed the Craft Link content migration skipping links saved on Craft 5.3 and 5.4, which made them disappear after migrating.
 - Fixed clearing a Hyper field with `modifyRaw()` and `Change::replace(null)` leaving its relations behind, and the `hyper/content/sync-relations` command being unable to remove them.
+- Fixed Hyper fields with all their links removed still matching `:notempty:` queries and the “has a value” filter, and not matching `:empty:` or “is empty”.
 - Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
 
 ## 3.1.0 - 2026-11-24
