@@ -391,28 +391,26 @@ class LinkRelations extends Component
         $ownerElementType = $params['elementType'] ?? Entry::class;
         $targetType = $params['targetType'] ?? $targetElement::class;
 
-        $result = (new Query())
-            ->select(['ownerId AS id', 'ownerSiteId AS siteId'])
+        // Recorded owner/site pairs stay in a subquery. Loading them first and inlining one
+        // condition per owner made every query grow with the number of incoming links.
+        $ownerPairs = (new Query())
+            ->select(['ownerId', 'ownerSiteId'])
             ->from(['{{%hyper_links}}'])
             ->where([
                 'fieldId' => $hyperField->id,
                 'targetType' => $targetType,
                 'targetId' => $targetElement->id,
                 'targetSiteId' => $targetElement->siteId,
-            ])
-            ->indexBy(static fn(array $row): string => $row['id'] . ':' . $row['siteId'])
-            ->all();
+            ]);
 
-        $elementParams = [];
+        // Configure applies keys in order. Keeping `siteId` ahead of `site` preserves the
+        // existing precedence, where `site` wins over a `siteId` criterion.
+        $elementParams = ['siteId' => null];
 
-        foreach ($result as $value) {
-            $elementParams['id'][] = $value['id'];
-            $elementParams['siteId'][] = $value['siteId'];
-        }
-
-        if (!$elementParams) {
-            // Empty result — do not use the `-1` id sentinel as a returned element id.
-            $elementParams['id'] = false;
+        // Fixed order sorts by the `id` param, which has always held the linked owner IDs in
+        // index order. Load them only for that case so other lookups keep the subquery alone.
+        if (!empty($params['criteria']['fixedOrder'])) {
+            $elementParams['id'] = array_values(array_unique(array_column($ownerPairs->all(), 'ownerId'))) ?: false;
         }
 
         if (isset($params['site'])) {
@@ -434,13 +432,9 @@ class LinkRelations extends Component
         $elementQuery = $ownerElementType::find();
         Craft::configure($elementQuery, $elementParams);
 
-        // Independent ID/site filters form a cross product. Keep each recorded pair intact,
-        // including when callers request all sites or supply additional query criteria.
-        $pairs = array_map(static fn(array $row): array => [
-            'elements.id' => (int)$row['id'],
-            'elements_sites.siteId' => (int)$row['siteId'],
-        ], array_values($result));
-        $elementQuery->andWhere($pairs ? ['or', ...$pairs] : '0=1');
+        // Independent ID/site filters form a cross product. Match each recorded pair as a
+        // composite IN, including when callers request all sites or supply additional criteria.
+        $elementQuery->andWhere(['in', ['elements.id', 'elements_sites.siteId'], $ownerPairs]);
 
         return $elementQuery;
     }
