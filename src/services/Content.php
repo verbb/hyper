@@ -27,6 +27,7 @@ use craft\elements\Entry;
 use craft\elements\GlobalSet;
 use craft\elements\Tag;
 use craft\elements\User;
+use craft\elements\db\ElementQuery;
 use craft\events\DeleteSiteEvent;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
@@ -500,16 +501,55 @@ class Content extends Component
             default => null,
         };
 
-        if ($table === null) {
-            return false;
-        }
-
         try {
-            return !(new Query())->from($table)->where(['id' => $elementId])->exists();
+            // Plugins register their own element types with garbage collection, such as
+            // Neo blocks left without a block record after a draft is applied.
+            $tables = $table !== null ? [$table] : $this->_elementRecordTables($elementType);
+
+            foreach ($tables as $recordTable) {
+                if (!(new Query())->from($recordTable)->where(['id' => $elementId])->exists()) {
+                    return true;
+                }
+            }
         } catch (Throwable) {
             // Report the unresolved owner, with its diagnostics, rather than this query failure.
-            return false;
         }
+
+        return false;
+    }
+
+    /**
+     * Return the type-specific record tables an element type's query requires.
+     *
+     * @param string|null $elementType
+     * @return string[]
+     */
+    private function _elementRecordTables(?string $elementType): array
+    {
+        if ($elementType === null || !is_subclass_of($elementType, ElementInterface::class)) {
+            return [];
+        }
+
+        $query = $elementType::find();
+
+        if (!$query instanceof ElementQuery) {
+            return [];
+        }
+
+        // ElementQuery::joinElementTable() inner-joins each record table on the element ID.
+        // Only this exact join is a type-specific record; other joins may be optional.
+        $tables = [];
+
+        foreach ($query->prepareSubquery()->join ?? [] as $join) {
+            $table = $join[1] ?? null;
+            $alias = is_array($table) && count($table) === 1 ? array_key_first($table) : null;
+
+            if (is_string($alias) && ($join[0] ?? null) === 'INNER JOIN' && ($join[2] ?? null) === "[[$alias.id]] = [[elements.id]]") {
+                $tables[] = $table[$alias];
+            }
+        }
+
+        return $tables;
     }
 
     private function _relationOwnerDiagnostics(int $elementId, ?string $elementType, ?array $elementRow): string

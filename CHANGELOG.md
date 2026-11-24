@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed editors being unable to save, autosave, create drafts of or revert an element when a Hyper field already links to an element they don't have permission to view.
+- Fixed relation rebuilds, upgrades and content migrations failing when Neo blocks remained after applying a draft, or when other plugins' elements were missing their element record.
 - Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
 
 ## 3.1.0 - 2026-11-24
