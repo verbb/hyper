@@ -11,6 +11,7 @@
 - Fixed Hyper fields with all their links removed still matching `:notempty:` queries and the “has a value” filter, and not matching `:empty:` or “is empty”.
 - Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
 - Fixed Matrix and Neo fields inside links causing errors or losing their content after a nested field, entry type or Neo block type handle was renamed. Existing content is updated to support renames when updating.
+- Fixed reverse relations missing entries created in the control panel on sites other than the one they were created on, and links in their Matrix, Neo and Content Block fields.
 
 ## 3.1.0 - 2026-11-24
 

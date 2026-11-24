@@ -10,10 +10,12 @@ use verbb\hyper\records\LinkRelation as LinkRelationRecord;
 
 use Craft;
 use craft\base\Component;
+use craft\base\ElementContainerFieldInterface;
 use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\Entry;
+use craft\events\DraftEvent;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
 
@@ -125,6 +127,21 @@ class LinkRelations extends Component
         }
 
         return true;
+    }
+
+    public function handleAfterApplyDraft(DraftEvent $event): void
+    {
+        // Applying an unpublished draft keeps its ID and saves one site without propagating
+        // or resaving nested elements, and every earlier save was skipped as a draft save.
+        if ((int)$event->canonical->id !== (int)$event->draft->id) {
+            return;
+        }
+
+        $canonical = $event->canonical;
+
+        foreach ($canonical::find()->id($canonical->id)->siteId('*')->status(null)->all() as $element) {
+            $this->_syncOwnerTree($element);
+        }
     }
 
     public function getRelationRowsForOwners(array $owners): array
@@ -505,6 +522,40 @@ class LinkRelations extends Component
 
     // Private Methods
     // =========================================================================
+
+    private function _syncOwnerTree(ElementInterface $element): void
+    {
+        $synced = [];
+
+        foreach ($element->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+            if ($field instanceof HyperField) {
+                // One sync covers every layout occurrence of the field.
+                if (!isset($synced[$field->id])) {
+                    $synced[$field->id] = true;
+                    $this->syncFromLinkCollection($field, $element);
+                }
+
+                continue;
+            }
+
+            if (!$field instanceof ElementContainerFieldInterface) {
+                continue;
+            }
+
+            $value = $element->getFieldValue($field->handle);
+
+            // Matrix and Neo return a query, Content Block returns its single element.
+            $nestedElements = match (true) {
+                $value instanceof ElementQueryInterface => (clone $value)->status(null)->all(),
+                $value instanceof ElementInterface => [$value],
+                default => [],
+            };
+
+            foreach ($nestedElements as $nested) {
+                $this->_syncOwnerTree($nested);
+            }
+        }
+    }
 
     private function _hasHyperField(ElementInterface $element): bool
     {
