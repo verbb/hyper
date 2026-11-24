@@ -124,7 +124,7 @@ class Links extends Component
         // Ensure all required plugins are enabled at the provided version or above
         foreach ($event->types as $linkTypeKey => $linkType) {
             foreach ($linkType::getRequiredPlugins() as $handle) {
-                $version = 0;
+                $version = null;
 
                 if (is_array($handle)) {
                     $version = $handle['version'] ?? $version;
@@ -145,7 +145,7 @@ class Links extends Component
                     continue;
                 }
 
-                if (version_compare($plugin->getVersion(), $version, '<')) {
+                if ($version !== null && version_compare($plugin->getVersion(), $version, '<')) {
                     unset($event->types[$linkTypeKey]);
                 }
             }
