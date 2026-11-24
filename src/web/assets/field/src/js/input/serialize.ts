@@ -31,13 +31,14 @@ export const normalizeJson = (data: unknown, reference: unknown = null): unknown
             if (isEmptyObject(value)) {
                 // Empty objects from Craft widgets → empty array (historical store shape).
                 normalized[key] = [];
-            } else if (value === '' && (refValue === null || refValue === undefined)) {
-                normalized[key] = null;
             } else if ((value === null || value === '') && Array.isArray(refValue)) {
                 normalized[key] = [];
             } else if (Array.isArray(value)) {
                 normalized[key] = normalizeJson(value, refValue);
             } else {
+                // A posted `''` stays `''`, never `null`. Craft reads a stored `null` as
+                // "no value yet" and applies field defaults, so an off Lightswitch or cleared
+                // Checkboxes would revert, and a Table Number cell would store an array.
                 normalized[key] = normalizeJson(value, refValue);
             }
         }
