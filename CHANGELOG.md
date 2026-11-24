@@ -10,6 +10,7 @@
 - Fixed clearing a Hyper field with `modifyRaw()` and `Change::replace(null)` leaving its relations behind, and the `hyper/content/sync-relations` command being unable to remove them.
 - Fixed Hyper fields with all their links removed still matching `:notempty:` queries and the “has a value” filter, and not matching `:empty:` or “is empty”.
 - Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
+- Fixed Matrix and Neo fields inside links causing errors or losing their content after a nested field, entry type or Neo block type handle was renamed. Existing content is updated to support renames when updating.
 
 ## 3.1.0 - 2026-11-24
 

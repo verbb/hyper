@@ -15,6 +15,7 @@ use verbb\hyper\helpers\Html;
 use verbb\hyper\helpers\UrlSafety;
 use verbb\hyper\links\MissingLink;
 use verbb\hyper\models\LinkInstance;
+use verbb\hyper\services\EmbeddedFields;
 
 use Craft;
 use craft\base\Element;
@@ -578,7 +579,7 @@ abstract class Link extends Element implements LinkInterface
                 // Reset omitted values on a replacement, including Craft's normalized
                 // field cache. Unknown fields remain opaque in the stored payload.
                 foreach ($fieldLayout->getCustomFields() as $field) {
-                    parent::setFieldValue($field->handle, $fieldContent[$field->handle] ?? null);
+                    parent::setFieldValue($field->handle, $this->_readableFieldValue($field->handle, $fieldContent[$field->handle] ?? null));
                 }
 
                 $values['fields'] = $fieldContent;
@@ -604,7 +605,7 @@ abstract class Link extends Element implements LinkInterface
     public function setFieldValue(string $fieldHandle, mixed $value): void
     {
         $value = $this->_ensureNestedElementUids($fieldHandle, $value);
-        parent::setFieldValue($fieldHandle, $value);
+        parent::setFieldValue($fieldHandle, $this->_readableFieldValue($fieldHandle, $value));
 
         // Craft's custom-field behaviour and Hyper's stored JSON must share edits.
         // Keep raw values here so an unrelated save does not normalize other fields.
@@ -1109,9 +1110,23 @@ abstract class Link extends Element implements LinkInterface
 
         if (array_key_exists($key, $value)) {
             $value[$key] = $rows;
+        } else {
+            $value = $rows;
+        }
+
+        // Rows keep handles for Craft, so map renamed types and fields back first.
+        return EmbeddedFields::resolveRows($field, $value);
+    }
+
+    private function _readableFieldValue(string $handle, mixed $value): mixed
+    {
+        $field = $this->getFieldLayout()?->getFieldByHandle($handle);
+
+        if (!$field instanceof Matrix && !is_a($field, 'benf\\neo\\Field')) {
             return $value;
         }
 
-        return $rows;
+        // The raw payload keeps values the layout can't place; Craft only gets the rest.
+        return EmbeddedFields::readableRows($field, $value);
     }
 }

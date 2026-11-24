@@ -616,9 +616,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     {
         $value = $this->normalizeValue($value, $element);
         $serialized = $this->serializeValue($value, $element);
+        $storedFields = null;
 
         foreach (array_values($value->getLinks()) as $index => $link) {
-            $fields = \verbb\hyper\services\EmbeddedFields::serialize($link);
+            $stored = null;
+
+            // Editors only post the Matrix and Neo rows they can read. Rows and values that a renamed handle made
+            // unreadable are kept from the saved content, or from the link itself when nothing is saved for it yet.
+            if ($link->uid && $this->_hasNestedRows($link)) {
+                $storedFields ??= $this->_storedLinkFields($element);
+                $stored = $storedFields[$link->uid] ?? null;
+            }
+
+            $fields = \verbb\hyper\services\EmbeddedFields::serialize($link, $stored);
 
             if ($fields !== []) {
                 $serialized[$index]['fields'] = [...($serialized[$index]['fields'] ?? []), ...$fields];
@@ -1493,6 +1503,52 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     // Private Methods
     // =========================================================================
+
+    private function _hasNestedRows(ElementInterface $link): bool
+    {
+        foreach ($link->getFieldLayout()?->getCustomFieldElements() ?? [] as $placement) {
+            if ($placement->getField() instanceof Matrix || is_a($placement->getField(), 'benf\\neo\\Field')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the saved `fields` map of each link in this field, by link UID, for the element's site.
+     */
+    private function _storedLinkFields(ElementInterface $element): array
+    {
+        $placementUid = $this->layoutElement?->uid;
+
+        if (!$placementUid || !$element->id || !$element->siteId || $element instanceof LinkInterface) {
+            return [];
+        }
+
+        $content = (new Query())
+            ->select(['content'])
+            ->from('{{%elements_sites}}')
+            ->where(['elementId' => $element->id, 'siteId' => $element->siteId])
+            ->scalar();
+        $content = \verbb\hyper\content\ElementContentStore::decodeStored($content === false ? null : $content);
+        $links = is_array($content) ? \verbb\hyper\content\ElementContentStore::decodeStored($content[$placementUid] ?? null) : null;
+        $fields = [];
+        $shared = [];
+
+        foreach (is_array($links) ? $links : [] as $link) {
+            if (is_array($link) && is_string($link['uid'] ?? null) && is_array($link['fields'] ?? null)) {
+                // Links sharing a UID can't be told apart, so each falls back to its own payload.
+                if (array_key_exists($link['uid'], $fields)) {
+                    $shared[$link['uid']] = true;
+                }
+
+                $fields[$link['uid']] = $link['fields'];
+            }
+        }
+
+        return array_diff_key($fields, $shared);
+    }
 
     private function _getLinkTypeInfoForInput(?ElementInterface $element, string $placeholderKey): array
     {
