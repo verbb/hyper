@@ -40,15 +40,21 @@ class ElementContentStore
     // =========================================================================
 
     private Connection $_db;
+    private bool $_includeClearedValues;
     private ?RawContent $_rawContent = null;
 
 
     // Public Methods
     // =========================================================================
 
-    public function __construct(?Connection $db = null)
+    /**
+     * Content transforms skip empty top-level values. Relation reconciliation opts in
+     * to visiting cleared values too, as they can still have stale relation rows.
+     */
+    public function __construct(?Connection $db = null, bool $includeClearedValues = false)
     {
         $this->_db = $db ?? Craft::$app->getDb();
+        $this->_includeClearedValues = $includeClearedValues;
     }
 
     public function findLayoutUids(FieldInterface $field): array
@@ -160,6 +166,7 @@ class ElementContentStore
                 if ($options->dryRun) {
                     $result->wouldModify++;
                 }
+
                 return Change::replace($ref->value);
             }, ['db' => $this->_db, 'dryRun' => $options->dryRun, 'elementIds' => $options->elementIds,
                 'contentContains' => $options->contentContains]);
@@ -182,7 +189,11 @@ class ElementContentStore
         ModifyOptions $options,
         ModifyResult $result,
     ): void {
-        $sql = $this->_db->getQueryBuilder()->jsonExtract('content', [$layoutUid]);
+        // A stored JSON null extracts as SQL NULL on PostgreSQL, so cleared values
+        // are matched by the presence of their key instead.
+        $hasValue = $this->_includeClearedValues
+            ? $this->_jsonKeyExistsSql($layoutUid)
+            : $this->_db->getQueryBuilder()->jsonExtract('content', [$layoutUid]) . ' IS NOT NULL';
 
         $query = (new Query())
             ->select(['content', 'id', 'elementId', 'siteId'])
@@ -190,7 +201,7 @@ class ElementContentStore
             ->where([
                 'and',
                 ['not', ['content' => null]],
-                $sql . ' IS NOT NULL',
+                $hasValue,
             ]);
 
         $this->_applyContentQueryFilters($query, $options);
@@ -201,9 +212,14 @@ class ElementContentStore
             }
 
             $elementContent = Json::decode($row['content']) ?? [];
+
+            if (!array_key_exists($layoutUid, $elementContent)) {
+                continue;
+            }
+
             $fieldContent = &$elementContent[$layoutUid];
 
-            if ($fieldContent === null || $fieldContent === '') {
+            if (!$this->_includeClearedValues && ($fieldContent === null || $fieldContent === '')) {
                 continue;
             }
 
@@ -227,6 +243,7 @@ class ElementContentStore
 
             if ($options->dryRun) {
                 $result->wouldModify++;
+
                 continue;
             }
 
@@ -317,6 +334,7 @@ class ElementContentStore
 
                 if ($options->dryRun) {
                     $result->wouldModify++;
+
                     continue;
                 }
 
@@ -348,6 +366,18 @@ class ElementContentStore
                 $options->contentContains,
             ]);
         }
+    }
+
+    private function _jsonKeyExistsSql(string $key): string
+    {
+        $column = $this->_db->quoteColumnName('content');
+
+        // Unlike Craft's jsonExtract(), these operators keep a JSON null as a JSON value.
+        if ($this->_db->getDriverName() === 'pgsql') {
+            return sprintf('(%s #> %s) IS NOT NULL', $column, $this->_db->quoteValue(sprintf('{"%s"}', $key)));
+        }
+
+        return sprintf('JSON_EXTRACT(%s, %s) IS NOT NULL', $column, $this->_db->quoteValue(sprintf('$."%s"', $key)));
     }
 
     private function _withExpandedElementIds(FieldInterface $field, ModifyOptions $options): ModifyOptions

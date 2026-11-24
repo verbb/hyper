@@ -147,7 +147,8 @@ class Content extends Component
             throw new RuntimeException('Relation synchronization requires the Craft database connection.');
         }
 
-        $store = new ElementContentStore($options->db);
+        // Cleared values are visited too, so an emptied field drops its stale rows.
+        $store = new ElementContentStore($options->db, includeClearedValues: true);
         $synced = 0;
 
         $store->eachFieldValue($field, function(ContentRef $ref) use ($field, $options, &$synced) {
