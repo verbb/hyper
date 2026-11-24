@@ -13,6 +13,7 @@
 - Fixed Matrix and Neo fields inside links causing errors or losing their content after a nested field, entry type or Neo block type handle was renamed. Existing content is updated to support renames when updating.
 - Fixed reverse relations missing entries created in the control panel on sites other than the one they were created on, and links in their Matrix, Neo and Content Block fields.
 - Fixed reverse-relation queries slowing down sharply for elements linked from thousands of owners.
+- Fixed links on a built-in link type switching to a custom link type of the same kind after upgrading from Hyper 2, when the custom type was sorted first.
 
 ## 3.1.0 - 2026-11-24
 

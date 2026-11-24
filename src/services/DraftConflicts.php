@@ -4,6 +4,7 @@ namespace verbb\hyper\services;
 use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\StringHelper;
 
 use Craft;
 use craft\base\ElementInterface;
@@ -296,9 +297,18 @@ class DraftConflicts
 
     private static function _matchesLegacyBaseline(?string $baseline, HyperField $field, ElementInterface $current): bool
     {
-        // 3.0.0–3.0.7 fingerprinted saved links of disabled types as unsupported. Compare the
-        // stored current content that way, so drafts started before updating don't report a false conflict.
-        if ($baseline === null || !$current->id || !array_filter($field->getLinkTypes(), static fn(LinkInterface $type): bool => !$type->enabled)) {
+        // Earlier releases fingerprinted some saved links differently. 3.0.0–3.0.7 hydrated links of
+        // disabled types as unsupported, and releases up to 3.1.0 resolved Hyper 1/2 `default-` handles
+        // to a custom type sorted above the built-in type of its class. Compare the stored current content
+        // each of those ways, so drafts started before updating don't report a false conflict.
+        if ($baseline === null || !$current->id) {
+            return false;
+        }
+
+        $hasDisabledType = (bool)array_filter($field->getLinkTypes(), static fn(LinkInterface $type): bool => !$type->enabled);
+        $hasCustomTypeFirst = self::_hasCustomTypeFirst($field);
+
+        if (!$hasDisabledType && !$hasCustomTypeFirst) {
             return false;
         }
 
@@ -314,9 +324,36 @@ class DraftConflicts
             return false;
         }
 
-        return Hyper::$plugin->getLinks()->withDisabledTypesUnsupported(
-            static fn(): bool => $baseline === self::_hash($field, $current, false, $stored) || $baseline === self::_hash($field, $current, true, $stored),
-        );
+        $links = Hyper::$plugin->getLinks();
+        $matches = static fn(): bool => $baseline === self::_hash($field, $current, false, $stored) || $baseline === self::_hash($field, $current, true, $stored);
+        $disabledUnsupported = static fn(): bool => $links->withDisabledTypesUnsupported($matches);
+
+        if ($hasDisabledType && $disabledUnsupported()) {
+            return true;
+        }
+
+        if (!$hasCustomTypeFirst) {
+            return false;
+        }
+
+        // 3.0.0–3.0.7 combined both, and 3.1.0 resolved the handles alone.
+        return $links->withFirstOfClassLegacyHandles($matches) || ($hasDisabledType && $links->withFirstOfClassLegacyHandles($disabledUnsupported));
+    }
+
+    private static function _hasCustomTypeFirst(HyperField $field): bool
+    {
+        // Old and current resolution of a Hyper 1/2 handle differ only when a custom type sorts above the built-in type of its class.
+        $linkTypes = $field->getLinkTypes();
+
+        foreach ($linkTypes as $linkType) {
+            $legacyHandle = 'default-' . StringHelper::toKebabCase($linkType::class);
+
+            if (LinkTypeConfigs::findLegacyStockLinkType($linkTypes, $legacyHandle) !== LinkTypeConfigs::findLegacyStockLinkType($linkTypes, $legacyHandle, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function _hash(HyperField $field, ElementInterface $element, bool $includeIdentity = false, mixed $storedValue = null): string

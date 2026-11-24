@@ -4,6 +4,8 @@ use craft\elements\Entry;
 use craft\elements\User;
 use craft\errors\InvalidElementException;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
+use verbb\hyper\Hyper;
+use verbb\hyper\links\Email;
 use verbb\hyper\links\Url;
 use verbb\hyper\services\DraftConflicts;
 
@@ -76,9 +78,11 @@ it('keeps draft baselines captured before link IDs were excluded compatible', fu
         if (!is_array($value)) {
             return $value;
         }
+
         if (!array_is_list($value)) {
             ksort($value);
         }
+
         return array_map($sort, $value);
     };
     $oldBaseline = hash('sha256', \craft\helpers\Json::encode($sort($layoutField->serializeValueForDb($owner->getFieldValue($field->handle), $owner))));
@@ -173,6 +177,130 @@ it('still blocks a draft started before the update when the current entry change
     expect(array_map(fn($link) => $link->linkValue, Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()))->toBe(['/a', '/published']);
 });
 
+function hyperCustomTypeFirstRows(\verbb\hyper\fields\HyperField $field, Entry $owner, string $handle): void
+{
+    $payload = array_map(fn(string $url) => ['type' => Url::class, 'handle' => $handle, 'linkValue' => $url], ['/a', '/b']);
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$field->layoutElement->uid => $payload]),
+    ], ['elementId' => $owner->id, 'siteId' => $owner->siteId])->execute();
+    Craft::$app->getElements()->invalidateCachesForElementType(Entry::class);
+}
+
+function hyperCustomTypeFirstFixture(bool $builtInDisabled, callable $beforeUpdate): array
+{
+    // A custom Url type sorted above the built-in one. Releases up to 3.1.0 resolved the stored
+    // Hyper 2 handle `default-verbb-hyper-links-url` to the custom type.
+    $campaign = F::linkTypeConfig(Url::class);
+    $campaign['handle'] = 'q7HcX2mLp9';
+    $campaign['label'] = 'Campaign URL';
+    $campaign['isCustom'] = true;
+    $field = F::hyperFieldWithLinkTypes([$campaign, F::linkTypeConfig(Url::class, !$builtInDisabled)], ['multipleLinks' => true]);
+    $owner = F::plainEntry(F::entrySection($field), 'Custom type first owner');
+    $field = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+
+    // Record the draft baseline or editor snapshot as those releases did, by storing the custom handle
+    // they resolved to, then restore the Hyper 2 rows the current entry still holds.
+    hyperCustomTypeFirstRows($field, $owner, 'q7HcX2mLp9');
+    $result = $beforeUpdate(Entry::find()->id($owner->id)->one(), $field);
+    hyperCustomTypeFirstRows($field, $owner, 'default-verbb-hyper-links-url');
+
+    return [Entry::find()->id($owner->id)->one(), $field, $result];
+}
+
+function hyperCustomTypeFirstDraft(bool $builtInDisabled): array
+{
+    [$owner, $field, $draft] = hyperCustomTypeFirstFixture($builtInDisabled, fn(Entry $owner) => Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Before update'));
+
+    return [$owner, $field, Entry::find()->id($draft->id)->drafts(true)->status(null)->one()];
+}
+
+it('applies a draft started before legacy handles resolved to the built-in type over a custom type sorted first', function(bool $builtInDisabled) {
+    [$owner, $field, $draft] = hyperCustomTypeFirstDraft($builtInDisabled);
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+    Craft::$app->drafts->applyDraft($draft);
+
+    expect(array_map(fn($link) => $link->linkValue, Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()))->toBe(['/draft', '/b']);
+})->with(['built-in enabled' => false, 'built-in disabled' => true]);
+
+it('still blocks a draft started before legacy handles resolved to the built-in type when the current entry changed since', function(bool $builtInDisabled) {
+    [$owner, $field, $draft] = hyperCustomTypeFirstDraft($builtInDisabled);
+    $current = Entry::find()->id($owner->id)->one();
+    $links = $current->getFieldValue($field->handle)->getLinks();
+    $links[1]->linkValue = '/published';
+    $current->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+
+    expect(fn() => Craft::$app->drafts->applyDraft($draft))->toThrow(InvalidElementException::class, 'This field changed in the current entry');
+    expect(array_map(fn($link) => $link->linkValue, Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()))->toBe(['/a', '/published']);
+})->with(['built-in enabled' => false, 'built-in disabled' => true]);
+
+it('saves an editor form opened before legacy handles resolved to the built-in type over a custom type sorted first', function(bool $builtInDisabled) {
+    [$owner, $field, [$token, $posted]] = hyperCustomTypeFirstFixture($builtInDisabled, fn(Entry $owner, $field) => [
+        DraftConflicts::inputToken($field, $owner),
+        $field->serializeValueForDb($owner->getFieldValue($field->handle), $owner),
+    ]);
+    $posted[0]['linkValue'] = '/form';
+    $fresh = Entry::find()->id($owner->id)->one();
+    $fresh->setFieldValue($field->handle, $posted);
+
+    \Tests\Support\CpActionRequest::asUser(User::find()->admin()->one(), function() use ($fresh, $field, $token) {
+        Craft::$app->request->setBodyParams(['fields' => [$field->handle . '__hyperDraftBaseline' => $token]]);
+        expect(Craft::$app->elements->saveElement($fresh))->toBeTrue();
+    });
+
+    expect(array_map(fn($link) => $link->linkValue, Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()))->toBe(['/form', '/b']);
+})->with(['built-in enabled' => false, 'built-in disabled' => true]);
+
+function hyperCustomTypeFirstWithDisabledTypeDraft(): array
+{
+    // A custom Url type sorted first, the built-in Url type and a disabled Email type with a saved
+    // link. Releases 3.0.0 to 3.0.7 recorded draft baselines with both legacy resolutions at once.
+    $campaign = F::linkTypeConfig(Url::class);
+    $campaign['handle'] = 'q7HcX2mLp9';
+    $campaign['label'] = 'Campaign URL';
+    $campaign['isCustom'] = true;
+    $field = F::hyperFieldWithLinkTypes([$campaign, F::linkTypeConfig(Url::class), F::linkTypeConfig(Email::class, false)], ['multipleLinks' => true]);
+    $owner = F::plainEntry(F::entrySection($field), 'Custom type first with disabled type owner');
+    $field = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$field->layoutElement->uid => [
+            ['type' => Url::class, 'handle' => 'default-verbb-hyper-links-url', 'linkValue' => '/a'],
+            ['type' => Url::class, 'handle' => 'default-verbb-hyper-links-url', 'linkValue' => '/b'],
+            ['type' => Email::class, 'handle' => 'default-verbb-hyper-links-email', 'linkValue' => 'a@example.test'],
+        ]]),
+    ], ['elementId' => $owner->id, 'siteId' => $owner->siteId])->execute();
+    Craft::$app->getElements()->invalidateCachesForElementType(Entry::class);
+    $owner = Entry::find()->id($owner->id)->one();
+    $links = Hyper::$plugin->getLinks();
+    $draft = $links->withFirstOfClassLegacyHandles(fn() => $links->withDisabledTypesUnsupported(
+        fn() => Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Before update'),
+    ));
+
+    return [$owner, $field, Entry::find()->id($draft->id)->drafts(true)->status(null)->one()];
+}
+
+it('applies a draft started before both legacy resolutions changed', function() {
+    [$owner, $field, $draft] = hyperCustomTypeFirstWithDisabledTypeDraft();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+    Craft::$app->drafts->applyDraft($draft);
+
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()[0]->linkValue)->toBe('/draft');
+});
+
+it('still blocks a draft started before both legacy resolutions changed when the current entry changed since', function() {
+    [$owner, $field, $draft] = hyperCustomTypeFirstWithDisabledTypeDraft();
+    $current = Entry::find()->id($owner->id)->one();
+    $links = $current->getFieldValue($field->handle)->getLinks();
+    $links[1]->linkValue = '/published';
+    $current->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+
+    expect(fn() => Craft::$app->drafts->applyDraft($draft))->toThrow(InvalidElementException::class, 'This field changed in the current entry');
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()[1]->linkValue)->toBe('/published');
+});
+
 function hyperConcurrentFixture(): array
 {
     $first = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true]);
@@ -192,17 +320,21 @@ function hyperConcurrentFixture(): array
     $user = User::find()->admin()->one();
     $a = Craft::$app->drafts->createDraft($owner, $user->id, 'Editor A');
     $b = Craft::$app->drafts->createDraft($owner, $user->id, 'Editor B');
+
     return [$owner, $first, $second, $a, $b];
 }
 
 function hyperConcurrentEdit(Entry $draft, string $handle, array $urls): Entry
 {
     $links = $draft->getFieldValue($handle)->getLinks();
+
     foreach ($urls as $index => $url) {
         $links[$index]->linkValue = $url;
     }
+
     $draft->setFieldValue($handle, $links);
     expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+
     return Entry::find()->id($draft->id)->drafts(true)->status(null)->one();
 }
 
@@ -264,12 +396,14 @@ it('uses the rendered baseline when the first edit happens after another editor 
     $request = new \craft\web\Request(['isConsoleRequest' => false, 'isCpRequest' => false]);
     $request->setBodyParams(['fields' => [$field->handle . '__hyperDraftBaseline' => $token]]);
     Craft::$app->set('request', $request);
+
     try {
         // The stale browser still posts the original first link with its edited second link.
         $late = hyperConcurrentEdit($late, $field->handle, [0 => '/a', 1 => '/late-b']);
     } finally {
         Craft::$app->set('request', $originalRequest);
     }
+
     expect(fn() => Craft::$app->drafts->applyDraft($late))->toThrow(InvalidElementException::class);
     expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/admin-a');
 });
@@ -345,11 +479,13 @@ it('retains independent localized content and blocks conflicts on another site',
     $owner = Entry::find()->id($owner->id)->siteId($primary->id)->one();
     $c = Craft::$app->drafts->createDraft($owner, $user->id, 'Other site A');
     $d = Craft::$app->drafts->createDraft($owner, $user->id, 'Other site B');
+
     foreach ([[$c, '/third'], [$d, '/fourth']] as [$draft, $value]) {
         $other = Entry::find()->id($draft->id)->drafts(true)->siteId($secondary->id)->status(null)->one();
         $other->setFieldValue($field->handle, [F::urlLinkPayload($value)]);
         expect(Craft::$app->elements->saveElement($other))->toBeTrue();
     }
+
     Craft::$app->drafts->applyDraft(Entry::find()->id($c->id)->drafts(true)->siteId($primary->id)->status(null)->one());
     expect(fn() => Craft::$app->drafts->applyDraft(Entry::find()->id($d->id)->drafts(true)->siteId($primary->id)->status(null)->one()))->toThrow(InvalidElementException::class);
     expect(Entry::find()->id($owner->id)->siteId($secondary->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/third');
@@ -369,6 +505,7 @@ it('reports one recovery message per field when a shared edit conflicts on multi
 
     expect(fn() => Craft::$app->drafts->applyDraft($b))->toThrow(InvalidElementException::class, 'Your draft is saved');
     expect($b->getErrors($field->handle))->toHaveCount(1);
+
     foreach ([$primary, $secondary] as $site) {
         expect(Entry::find()->id($owner->id)->siteId($site->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/published');
         expect(Entry::find()->id($b->id)->drafts(true)->siteId($site->id)->status(null)->one()->getFieldValue($field->handle)->getUrl())->toBe('/retained');

@@ -785,10 +785,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             // `default-<kebab-fqcn>` handle (e.g. `default-verbb-hyper-links-url`). Map any
             // such stored handle onto the matching built-in type so existing links still resolve.
             if (!$prototype && str_starts_with($handle, 'default-')) {
-                $prototype = ArrayHelper::firstWhere(
-                    $this->getLinkTypes(),
-                    fn(LinkInterface $linkType): bool => 'default-' . StringHelper::toKebabCase($linkType::class) === $handle,
-                );
+                $prototype = LinkTypeConfigs::findLegacyStockLinkType($this->getLinkTypes(), $handle);
             }
         }
 

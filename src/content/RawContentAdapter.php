@@ -2,6 +2,7 @@
 namespace verbb\hyper\content;
 
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\services\LinkTypeConfigs;
 
 use craft\base\FieldInterface;
 use craft\helpers\Json;
@@ -25,20 +26,28 @@ final class RawContentAdapter
         $types = [];
         $aliases = [];
         $handleAliases = [];
+        $linkTypes = $field->getLinkTypes();
 
-        foreach ($field->getLinkTypes() as $type) {
+        foreach ($linkTypes as $type) {
             $placements = [];
             $layout = $type->getFieldLayout();
 
             foreach ($layout?->getCustomFieldElements() ?? [] as $placement) {
                 $placements[$placement->uid] = ['placementUid' => $placement->uid, 'fieldUid' => $placement->getFieldUid(), 'layoutUid' => $layout->uid];
             }
+
             $types[$type->handle] = $placements;
-            // Hydration resolves class and legacy identities to the first configured type.
+            // Hydration resolves class identities to the first configured type.
             $aliases[$type::class] ??= $type->handle;
             $aliases[$type::typeKey()] ??= $type->handle;
-            $handleAliases['default-' . StringHelper::toKebabCase($type::class)] ??= $type->handle;
+            $legacyHandle = 'default-' . StringHelper::toKebabCase($type::class);
+
+            // A legacy `default-` handle names the built-in type of its class, matching hydration.
+            if (!isset($handleAliases[$legacyHandle])) {
+                $handleAliases[$legacyHandle] = LinkTypeConfigs::findLegacyStockLinkType($linkTypes, $legacyHandle)?->handle;
+            }
         }
+
         return ['types' => $types, 'aliases' => $aliases, 'handleAliases' => $handleAliases];
     }
 
@@ -47,6 +56,7 @@ final class RawContentAdapter
         if ($value === null || $value === '') {
             return $value;
         }
+
         $encoded = is_string($value);
         $rows = $encoded ? Json::decode($value) : $value;
 
@@ -55,6 +65,7 @@ final class RawContentAdapter
             // Its parent visitor receives that raw value; it is not yet a Hyper container.
             return $value;
         }
+
         $before = $rows;
         $seen = [];
 
@@ -66,6 +77,7 @@ final class RawContentAdapter
             if (!isset($row['fields'])) {
                 continue;
             }
+
             $uid = $row['uid'] ?? null;
             $type = $row['linkTypeHandle'] ?? $row['handle'] ?? ($schema['aliases'][$row['type'] ?? ''] ?? null);
 
@@ -93,6 +105,7 @@ final class RawContentAdapter
                 if (!$placement) {
                     continue;
                 }
+
                 $change = $visit($raw, $placement, ['kind' => 'hyper', 'linkUid' => $uid, 'linkTypeHandle' => $type,
                     'placementUid' => $key, 'index' => $index]);
 
@@ -107,6 +120,7 @@ final class RawContentAdapter
         if ($rows === $before) {
             return $value;
         }
+
         return $encoded ? RawJson::encode(RawJson::preserve($value, $rows)) : $rows;
     }
 }

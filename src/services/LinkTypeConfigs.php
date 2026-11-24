@@ -2,6 +2,7 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\Link;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\helpers\StringHelper;
@@ -39,9 +40,39 @@ class LinkTypeConfigs extends Component
                 $linkType['handle'] = $type::typeKey();
             }
         }
+
         unset($linkType);
 
         return $linkTypes;
+    }
+
+    /**
+     * Finds the type that a stored Hyper 1/2 `default-<kebab-fqcn>` handle names.
+     *
+     * Those versions gave that handle only to the built-in type of each class, which
+     * `normalizeLegacyStockHandles()` renames. It wins over a custom type of the same class
+     * that sorts first. The first type of the class stands in only when no built-in one exists.
+     *
+     * `$firstOfClass` returns the first type of the class, custom or not, as releases up to
+     * 3.1.0 did. Draft conflict checks use it to recompute fingerprints those releases recorded.
+     */
+    public static function findLegacyStockLinkType(array $linkTypes, string $legacyHandle, bool $firstOfClass = false): ?LinkInterface
+    {
+        $fallback = null;
+
+        foreach ($linkTypes as $linkType) {
+            if (!$linkType instanceof LinkInterface || 'default-' . StringHelper::toKebabCase($linkType::class) !== $legacyHandle) {
+                continue;
+            }
+
+            if ($firstOfClass || !$linkType instanceof Link || !$linkType->isCustom) {
+                return $linkType;
+            }
+
+            $fallback ??= $linkType;
+        }
+
+        return $fallback;
     }
 
 

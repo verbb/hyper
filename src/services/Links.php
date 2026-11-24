@@ -54,6 +54,7 @@ class Links extends Component
     // =========================================================================
 
     private bool $_disabledTypesUnsupported = false;
+    private bool $_firstOfClassLegacyHandles = false;
 
 
     // Public Methods
@@ -73,6 +74,24 @@ class Links extends Component
             return $callback();
         } finally {
             $this->_disabledTypesUnsupported = $previous;
+        }
+    }
+
+    /**
+     * Run a callback with Hyper 1/2 `default-` handles resolved to the first type of their class,
+     * as releases up to 3.1.0 did, even when that is a custom type sorted above the built-in one.
+     *
+     * @internal Recomputes fingerprints that those releases recorded for draft conflict checks.
+     */
+    public function withFirstOfClassLegacyHandles(callable $callback): mixed
+    {
+        $previous = $this->_firstOfClassLegacyHandles;
+        $this->_firstOfClassLegacyHandles = true;
+
+        try {
+            return $callback();
+        } finally {
+            $this->_firstOfClassLegacyHandles = $previous;
         }
     }
 
@@ -188,6 +207,11 @@ class Links extends Component
     {
         $requestedHandle = $instance->linkTypeHandle;
         $prototype = $field->getLinkTypeByHandle($requestedHandle);
+
+        // Only a legacy handle without an exact match resolves differently in this mode.
+        if ($this->_firstOfClassLegacyHandles && $prototype && $prototype->handle !== $requestedHandle && str_starts_with((string)$requestedHandle, 'default-')) {
+            $prototype = LinkTypeConfigs::findLegacyStockLinkType($field->getLinkTypes(), $requestedHandle, true) ?? $prototype;
+        }
 
         // Disabling a type only stops new links of it. Saved links keep resolving as that type.
         if (!$prototype || $prototype instanceof linkTypes\MissingLink || ($this->_disabledTypesUnsupported && !$prototype->enabled)) {
