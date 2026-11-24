@@ -65,9 +65,8 @@ class PluginContentMigration extends PluginMigration
                     // Do not use serializeValues() first — that only works after Hyper hydration.
                     $raw = ElementContentStore::decodeStored($ref->value) ?? [];
 
-                    // Scalar URL fields (oEmbed) arrive as plain strings
                     if (is_string($raw)) {
-                        $raw = ['url' => $raw];
+                        $raw = $this->convertStoredString($field, $raw);
                     }
 
                     if (!is_array($raw)) {
@@ -195,6 +194,16 @@ class PluginContentMigration extends PluginMigration
         unset($row);
 
         return $changed ? ($isList ? $rows : $rows[0]) : null;
+    }
+
+    /**
+     * Shapes stored content that decodes to a plain string before it reaches `convertModel()`. Return null to
+     * leave the content unchanged.
+     */
+    protected function convertStoredString(HyperField $field, string $value): ?array
+    {
+        // Scalar URL fields (oEmbed) store the URL as a plain string
+        return ['url' => $value];
     }
 
     protected function describeConvertFailure(HyperField $field, array $raw): string

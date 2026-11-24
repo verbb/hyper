@@ -6,6 +6,9 @@ use verbb\hyper\fields\HyperField;
 use verbb\hyper\links as linkTypes;
 
 use craft\fields\Link as CraftLinkField;
+use craft\fields\linktypes\BaseLinkType;
+use craft\fields\linktypes\Url as CraftUrlLinkType;
+use craft\helpers\Component;
 use craft\helpers\Console;
 use craft\helpers\StringHelper;
 
@@ -29,6 +32,8 @@ class MigrateCraftLinkContent extends PluginContentMigration
         'product' => linkTypes\Product::class,
     ];
     public string $oldFieldTypeClass = CraftLinkField::class;
+
+    private ?array $_craftLinkTypes = null;
 
 
     // Public Methods
@@ -72,6 +77,7 @@ class MigrateCraftLinkContent extends PluginContentMigration
         foreach ($field->getLinkTypes() as $configured) {
             if ($configured::class === $linkTypeClass && $configured->enabled) {
                 $link->handle = $configured->handle;
+
                 break;
             }
         }
@@ -141,8 +147,58 @@ class MigrateCraftLinkContent extends PluginContentMigration
     }
 
 
+    // Protected Methods
+    // =========================================================================
+
+    /**
+     * Craft 5.3 and 5.4 stored Link content as the bare value string, and Craft never migrated it to the
+     * array shape introduced in 5.5. Craft still reads these strings by resolving the type from the value.
+     */
+    protected function convertStoredString(HyperField $field, string $value): ?array
+    {
+        // Matches `craft\fields\Link::normalizeValue()`, which treats an empty string as no link
+        if (!$value) {
+            return null;
+        }
+
+        $typeId = $this->_resolveCraftLinkType($value);
+        $linkTypeClass = $this->getLinkType($typeId);
+
+        // Every content migration visits every Hyper field, so only claim strings the field can hold. Others, such
+        // as oEmbed URLs waiting for their own migration, are left for that migration.
+        foreach ($field->getLinkTypes() as $configured) {
+            if ($linkTypeClass && $configured::class === $linkTypeClass && $configured->enabled) {
+                return ['type' => $typeId, 'value' => $value];
+            }
+        }
+
+        return null;
+    }
+
+
     // Private Methods
     // =========================================================================
+
+    /**
+     * Mirrors `craft\fields\Link::resolveType()`. The source field's selected types are gone once the field
+     * step has run, so every registered type is checked. Their prefixes don't overlap, so the order only
+     * matters for URL, which `Link::types()` always lists last and is also the fallback.
+     */
+    private function _resolveCraftLinkType(string $value): string
+    {
+        $this->_craftLinkTypes ??= array_map(
+            fn(string $type) => Component::createComponent($type, BaseLinkType::class),
+            CraftLinkField::types(),
+        );
+
+        foreach ($this->_craftLinkTypes as $typeId => $linkType) {
+            if ($linkType->supports($value)) {
+                return $typeId;
+            }
+        }
+
+        return CraftUrlLinkType::id();
+    }
 
     private function _parseCraftElementValue(string $value): ?array
     {
