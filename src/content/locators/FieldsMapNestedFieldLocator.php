@@ -52,14 +52,14 @@ abstract class FieldsMapNestedFieldLocator implements NestedFieldLocator
                 continue;
             }
 
-            $fields = &$child['fields'] ?? null;
-
-            if (is_array($fields) && array_key_exists($targetFieldHandle, $fields)) {
+            // Check the key before taking a reference. Referencing a missing `fields` key would add
+            // `fields: null` to every node and turn lists such as rich-text content into objects.
+            if (is_array($child['fields'] ?? null) && array_key_exists($targetFieldHandle, $child['fields'])) {
                 $path = $pathPrefix === '' ? "$key.fields.$targetFieldHandle" : "$pathPrefix.$key.fields.$targetFieldHandle";
 
                 $locations[] = new NestedValueLocation(
                     hostValue: $node,
-                    value: $fields[$targetFieldHandle],
+                    value: $child['fields'][$targetFieldHandle],
                     jsonPath: $path,
                 );
             }
