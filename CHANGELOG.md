@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed editors being unable to save, autosave, create drafts of or revert an element when a Hyper field already links to an element they don't have permission to view.
 - Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
 
 ## 3.1.0 - 2026-11-24

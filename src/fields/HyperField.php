@@ -678,12 +678,16 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
             $value = $element->getFieldValue($this->handle);
 
             if ($value instanceof LinkCollection) {
+                // Selections the element (or its canonical or source element) already stores can be
+                // kept by editors who can't view them. Only added or changed selections are checked.
+                $isStored = CpInputContext::storedSelections($this, $element);
+
                 foreach ($value->getLinks() as $link) {
                     if ($link instanceof Link && !$link->uid) {
                         $link->uid = StringHelper::UUID();
                     }
 
-                    CpInputContext::assertVisibleSelections($link);
+                    CpInputContext::assertVisibleSelections($link, $isStored);
                 }
 
                 LinkFieldLifecycle::validateUploads($value, $element);

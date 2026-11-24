@@ -40,15 +40,61 @@ class CpInputContext
         ]));
     }
 
-    public static function assertVisibleSelections(ElementInterface $element): void
+    /**
+     * Rejects selections the current user can't view. `$isStored` lets a save keep selections the
+     * owner already stores, as Craft's relation fields keep existing selections, so only added or changed ones are checked.
+     */
+    public static function assertVisibleSelections(ElementInterface $element, ?callable $isStored = null): void
     {
         if (Craft::$app->getRequest()->getIsConsoleRequest() || !Craft::$app->getRequest()->getIsCpRequest()) {
             return;
         }
 
+        self::_walkSelections($element, static function(ElementInterface $selected) use ($isStored): void {
+            if (!Craft::$app->getElements()->canView($selected) && !($isStored && $isStored($selected))) {
+                throw new ForbiddenHttpException('User is not authorized to view a selected element.');
+            }
+        });
+    }
+
+    /**
+     * Returns a matcher for selections the owner's field already stores. Stored content is only
+     * read when a selection fails the view check, so ordinary saves skip the extra queries.
+     */
+    public static function storedSelections(HyperField $field, ElementInterface $owner): callable
+    {
+        $keys = null;
+
+        return static function(ElementInterface $selected) use (&$keys, $field, $owner): bool {
+            $keys ??= self::_storedSelectionKeys($field, $owner);
+            $key = self::_selectionKey($selected);
+
+            return $key !== null && isset($keys[$key]);
+        };
+    }
+
+    public static function validate(string $token, int $fieldId, int $siteId, ?int $ownerId): array
+    {
+        $raw = Craft::$app->getSecurity()->validateData($token);
+        $data = $raw === false ? null : Json::decodeIfJson($raw);
+
+        if (!is_array($data)
+            || ($data['userId'] ?? null) !== Craft::$app->getUser()->getId()
+            || ($data['fieldId'] ?? null) !== $fieldId
+            || ($data['siteId'] ?? null) !== $siteId
+            || ($data['expires'] ?? 0) < time()
+            || ($ownerId && $ownerId !== ($data['ownerId'] ?? null))) {
+            throw new ForbiddenHttpException('Invalid or expired Hyper input context. Reload the editor.');
+        }
+
+        return $data;
+    }
+
+    private static function _walkSelections(ElementInterface $element, callable $visit): void
+    {
         if ($element instanceof ElementLink) {
             foreach ($element->getElements() as $selected) {
-                self::_assertVisible($selected);
+                $visit($selected);
             }
         }
 
@@ -71,11 +117,11 @@ class CpInputContext
 
                 foreach ($related->all() as $selected) {
                     if (!$nestedQuery || $selected->id) {
-                        self::_assertVisible($selected);
+                        $visit($selected);
                     }
 
                     if ($nestedQuery) {
-                        self::assertVisibleSelections($selected);
+                        self::_walkSelections($selected, $visit);
                     }
                 }
             } elseif ($field instanceof ContentBlock) {
@@ -83,47 +129,30 @@ class CpInputContext
 
                 if ($block instanceof ElementInterface) {
                     if ($block->id) {
-                        self::_assertVisible($block);
+                        $visit($block);
                     }
 
-                    self::assertVisibleSelections($block);
+                    self::_walkSelections($block, $visit);
                 }
             } elseif ($field instanceof HyperField) {
                 $links = $element->getFieldValue($field->handle);
 
                 if ($links instanceof LinkCollectionInterface) {
                     foreach ($links->getLinks() as $link) {
-                        self::assertVisibleSelections($link);
+                        self::_walkSelections($link, $visit);
                     }
                 }
             } elseif (class_exists(\verbb\vizy\fields\VizyField::class) && $field instanceof \verbb\vizy\fields\VizyField) {
                 $nodes = $element->getFieldValue($field->handle);
 
                 if ($nodes instanceof \verbb\vizy\models\NodeCollection) {
-                    self::_assertVisibleVizySelections($nodes->getNodes(), $element);
+                    self::_walkVizySelections($nodes->getNodes(), $element, $visit);
                 }
             }
         }
     }
 
-    public static function validate(string $token, int $fieldId, int $siteId, ?int $ownerId): array
-    {
-        $raw = Craft::$app->getSecurity()->validateData($token);
-        $data = $raw === false ? null : Json::decodeIfJson($raw);
-
-        if (!is_array($data)
-            || ($data['userId'] ?? null) !== Craft::$app->getUser()->getId()
-            || ($data['fieldId'] ?? null) !== $fieldId
-            || ($data['siteId'] ?? null) !== $siteId
-            || ($data['expires'] ?? 0) < time()
-            || ($ownerId && $ownerId !== ($data['ownerId'] ?? null))) {
-            throw new ForbiddenHttpException('Invalid or expired Hyper input context. Reload the editor.');
-        }
-
-        return $data;
-    }
-
-    private static function _assertVisibleVizySelections(array $nodes, ElementInterface $owner): void
+    private static function _walkVizySelections(array $nodes, ElementInterface $owner, callable $visit): void
     {
         foreach ($nodes as $node) {
             if ($node instanceof \verbb\vizy\nodes\VizyBlock) {
@@ -133,17 +162,73 @@ class CpInputContext
                     $block->setFieldValue($field->handle, $node->getFieldValue($field->handle));
                 }
 
-                self::assertVisibleSelections($block);
+                self::_walkSelections($block, $visit);
             }
 
-            self::_assertVisibleVizySelections($node->getContent(), $owner);
+            self::_walkVizySelections($node->getContent(), $owner, $visit);
         }
     }
 
-    private static function _assertVisible(ElementInterface $element): void
+    private static function _storedSelectionKeys(HyperField $field, ElementInterface $owner): array
     {
-        if (!Craft::$app->getElements()->canView($element)) {
-            throw new ForbiddenHttpException('User is not authorized to view a selected element.');
+        if ($owner instanceof LinkInterface) {
+            return [];
         }
+
+        // Only content already in the database counts, re-read by ID so posted values can't add to it:
+        // the owner itself, the canonical element of a draft, and the element Craft is duplicating
+        // (which is also the draft when one is applied). Keys include the site, so re-siting a
+        // stored target is still a new selection.
+        $sources = [];
+
+        if ($owner->id) {
+            $sources[] = [$owner::class, $owner->id, $owner->siteId];
+        }
+
+        if ($owner->getIsDerivative()) {
+            $sources[] = [$owner::class, $owner->getCanonicalId(), $owner->siteId];
+        }
+
+        if ($owner->duplicateOf?->id) {
+            $sources[] = [$owner->duplicateOf::class, $owner->duplicateOf->id, $owner->duplicateOf->siteId];
+        }
+
+        $keys = [];
+
+        foreach ($sources as [$class, $id, $siteId]) {
+            $stored = Craft::$app->getElements()->getElementById($id, $class, $siteId);
+
+            // Match by ID, since a changed entry type can reuse the handle for a different field.
+            if (!$stored || $stored->getFieldLayout()?->getFieldByHandle($field->handle)?->id !== $field->id) {
+                continue;
+            }
+
+            $links = $stored->getFieldValue($field->handle);
+
+            if (!$links instanceof LinkCollectionInterface) {
+                continue;
+            }
+
+            foreach ($links->getLinks() as $link) {
+                self::_walkSelections($link, static function(ElementInterface $selected) use (&$keys): void {
+                    $key = self::_selectionKey($selected);
+
+                    if ($key !== null) {
+                        $keys[$key] = true;
+                    }
+                });
+            }
+        }
+
+        return $keys;
+    }
+
+    private static function _selectionKey(ElementInterface $element): ?string
+    {
+        if (!$element->id) {
+            return null;
+        }
+
+        return $element::class . ':' . $element->id . ':' . $element->siteId;
     }
 }

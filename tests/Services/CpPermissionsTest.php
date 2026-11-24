@@ -359,6 +359,246 @@ it('rejects inaccessible selections before saving an owner while permitting visi
     }
 });
 
+it('keeps stored selections the editor cannot view while rejecting new ones', function(bool $custom) {
+    $f = $this->cpFixture;
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $field = $f['field'];
+    $field->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($field))->toBeTrue();
+    $user = $f['users']['editor'];
+    $admin = User::find()->admin()->one();
+    // The private section exists on every site, so the same target can be re-posted for another site.
+    $privateSection = F::entrySection(allSites: true);
+    $private = F::plainEntry($privateSection, 'Private target');
+    $otherPrivate = F::plainEntry($privateSection, 'Other private target');
+    $payload = fn(Entry $target, ?int $siteId = null) => $custom
+        ? ['handle' => 'url', 'linkValue' => 'https://example.test/stored', 'fields' => [$related->handle => [$target->id]]]
+        : ['handle' => 'entry', 'linkValue' => [$target->id], 'linkSiteId' => $siteId ?? $f['site']->id];
+    $load = fn(int $id) => Entry::find()->id($id)->siteId($f['site']->id)->drafts(null)->provisionalDrafts(null)->status(null)->one();
+    $save = fn($element) => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($element, false));
+    $denied = 'User is not authorized to view a selected element.';
+
+    try {
+        // Someone with broader access links an entry the editor can't view.
+        $owner = $load($f['owner']->id);
+        $owner->setFieldValue($field->handle, [$payload($private)]);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($private)))->toBeFalse();
+
+        // The field input re-posts the stored link alongside an unrelated edit.
+        $owner = $load($f['owner']->id);
+        $owner->slug = 'restricted-edit';
+        $owner->setFieldValue($field->handle, [$payload($private)]);
+        expect($save($owner))->toBeTrue();
+        expect($load($f['owner']->id)->slug)->toBe('restricted-edit');
+
+        // Autosave creates a provisional draft from the canonical entry, then saves the posted values to it.
+        $draft = CpActionRequest::asUser($user, fn() => Craft::$app->drafts->createDraft($load($f['owner']->id), $user->id, provisional: true));
+        $draft->slug = 'provisional-edit';
+        $draft->setFieldValue($field->handle, [$payload($private)]);
+        expect($save($draft))->toBeTrue();
+
+        $copy = CpActionRequest::asUser($user, fn() => Craft::$app->elements->duplicateElement($load($f['owner']->id)));
+        expect($load($copy->id)->getFieldValue($field->handle)->getLinks())->toHaveCount(1);
+
+        // Swapping in, or re-siting, an unviewable target is still a new selection.
+        $draft = $load($draft->id);
+        $draft->setFieldValue($field->handle, [$payload($otherPrivate)]);
+        expect(fn() => $save($draft))->toThrow(ForbiddenHttpException::class, $denied);
+
+        $owner = $load($f['owner']->id);
+        $owner->setFieldValue($field->handle, [$payload($otherPrivate)]);
+        expect(fn() => $save($owner))->toThrow(ForbiddenHttpException::class, $denied);
+
+        if (!$custom) {
+            $owner = $load($f['owner']->id);
+            $owner->setFieldValue($field->handle, [$payload($private, $f['otherSite']->id)]);
+            expect(fn() => $save($owner))->toThrow(ForbiddenHttpException::class, $denied);
+        }
+
+        $draft = $load($draft->id);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->drafts->applyDraft($draft)))->toBeInstanceOf(Entry::class);
+        expect($load($f['owner']->id)->slug)->toBe('provisional-edit');
+
+        // Another entry gains nothing from stored selections elsewhere, either as a draft or a new entry.
+        $plain = F::plainEntry($f['owner']->getSection(), 'Plain owner');
+        $draft = CpActionRequest::asUser($user, fn() => Craft::$app->drafts->createDraft($plain, $user->id, provisional: true));
+        $draft->setFieldValue($field->handle, [$payload($private)]);
+        expect(fn() => $save($draft))->toThrow(ForbiddenHttpException::class, $denied);
+
+        $new = new Entry([
+            'sectionId' => $plain->sectionId,
+            'typeId' => $plain->typeId,
+            'siteId' => $f['site']->id,
+            'title' => 'New restricted entry',
+        ]);
+        $new->setFieldValue($field->handle, [$payload($private)]);
+        expect(fn() => $save($new))->toThrow(ForbiddenHttpException::class, $denied);
+
+        // A draft someone else saved can be applied, since its selections are already stored.
+        $draft = Craft::$app->drafts->createDraft($plain, $admin->id, 'Admin draft');
+        $draft->setFieldValue($field->handle, [$payload($private)]);
+        expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+        $draft = $load($draft->id);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->drafts->applyDraft($draft)))->toBeInstanceOf(Entry::class);
+        expect($load($plain->id)->getFieldValue($field->handle)->getLinks())->toHaveCount(1);
+    } finally {
+        Craft::$app->fields->deleteField($related);
+    }
+})->with([false, true]);
+
+it('keeps stored selections in nested Matrix entries while rejecting new ones', function() {
+    $f = $this->cpFixture;
+    $fixture = F::matrixFieldWithHyper();
+    $section = F::entrySectionWithField($fixture['matrix']);
+    $private = F::plainEntry(F::entrySection(), 'Private target');
+    $otherPrivate = F::plainEntry(F::entrySection(), 'Other private target');
+    $owner = F::entryWithMatrixHyperLink(
+        $section, $fixture['matrix'], $fixture['hyperField'], $fixture['blockEntryType'], [F::entryLinkPayload($private)],
+    );
+    $user = $f['users']['editor'];
+    $handle = $fixture['hyperField']->handle;
+    $load = fn(int $id) => Entry::find()->id($id)->drafts(null)->provisionalDrafts(null)->status(null)->one();
+    $save = fn($element) => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($element, false));
+    $denied = 'User is not authorized to view a selected element.';
+    expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($private)))->toBeFalse();
+
+    $draft = CpActionRequest::asUser($user, fn() => Craft::$app->drafts->createDraft($load($owner->id), $user->id, provisional: true));
+    $draft->title = 'Provisional edit';
+    expect($save($draft))->toBeTrue();
+
+    $child = $load($owner->getFieldValue($fixture['matrix']->handle)->one()->id);
+    $child->title = 'Restricted edit';
+    $child->setFieldValue($handle, [F::entryLinkPayload($private)]);
+    expect($save($child))->toBeTrue();
+
+    $child = $load($child->id);
+    $child->setFieldValue($handle, [F::entryLinkPayload($otherPrivate)]);
+    expect(fn() => $save($child))->toThrow(ForbiddenHttpException::class, $denied);
+
+    $draft = $load($draft->id);
+    expect(CpActionRequest::asUser($user, fn() => Craft::$app->drafts->applyDraft($draft)))->toBeInstanceOf(Entry::class);
+    $child = $load($owner->id)->getFieldValue($fixture['matrix']->handle)->one();
+    expect($child->getFieldValue($handle)->getLinks()[0]->getElement(null)?->id)->toBe($private->id);
+});
+
+function cpStoredSelectionFixture(array $f): array
+{
+    $related = F::entriesField();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($related)]);
+    $url->setFieldLayout($layout);
+    $field = $f['field'];
+    $field->setLinkTypes([F::linkTypeConfig($url), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($field))->toBeTrue();
+    $privateSection = F::entrySection();
+
+    return [
+        'related' => $related,
+        'field' => $field,
+        'private' => F::plainEntry($privateSection, 'Private target'),
+        'otherPrivate' => F::plainEntry($privateSection, 'Other private target'),
+        'payload' => fn(bool $custom, Entry $target) => $custom
+            ? ['handle' => 'url', 'linkValue' => 'https://example.test/stored', 'fields' => [$related->handle => [$target->id]]]
+            : ['handle' => 'entry', 'linkValue' => [$target->id], 'linkSiteId' => $f['site']->id],
+        'load' => fn(int $id) => Entry::find()->id($id)->siteId($f['site']->id)->drafts(null)->provisionalDrafts(null)->revisions(null)->status(null)->one(),
+    ];
+}
+
+it('keeps stored selections when refreshing a link layout while rejecting new ones', function(bool $custom) {
+    $f = $this->cpFixture;
+    $s = cpStoredSelectionFixture($f);
+    $user = $f['users']['editor'];
+    $body = signedCpBody($f) + ['namespace' => 'fields[hyperData][link]'];
+    $refresh = fn(Entry $target) => CpActionRequest::run('link-field-layout', $user, array_replace($body, ['data' => ($s['payload'])($custom, $target)]));
+
+    try {
+        $owner = ($s['load'])($f['owner']->id);
+        $owner->setFieldValue($s['field']->handle, [($s['payload'])($custom, $s['private'])]);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($s['private'])))->toBeFalse();
+
+        // Changing an existing link re-renders its conditional fields with the stored selections.
+        expect($refresh($s['private'])->statusCode)->toBe(200);
+        expect($refresh($f['owner'])->statusCode)->toBe(200);
+        expect(fn() => $refresh($s['otherPrivate']))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+    } finally {
+        Craft::$app->fields->deleteField($s['related']);
+    }
+})->with([false, true]);
+
+it('lets a view-only user draft an entry with stored selections they cannot view', function(bool $custom) {
+    $f = $this->cpFixture;
+    $s = cpStoredSelectionFixture($f);
+    $field = $s['field'];
+    $load = $s['load'];
+    $user = $f['users']['editor'];
+
+    try {
+        // Craft lets anyone who can view an entry create a draft of it.
+        $viewOnly = F::entrySection($field);
+        Craft::$app->set('userPermissions', new \craft\services\UserPermissions());
+        $permissions = Craft::$app->userPermissions->getPermissionsByUserId($user->id);
+        Craft::$app->userPermissions->saveUserPermissions($user->id, [...$permissions, 'viewEntries:' . $viewOnly->uid, 'viewPeerEntries:' . $viewOnly->uid]);
+        $user = User::find()->id($user->id)->status(null)->one();
+        $entry = $load(F::plainEntry($viewOnly, 'View-only owner')->id);
+        $entry->setFieldValue($field->handle, [($s['payload'])($custom, $s['private'])]);
+        expect(Craft::$app->elements->saveElement($entry))->toBeTrue();
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canSave($load($entry->id))))->toBeFalse();
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($s['private'])))->toBeFalse();
+
+        $draft = CpActionRequest::asUser($user, fn() => Craft::$app->drafts->createDraft($load($entry->id), $user->id, 'Viewer draft'));
+        expect($draft)->toBeInstanceOf(Entry::class);
+
+        $draft = $load($draft->id);
+        $draft->slug = 'viewer-draft-edit';
+        $draft->setFieldValue($field->handle, [($s['payload'])($custom, $s['private'])]);
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($draft, false)))->toBeTrue();
+
+        $draft = $load($draft->id);
+        $draft->setFieldValue($field->handle, [($s['payload'])($custom, $s['otherPrivate'])]);
+        expect(fn() => CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($draft, false)))
+            ->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+    } finally {
+        Craft::$app->fields->deleteField($s['related']);
+    }
+})->with([false, true]);
+
+it('lets an editor revert to a revision with stored selections they cannot view', function(bool $custom) {
+    $f = $this->cpFixture;
+    $s = cpStoredSelectionFixture($f);
+    $field = $s['field'];
+    $load = $s['load'];
+    $user = $f['users']['editor'];
+    $admin = User::find()->admin()->one();
+
+    try {
+        $owner = $load($f['owner']->id);
+        $owner->setFieldValue($field->handle, [($s['payload'])($custom, $s['private'])]);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        $revisionId = Craft::$app->revisions->createRevision($load($f['owner']->id), $admin->id, 'With private', force: true);
+
+        // The canonical entry later drops the hidden target, so only the revision holds it.
+        $owner = $load($f['owner']->id);
+        $owner->setFieldValue($field->handle, []);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+        expect($load($f['owner']->id)->getFieldValue($field->handle)->getLinks())->toHaveCount(0);
+
+        $revision = Entry::find()->id($revisionId)->revisions(true)->siteId($f['site']->id)->status(null)->one();
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->revisions->revertToRevision($revision, $user->id)))->toBeInstanceOf(Entry::class);
+        expect($load($f['owner']->id)->getFieldValue($field->handle)->getLinks())->toHaveCount(1);
+    } finally {
+        Craft::$app->fields->deleteField($s['related']);
+    }
+})->with([false, true]);
+
 it('propagates permitted selections without requiring access to sibling sites', function(bool $draft, bool $custom) {
     $f = $this->cpFixture;
     $related = F::entriesField();
