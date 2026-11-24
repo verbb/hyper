@@ -421,6 +421,8 @@ await import('./nested-input.mjs');
 
 await import('./nested-widgets.mjs');
 
+await import('./editable-table-order.mjs');
+
 await import('./input-capacity.mjs');
 
 await import('./sortable-lifecycle.mjs');

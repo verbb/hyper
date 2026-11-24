@@ -1,3 +1,4 @@
+import { renumberEditableTableRows } from './editableTables';
 import { syncAllHyperInputStores } from './registry';
 
 export const matrixEntryData = (container: HTMLElement): unknown => {
@@ -14,7 +15,8 @@ export const matrixEntryData = (container: HTMLElement): unknown => {
     }
     // Keep nested hidden stores, not their authoring portals. Numeric temporary link
     // IDs otherwise become enormous sparse arrays when the clipboard is JSON-encoded.
-    const values = Craft.expandPostArray(postData);
+    // Table rows keep their render-time IDs. Expand them in DOM order, without holes.
+    const values = Craft.expandPostArray(renumberEditableTableRows(container, postData));
     const keys = name.match(/[^\[\]]+/g) || [];
     const exact = keys.reduce((value: any, key: string) => value?.[key], values);
     if (exact !== undefined) return exact;

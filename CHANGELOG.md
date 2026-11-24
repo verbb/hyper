@@ -16,6 +16,7 @@
 - Fixed links on a built-in link type switching to a custom link type of the same kind after upgrading from Hyper 2, when the custom type was sorted first.
 - Fixed switching off a Lightswitch, or clearing Checkboxes, Multi-select or Dropdown fields, inside a link reverting to the field’s default value when saved.
 - Fixed empty Number cells in new Table rows inside a link breaking the link’s fields in the control panel and in templates.
+- Fixed deleting Table rows inside a link causing an error when saving, and reordered Table rows inside a link reverting to their original order.
 
 ## 3.1.0 - 2026-11-24
 

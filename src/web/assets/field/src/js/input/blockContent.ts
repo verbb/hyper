@@ -5,6 +5,7 @@
 import { merge } from 'lodash-es';
 
 import type { LinkInstance } from '../types';
+import { renumberEditableTableRows } from './editableTables';
 import { normalizePortalBlockContent } from './serialize';
 
 /** Native attrs shared across link types — keep these when the type select remounts. */
@@ -159,7 +160,8 @@ export function mergeLinkWithBlockContent(
             }
         }
     });
-    const content = Craft.expandPostArray(postData) as Record<string, unknown>;
+    // Table rows keep their render-time IDs. Expand them in DOM order, without holes.
+    const content = Craft.expandPostArray(renumberEditableTableRows(portalEl, postData)) as Record<string, unknown>;
     const linkId = String(link.id);
     const hyperDataRoot = getHyperDataRoot(content, linkId);
     const rawBlockContent = { ...(hyperDataRoot?.[linkId] as Record<string, unknown> | undefined ?? {}) };
