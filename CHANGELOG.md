@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed existing links showing as an unsupported link type, and not rendering, when their link type is disabled on the field. ([#298](https://github.com/verbb/hyper/issues/298))
+- Fixed element links whose link type is disabled on the field being missing from related element queries. Their relations are rebuilt when updating. ([#298](https://github.com/verbb/hyper/issues/298))
 
 ## 3.0.7 - 2026-11-21
 

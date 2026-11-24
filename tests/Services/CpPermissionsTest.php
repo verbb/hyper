@@ -445,6 +445,43 @@ it('refreshes conditional link fields and tabs without replacing unchanged input
     expect($elements[$layout->getField('linkValue')->uid])->toBeTrue();
 });
 
+it('refreshes conditional fields and creates Matrix entries for saved links of a disabled type', function() {
+    $f = $this->cpFixture;
+    $blockType = new \craft\models\EntryType(['name' => 'Disabled type block', 'handle' => F::handle('disabledTypeBlock'), 'hasTitleField' => true]);
+    expect(Craft::$app->entries->saveEntryType($blockType))->toBeTrue();
+    $matrix = new \craft\fields\Matrix(['name' => 'Disabled type Matrix', 'handle' => F::handle('disabledTypeMatrix')]);
+    $matrix->setEntryTypes([$blockType]);
+    expect(Craft::$app->fields->saveField($matrix))->toBeTrue();
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $condition = Url::createCondition();
+    $condition->setConditionRules([$condition->createConditionRule([
+        'class' => \verbb\hyper\elements\conditions\LinkValueConditionRule::class,
+        'operator' => '**', 'value' => 'details',
+    ])]);
+    $layout->getField('linkText')->setElementCondition($condition);
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), new CustomField($matrix, ['uid' => StringHelper::UUID()])]);
+    $url->setFieldLayout($layout);
+    $f['field']->setLinkTypes([F::linkTypeConfig(\verbb\hyper\links\Entry::class), F::linkTypeConfig($url, false)]);
+    expect(Craft::$app->fields->saveField($f['field']))->toBeTrue();
+
+    $body = signedCpBody($f) + ['namespace' => 'fields[hyperData][test]'];
+    $body['data']['linkValue'] = '/details';
+    $body['data']['linkText'] = 'Shown label';
+    $response = CpActionRequest::run('link-field-layout', $f['users']['editor'], $body);
+    expect(Json::encode($response->data['tabs']))->toContain('Shown label');
+
+    $matrixBody = signedCpBody($f) + ['hyperFieldId' => $f['field']->id, 'entryTypeId' => $blockType->id, 'namespace' => 'fields[hyperData][test]'];
+    $matrixBody['fieldId'] = $matrix->id;
+    expect(CpActionRequest::run('create-matrix-entry', $f['users']['editor'], $matrixBody)->data['blockHtml'])->toBeString();
+
+    // Unknown types still resolve to nothing.
+    $body['data']['handle'] = 'unknown';
+    expect(fn() => CpActionRequest::run('link-field-layout', $f['users']['editor'], $body))
+        ->toThrow(\yii\web\NotFoundHttpException::class);
+});
+
 it('keeps user-hidden fields out of conditional refresh responses', function() {
     $f = $this->cpFixture;
     $url = new Url();

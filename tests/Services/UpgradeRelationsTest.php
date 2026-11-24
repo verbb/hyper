@@ -11,6 +11,7 @@ use Tests\Support\LegacyElementCacheSeeder;
 use verbb\hyper\migrations\LegacyContentRelationRebuilder;
 use verbb\hyper\migrations\m250703_010000_backfill_hyper_links_from_element_cache as Backfill;
 use verbb\hyper\migrations\m260912_000000_rebuild_link_relations_from_content as Rebuild;
+use verbb\hyper\migrations\m261124_000000_rebuild_disabled_link_type_relations as DisabledTypeRebuild;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\Hyper;
 use verbb\hyper\models\LinkCollection;
@@ -244,6 +245,41 @@ it('rebuilds an upgraded index from legacy JSON including duplicate and aliased 
     expect((new Rebuild())->safeUp())->toBeTrue();
     expect($readRows())->toBe($rows);
     expect($readContent())->toBe($before);
+});
+
+it('rebuilds relations for saved links of a disabled element link type', function() {
+    $field = F::hyperFieldWithLinkTypes([
+        F::linkTypeConfig(verbb\hyper\links\Url::class),
+        F::linkTypeConfig(verbb\hyper\links\Entry::class, false),
+    ]);
+    $section = F::entrySection($field);
+    $target = F::plainEntry($section, 'Target');
+    $owner = F::plainEntry($section, 'Owner');
+    $uid = $owner->getFieldLayout()->getFieldByHandle($field->handle)->layoutElement->uid;
+    $where = ['elementId' => $owner->id, 'siteId' => $owner->siteId];
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', ['content' => new yii\db\JsonExpression([$uid => [[
+        'type' => verbb\hyper\links\Entry::class, 'handle' => 'default-verbb-hyper-links-entry',
+        'linkValue' => [$target->id], 'linkSiteId' => $owner->siteId,
+    ]]])], $where)->execute();
+    // 3.0.0–3.0.7 never indexed these links.
+    LinkRelation::deleteAll(['ownerId' => $owner->id]);
+    $readContent = fn() => (new Query())->select('content')->from('{{%elements_sites}}')->where($where)->scalar();
+    $targets = fn() => array_map('intval', (new Query())->select('targetId')->from('{{%hyper_links}}')->where(['ownerId' => $owner->id])->column());
+    $before = $readContent();
+
+    try {
+        // Sites upgrading from Hyper 2 already rebuilt every relation earlier in the same process.
+        Rebuild::$rebuiltInProcess = true;
+        expect((new DisabledTypeRebuild())->safeUp())->toBeTrue()
+            ->and($targets())->toBe([]);
+
+        Rebuild::$rebuiltInProcess = false;
+        expect((new DisabledTypeRebuild())->safeUp())->toBeTrue()
+            ->and($targets())->toBe([$target->id])
+            ->and($readContent())->toBe($before);
+    } finally {
+        Rebuild::$rebuiltInProcess = false;
+    }
 });
 
 it('preserves trashed owner content while excluding its relations during upgrade', function() {

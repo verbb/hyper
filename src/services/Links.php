@@ -50,8 +50,31 @@ class Links extends Component
     public const EVENT_REGISTER_LINK_TYPES = 'registerLinkTypes';
 
 
+    // Properties
+    // =========================================================================
+
+    private bool $_disabledTypesUnsupported = false;
+
+
     // Public Methods
     // =========================================================================
+
+    /**
+     * Run a callback with saved links of disabled types hydrated as unsupported, as in 3.0.0–3.0.7.
+     *
+     * @internal Recomputes fingerprints that those releases recorded for draft conflict checks.
+     */
+    public function withDisabledTypesUnsupported(callable $callback): mixed
+    {
+        $previous = $this->_disabledTypesUnsupported;
+        $this->_disabledTypesUnsupported = true;
+
+        try {
+            return $callback();
+        } finally {
+            $this->_disabledTypesUnsupported = $previous;
+        }
+    }
 
     public function getAllLinkTypes(): array
     {
@@ -167,7 +190,7 @@ class Links extends Component
         $prototype = $field->getLinkTypeByHandle($requestedHandle);
 
         // Disabling a type only stops new links of it. Saved links keep resolving as that type.
-        if (!$prototype || $prototype instanceof linkTypes\MissingLink) {
+        if (!$prototype || $prototype instanceof linkTypes\MissingLink || ($this->_disabledTypesUnsupported && !$prototype->enabled)) {
             // Retain opaque unresolved content through read/serialize (Astra H3-A07).
             return $this->_createUnsupportedContentLink($field, $instance);
         }

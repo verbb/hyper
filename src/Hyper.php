@@ -67,7 +67,7 @@ class Hyper extends Plugin
     // =========================================================================
 
     public bool $hasCpSettings = true;
-    public string $schemaVersion = '1.5.2';
+    public string $schemaVersion = '1.5.3';
 
 
     // Public Methods

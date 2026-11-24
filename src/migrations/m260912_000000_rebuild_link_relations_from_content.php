@@ -19,6 +19,11 @@ class m260912_000000_rebuild_link_relations_from_content extends Migration
      */
     public static bool $rebuiltByBackfill = false;
 
+    /**
+     * Set once every relation has been rebuilt in this process, so later rebuilds can skip.
+     */
+    public static bool $rebuiltInProcess = false;
+
 
     // Public Methods
     // =========================================================================
@@ -27,6 +32,7 @@ class m260912_000000_rebuild_link_relations_from_content extends Migration
     {
         if (self::$rebuiltByBackfill) {
             self::$rebuiltByBackfill = false;
+            self::$rebuiltInProcess = true;
 
             return true;
         }
@@ -49,6 +55,8 @@ class m260912_000000_rebuild_link_relations_from_content extends Migration
                 $this->endCommand($time);
             }
         }
+
+        self::$rebuiltInProcess = true;
 
         return true;
     }

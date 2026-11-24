@@ -7,6 +7,7 @@ use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\helpers\Fields;
 use verbb\hyper\helpers\LinkLayout;
 use verbb\hyper\links\Embed;
+use verbb\hyper\links\MissingLink;
 
 use Craft;
 use craft\base\Element;
@@ -131,6 +132,7 @@ class FieldsController extends Controller
             if (!$tab->getUid()) {
                 continue;
             }
+
             $elements = [];
 
             foreach ($tab->elements as [$layoutElement, $conditional, $html, $static]) {
@@ -138,8 +140,10 @@ class FieldsController extends Controller
                     $elements[] = ['uid' => $layoutElement->uid, 'html' => $html, 'static' => $static];
                 }
             }
+
             $missingElements[] = ['uid' => $tab->getUid(), 'id' => $tab->getId(), 'elements' => $elements];
         }
+
         $tabs = $form->getTabMenu();
         $tabHtml = count($tabs) > 1 ? $view->namespaceInputs(fn() => $view->renderTemplate('_includes/tabs.twig', [
             'tabs' => $tabs,
@@ -160,6 +164,7 @@ class FieldsController extends Controller
         $this->requireCpRequest();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
+
         $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredBodyParam('fieldId');
@@ -237,6 +242,7 @@ class FieldsController extends Controller
     {
         $this->requireCpRequest();
         $this->requireAcceptsJson();
+
         $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredParam('fieldId');
@@ -269,6 +275,7 @@ class FieldsController extends Controller
     public function actionInputSettings(): Response
     {
         $this->requireCpRequest();
+
         $this->_requireOwnerElementAccess();
 
         $fieldId = $this->request->getRequiredParam('fieldId');
@@ -329,6 +336,7 @@ class FieldsController extends Controller
     public function actionInputSettingsSave(): Response
     {
         $this->requireCpRequest();
+
         $this->_requireOwnerElementAccess();
 
         $variables = $this->request->post();
@@ -342,12 +350,16 @@ class FieldsController extends Controller
         $this->requireCpRequest();
         $this->requirePostRequest();
         $this->requireAcceptsJson();
+
         $this->_requireOwnerElementAccess();
         $field = Craft::$app->getFields()->getFieldById((int)$this->request->getRequiredBodyParam('fieldId'));
         $data = $this->request->getRequiredBodyParam('data');
         $handle = is_array($data) ? ($data['handle'] ?? '') : '';
 
-        if (!$field instanceof HyperField || !$field->getLinkTypeByHandle($handle)?->enabled) {
+        // Saved links of a disabled type still render, so their conditional fields must refresh too.
+        $linkType = $field instanceof HyperField ? $field->getLinkTypeByHandle($handle) : null;
+
+        if (!$linkType || $linkType instanceof MissingLink) {
             throw new NotFoundHttpException('Link type not found.');
         }
 
@@ -375,6 +387,7 @@ class FieldsController extends Controller
                     $elements[] = ['uid' => $element->uid, 'html' => $html, 'static' => $static];
                 }
             }
+
             $tabs[] = ['uid' => $tab->getUid(), 'label' => $tab->getName(), 'elements' => $elements];
         }
 
@@ -388,6 +401,7 @@ class FieldsController extends Controller
     public function actionPreviewEmbed(): Response
     {
         $this->requireCpRequest();
+
         $this->_requireOwnerElementAccess();
 
         $url = (string)$this->request->getParam('value');
@@ -456,6 +470,7 @@ class FieldsController extends Controller
     {
         $this->requireCpRequest();
         $this->requirePostRequest();
+
         $hyperFieldId = (int)$this->request->getRequiredBodyParam('hyperFieldId');
         $this->_requireOwnerElementAccess($hyperFieldId);
 
@@ -470,7 +485,8 @@ class FieldsController extends Controller
 
         if ($hyperField instanceof HyperField) {
             foreach ($hyperField->getLinkTypes() as $linkType) {
-                if ($linkType->enabled && $linkType->getFieldLayout()?->getFieldById($fieldId) instanceof \craft\fields\Matrix) {
+                // Include disabled types, whose saved links still render their Matrix fields.
+                if (!$linkType instanceof MissingLink && $linkType->getFieldLayout()?->getFieldById($fieldId) instanceof \craft\fields\Matrix) {
                     $allowed = true;
                 }
             }

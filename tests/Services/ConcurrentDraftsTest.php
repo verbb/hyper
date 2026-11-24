@@ -126,6 +126,53 @@ it('compares nested legacy Hyper content without dropping custom UID values or l
     expect(DraftConflicts::inputToken($field, $fresh))->not->toBe($baseline);
 });
 
+function hyperDisabledTypeDraftFixture(): array
+{
+    $field = F::hyperFieldWithLinkTypes([
+        F::linkTypeConfig(\verbb\hyper\links\Entry::class),
+        F::linkTypeConfig(Url::class, false),
+    ], ['multipleLinks' => true]);
+    $owner = F::plainEntry(F::entrySection($field), 'Disabled type owner');
+    $field = $owner->getFieldLayout()->getFieldByHandle($field->handle);
+    $payload = array_map(fn(string $url) => [
+        'type' => Url::class, 'handle' => 'default-verbb-hyper-links-url', 'linkValue' => $url,
+    ], ['/a', '/b']);
+    Craft::$app->db->createCommand()->update('{{%elements_sites}}', [
+        'content' => new \yii\db\JsonExpression([$field->layoutElement->uid => $payload]),
+    ], ['elementId' => $owner->id, 'siteId' => $owner->siteId])->execute();
+    $owner = Entry::find()->id($owner->id)->one();
+    // 3.0.0–3.0.7 recorded the draft baseline with these links as unsupported.
+    $draft = \verbb\hyper\Hyper::$plugin->getLinks()->withDisabledTypesUnsupported(
+        fn() => Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Before update'),
+    );
+
+    // Later requests load the draft fresh, with the current hydration.
+    return [$owner, $field, Entry::find()->id($draft->id)->drafts(true)->status(null)->one()];
+}
+
+it('applies a draft started before disabled-type links resolved as their own type', function() {
+    [$owner, $field, $draft] = hyperDisabledTypeDraftFixture();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+    Craft::$app->drafts->applyDraft($draft);
+
+    $links = Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks();
+    expect(array_map(fn($link) => $link->linkValue, $links))->toBe(['/draft', '/b'])
+        ->and($links[0])->toBeInstanceOf(Url::class);
+});
+
+it('still blocks a draft started before the update when the current entry changed since', function() {
+    [$owner, $field, $draft] = hyperDisabledTypeDraftFixture();
+    $current = Entry::find()->id($owner->id)->one();
+    $links = $current->getFieldValue($field->handle)->getLinks();
+    $links[1]->linkValue = '/published';
+    $current->setFieldValue($field->handle, $links);
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+    $draft = hyperConcurrentEdit($draft, $field->handle, [0 => '/draft']);
+
+    expect(fn() => Craft::$app->drafts->applyDraft($draft))->toThrow(InvalidElementException::class, 'Your draft is saved');
+    expect(array_map(fn($link) => $link->linkValue, Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getLinks()))->toBe(['/a', '/published']);
+});
+
 function hyperConcurrentFixture(): array
 {
     $first = F::hyperField(['linkTypes' => [Url::class], 'multipleLinks' => true]);

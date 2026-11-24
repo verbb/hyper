@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\services;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
 
@@ -8,6 +9,7 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\base\NestedElementInterface;
 use craft\db\Query;
+use craft\db\Table;
 use craft\errors\InvalidElementException;
 use craft\events\DraftEvent;
 use craft\events\ElementEvent;
@@ -123,7 +125,7 @@ class DraftConflicts
         $publishedHash = self::_hash($field, $current);
         $proposedHash = self::_hash($field, $element);
 
-        if ($publishedHash === $proposedHash || self::_matchesBaseline($submitted['baseline'], $field, $current, $publishedHash)) {
+        if ($publishedHash === $proposedHash || self::_matchesBaseline($submitted['baseline'], $field, $current, $publishedHash) || self::_matchesLegacyBaseline($submitted['baseline'], $field, $current)) {
             return true;
         }
 
@@ -196,7 +198,7 @@ class DraftConflicts
                 $current = self::_hash($field, $canonical);
                 $proposed = self::_hash($field, $localized);
 
-                if ($current === $proposed || self::_matchesBaseline($baseline, $field, $canonical, $current)) {
+                if ($current === $proposed || self::_matchesBaseline($baseline, $field, $canonical, $current) || self::_matchesLegacyBaseline($baseline, $field, $canonical)) {
                     continue;
                 }
 
@@ -292,9 +294,34 @@ class DraftConflicts
         return $baseline === $hash || ($baseline !== null && $baseline === self::_hash($field, $element, true));
     }
 
-    private static function _hash(HyperField $field, ElementInterface $element, bool $includeIdentity = false): string
+    private static function _matchesLegacyBaseline(?string $baseline, HyperField $field, ElementInterface $current): bool
     {
-        $links = $field->normalizeValue($element->getFieldValue($field->handle), $element);
+        // 3.0.0–3.0.7 fingerprinted saved links of disabled types as unsupported. Compare the
+        // stored current content that way, so drafts started before updating don't report a false conflict.
+        if ($baseline === null || !$current->id || !array_filter($field->getLinkTypes(), static fn(LinkInterface $type): bool => !$type->enabled)) {
+            return false;
+        }
+
+        $content = (new Query())
+            ->select(['content'])
+            ->from(Table::ELEMENTS_SITES)
+            ->where(['elementId' => $current->id, 'siteId' => $current->siteId])
+            ->scalar();
+        $content = is_string($content) ? Json::decodeIfJson($content) : $content;
+        $stored = is_array($content) ? ($content[$field->layoutElement->uid] ?? null) : null;
+
+        if ($stored === null) {
+            return false;
+        }
+
+        return Hyper::$plugin->getLinks()->withDisabledTypesUnsupported(
+            static fn(): bool => $baseline === self::_hash($field, $current, false, $stored) || $baseline === self::_hash($field, $current, true, $stored),
+        );
+    }
+
+    private static function _hash(HyperField $field, ElementInterface $element, bool $includeIdentity = false, mixed $storedValue = null): string
+    {
+        $links = $field->normalizeValue($storedValue ?? $element->getFieldValue($field->handle), $element);
         $value = $field->serializeValueForDb($links, $element);
 
         if (!$includeIdentity) {
