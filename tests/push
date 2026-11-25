@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+source .github/scripts/push-runtime.sh
+
+frontend() {
+    check_npm_links
+    npm ci --workspaces=false
+    npx --no-install tsc --noEmit
+    npm run build
+}
+
+integration() {
+    run_integration --fail-on-skipped
+}
+
+browser() {
+    npx --no-install playwright install --with-deps chromium
+    HYPER_CRAFT_PATH=.cache/verbb-tests/app/vendor/craftcms/cms npm run test:browser
+}
+
+case "${1:-all}" in
+    all)
+        minimum
+        frontend
+        start_runtime
+        integration
+        browser
+        ;;
+    minimum|frontend|integration|browser) "$1" ;;
+    *) echo "Unknown push check: $1" >&2; exit 2 ;;
+esac
