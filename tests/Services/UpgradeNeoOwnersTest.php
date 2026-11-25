@@ -125,7 +125,7 @@ it('preserves Neo revision content and rejects unresolved canonical owners durin
         $beforeRelations = $readRelations();
         $beforeOwners = $readOwners();
         $beforeNeo = $readNeo();
-        // Craft's GC deletes blocks without a Neo record, so they are skipped like core partial elements.
+        // Neo's garbage collection deletes blocks without a Neo record, so they are skipped like core partial elements.
         $partial = $kind === 'canonical' && $state === 'missing-neo-row';
         $shouldFail = $kind === 'canonical' && $broken && !$partial;
         $dryRun = fn() => Hyper::$plugin->content->reconcileRelations($field, new ModifyOptions(dryRun: true));
