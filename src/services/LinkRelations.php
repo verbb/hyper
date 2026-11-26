@@ -1,6 +1,7 @@
 <?php
 namespace verbb\hyper\services;
 
+use verbb\hyper\Hyper;
 use verbb\hyper\base\ElementLink;
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
@@ -139,8 +140,14 @@ class LinkRelations extends Component
 
         $canonical = $event->canonical;
 
-        foreach ($canonical::find()->id($canonical->id)->siteId('*')->status(null)->all() as $element) {
-            $this->_syncOwnerTree($element);
+        // Craft has already committed the apply. The index is derived and `sync-relations` rebuilds it,
+        // so a failure here is logged rather than shown as a failed apply for an entry that now exists.
+        try {
+            foreach ($canonical::find()->id($canonical->id)->siteId('*')->status(null)->all() as $element) {
+                $this->_syncOwnerTree($element);
+            }
+        } catch (Throwable $e) {
+            Hyper::error("Unable to update link relations for element #{$canonical->id} after applying a draft: {$e->getMessage()} {$e->getFile()}:{$e->getLine()}");
         }
     }
 

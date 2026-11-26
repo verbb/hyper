@@ -7,12 +7,15 @@ use benf\neo\models\BlockType;
 use craft\db\Query;
 use craft\elements\ContentBlock as ContentBlockElement;
 use craft\elements\Entry;
+use craft\elements\db\EntryQuery;
 use craft\elements\User;
+use craft\events\DraftEvent;
 use craft\fieldlayoutelements\CustomField;
 use craft\fields\ContentBlock as ContentBlockField;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
+use verbb\hyper\Hyper;
 
 // Mirrors the control panel's "New entry" → autosave → "Create entry" flow, where Craft
 // applies the unpublished draft with a single-site, non-propagating save.
@@ -112,3 +115,19 @@ it('indexes every site and nested owner when an unpublished draft is applied', f
         'nested' => $rows((int)$nestedIds[0], $nestedHyper->id),
     ])->toBe(['owner' => $siteIds, 'nested' => $siteIds]);
 })->with(['matrix', 'neo', 'contentBlock']);
+
+it('logs rather than throws when indexing fails after an unpublished draft is applied', function() {
+    // Craft has already committed the apply by the time the handler runs.
+    $canonical = new class () extends Entry {
+        public static function find(): EntryQuery
+        {
+            throw new RuntimeException('Index unavailable');
+        }
+    };
+    $canonical->id = 123;
+    $event = new DraftEvent(['canonical' => $canonical, 'draft' => $canonical]);
+
+    Hyper::$plugin->getLinkRelations()->handleAfterApplyDraft($event);
+
+    expect(true)->toBeTrue();
+});
