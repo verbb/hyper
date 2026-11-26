@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fixed editors being unable to save, autosave, create drafts of or revert an element when a Hyper field already links to an element they don't have permission to view.
+- Fixed editors being unable to save, autosave, create drafts of or revert an element, or update its conditional link fields, when a Hyper field already links to an element they don't have permission to view.
 - Fixed relation rebuilds, upgrades and content migrations failing when Neo blocks remained after applying a draft, or when other plugins' elements were missing their element record.
 - Fixed the Craft Link content migration skipping links saved on Craft 5.3 and 5.4, which made them disappear after migrating.
 - Fixed clearing a Hyper field with `modifyRaw()` and `Change::replace(null)` leaving its relations behind, and the `hyper/content/sync-relations` command being unable to remove them.

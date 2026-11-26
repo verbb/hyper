@@ -534,6 +534,36 @@ it('keeps stored selections when refreshing a link layout while rejecting new on
     }
 })->with([false, true]);
 
+it('keeps stored selections when refreshing a link layout for a field with a layout handle override', function() {
+    $f = $this->cpFixture;
+    $s = cpStoredSelectionFixture($f);
+    $field = $s['field'];
+    $user = $f['users']['editor'];
+    $body = signedCpBody($f) + ['namespace' => 'fields[hyperData][link]'];
+    $refresh = fn(Entry $target) => CpActionRequest::run('link-field-layout', $user, array_replace($body, ['data' => ($s['payload'])(false, $target)]));
+
+    try {
+        // Replace the field's layout element with one that overrides its handle.
+        $entryType = Craft::$app->entries->getEntryTypeById($f['owner']->typeId);
+        $layout = $entryType->getFieldLayout();
+        $tab = $layout->getTabs()[0];
+        $elements = array_filter($tab->getElements(), fn($element) => !$element instanceof CustomField || $element->getField()->id !== $field->id);
+        $tab->setElements([...$elements, new CustomField($field, ['handle' => 'hyperOverride'])]);
+        $entryType->setFieldLayout($layout);
+        expect(Craft::$app->entries->saveEntryType($entryType))->toBeTrue();
+
+        $owner = ($s['load'])($f['owner']->id);
+        $owner->setFieldValue('hyperOverride', [($s['payload'])(false, $s['private'])]);
+        expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+
+        expect($refresh($s['private'])->statusCode)->toBe(200);
+        expect($refresh($f['owner'])->statusCode)->toBe(200);
+        expect(fn() => $refresh($s['otherPrivate']))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+    } finally {
+        Craft::$app->fields->deleteField($s['related']);
+    }
+});
+
 it('lets a view-only user draft an entry with stored selections they cannot view', function(bool $custom) {
     $f = $this->cpFixture;
     $s = cpStoredSelectionFixture($f);

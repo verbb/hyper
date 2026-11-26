@@ -370,8 +370,10 @@ class FieldsController extends Controller
         $link = $field->normalizeValue([$data], $owner)->getLinks()[0];
         $link->siteId = $siteId;
         $link->id = random_int(1, 2147483647);
-        // Refreshing an existing link mustn't reject selections its owner already stores.
-        CpInputContext::assertVisibleSelections($link, $owner ? CpInputContext::storedSelections($field, $owner) : null);
+        // Refreshing an existing link mustn't reject selections its owner already stores. The owner's
+        // layout instance carries any handle override, which the stored value is read through.
+        $layoutField = $owner?->getFieldLayout()?->getFieldById($field->id);
+        CpInputContext::assertVisibleSelections($link, $owner ? CpInputContext::storedSelections($layoutField instanceof HyperField ? $layoutField : $field, $owner) : null);
         $form = LinkLayout::createForm($field, $link, false, [
             'namespace' => $this->request->getRequiredBodyParam('namespace'),
             'registerDeltas' => false,
