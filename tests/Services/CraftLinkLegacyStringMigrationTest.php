@@ -86,3 +86,35 @@ it('leaves plain strings in fields without a matching link type for later conten
     expect($links->first())->toBeInstanceOf(linkTypes\Embed::class);
     expect($links->first()->getLinkUrl())->toBe($url);
 });
+
+it('leaves Craft Link strings for the Craft Link content migration when the oEmbed content migration runs first', function() {
+    $source = new craft\fields\Link([
+        'name' => 'Native legacy link', 'handle' => F::handle('nativeLegacy'), 'types' => ['url'],
+    ]);
+    expect(Craft::$app->fields->saveField($source))->toBeTrue();
+    $section = F::entrySectionWithField($source);
+    $owner = F::plainEntry($section, 'Legacy owner');
+    $uid = $owner->getFieldLayout()->getFieldByHandle($source->handle)->layoutElement->uid;
+    $where = ['elementId' => $owner->id, 'siteId' => $owner->siteId];
+    $read = fn() => Json::decode((new Query())->select(['content'])->from('{{%elements_sites}}')->where($where)->scalar() ?? '') ?? [];
+    $url = 'https://example.test/legacy';
+
+    // Craft 5.3-5.4 stored Link content as the bare string.
+    $content = $read();
+    $content[$uid] = $url;
+    Craft::$app->getDb()->createCommand()->update('{{%elements_sites}}', ['content' => $content], $where)->execute();
+
+    expect(Hyper::$plugin->createMigrator(MigrateCraftLinkField::class)->run()->ok)->toBeTrue();
+    expect(Hyper::$plugin->createMigrator(MigrateOembedContent::class)->run()->ok)->toBeTrue();
+    expect($read()[$uid] ?? null)->toBe($url);
+    expect(Hyper::$plugin->createMigrator(MigrateCraftLinkContent::class)->run()->ok)->toBeTrue();
+
+    // Migration steps and subsequent reads normally run in separate requests.
+    Craft::$app->set('fields', new \craft\services\Fields());
+    Craft::$app->set('entries', new \craft\services\Entries());
+
+    $links = Entry::find()->id($owner->id)->one()->getFieldValue($source->handle);
+    expect($links->count())->toBe(1);
+    expect($links->first())->toBeInstanceOf(linkTypes\Url::class);
+    expect($links->first()->getUrl())->toBe($url);
+});

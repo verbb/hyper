@@ -34,6 +34,22 @@ class MigrateOembedContent extends PluginContentMigration
             }
         }
 
+        $embed = null;
+
+        foreach ($field->getLinkTypes() as $configured) {
+            if ($configured instanceof Embed && $configured->enabled) {
+                $embed = $configured;
+
+                break;
+            }
+        }
+
+        // oEmbed fields migrate with an Embed type enabled. Strings in other fields, such as Craft Link
+        // content from Craft 5.3 and 5.4, belong to another content migration, so leave them for it.
+        if (!$embed) {
+            return null;
+        }
+
         $url = $this->_extractUrl($oldSettings);
 
         if ($url === '') {
@@ -44,17 +60,8 @@ class MigrateOembedContent extends PluginContentMigration
             return null;
         }
 
-        $handle = Embed::typeKey();
-
-        foreach ($field->getLinkTypes() as $configured) {
-            if ($configured instanceof Embed && $configured->enabled) {
-                $handle = $configured->handle;
-                break;
-            }
-        }
-
         $link = new Embed();
-        $link->handle = $handle;
+        $link->handle = $embed->handle;
         $link->field = $field;
 
         // Persist the URL without fetching remote metadata during conversion.
