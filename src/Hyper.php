@@ -14,6 +14,7 @@ use verbb\hyper\fieldlayoutelements\NewWindowField;
 use verbb\hyper\fieldlayoutelements\UrlSuffixField;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\gql\interfaces\LinkInterface as GqlLinkInterface;
+use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\integrations\feedme\fields\Hyper as FeedMeHyperField;
 use verbb\hyper\links\Embed;
 use verbb\hyper\models\Settings;
@@ -51,6 +52,7 @@ use craft\web\UrlManager;
 use yii\base\ActionEvent;
 use yii\base\Event;
 use yii\queue\Queue;
+use yii\queue\cli\Queue as CliQueue;
 
 use craft\feedme\events\RegisterFeedMeFieldsEvent;
 use craft\feedme\services\Fields as FeedMeFields;
@@ -99,7 +101,13 @@ class Hyper extends Plugin
             Event::on(Queue::class, $event, function() {
                 $this->getLinkRelations()->resetRequestState();
             });
+
+            // Web-run jobs execute inside a CP request, but aren't that user's input.
+            Event::on(Queue::class, $event, [CpInputContext::class, 'trackQueueJob']);
         }
+
+        // A failing handler can skip a job's after-event, so each queue run ends with no job tracked.
+        Event::on(CliQueue::class, CliQueue::EVENT_WORKER_STOP, [CpInputContext::class, 'resetQueueJobs']);
     }
 
     public function getSettingsResponse(): mixed

@@ -14,12 +14,65 @@ use craft\fields\ContentBlock;
 use craft\fields\Matrix;
 use craft\helpers\Json;
 
+use yii\queue\ExecEvent;
+use yii\queue\Queue;
 use yii\web\ForbiddenHttpException;
 
 class CpInputContext
 {
+    // Static Properties
+    // =========================================================================
+
+    private static array $_queueJobs = [];
+
+
     // Static Methods
     // =========================================================================
+
+    /**
+     * Whether saves made now belong to the CP user's own request, so editor checks apply. Craft's web
+     * runner executes queue jobs inside whichever CP request triggered it, as that user or a guest.
+     * A job's saves aren't that user's input, so they skip the checks, as they do on the console.
+     *
+     * @internal
+     */
+    public static function isEditorRequest(): bool
+    {
+        $request = Craft::$app->getRequest();
+
+        if ($request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
+            return false;
+        }
+
+        foreach (self::$_queueJobs as $event) {
+            // A job another handler skips before it runs gets no after-event to remove it.
+            if (!$event->handled) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @internal Registered for queue execution events.
+     */
+    public static function trackQueueJob(ExecEvent $event): void
+    {
+        if ($event->name === Queue::EVENT_BEFORE_EXEC) {
+            self::$_queueJobs[] = $event;
+        } else {
+            self::$_queueJobs = array_values(array_filter(self::$_queueJobs, static fn(ExecEvent $job): bool => $job !== $event && !$job->handled));
+        }
+    }
+
+    /**
+     * @internal Registered for the end of a queue run.
+     */
+    public static function resetQueueJobs(): void
+    {
+        self::$_queueJobs = [];
+    }
 
     public static function create(HyperField $field, ?ElementInterface $owner): ?string
     {
@@ -46,7 +99,7 @@ class CpInputContext
      */
     public static function assertVisibleSelections(ElementInterface $element, ?callable $isStored = null): void
     {
-        if (Craft::$app->getRequest()->getIsConsoleRequest() || !Craft::$app->getRequest()->getIsCpRequest()) {
+        if (!self::isEditorRequest()) {
             return;
         }
 

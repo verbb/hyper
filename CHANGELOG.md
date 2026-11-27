@@ -19,6 +19,7 @@
 - Fixed switching off a Lightswitch, or clearing Checkboxes, Multi-select or Dropdown fields, inside a link reverting to the field’s default value when saved.
 - Fixed empty Number cells in new Table rows inside a link breaking the link’s fields in the control panel and in templates.
 - Fixed deleting Table rows inside a link causing an error when saving, and reordered Table rows inside a link reverting to their original order.
+- Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
 
 ## 3.1.0 - 2026-11-24
 

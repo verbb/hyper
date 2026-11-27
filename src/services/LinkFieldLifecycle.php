@@ -3,6 +3,7 @@ namespace verbb\hyper\services;
 
 use verbb\hyper\base\LinkInterface;
 use verbb\hyper\fields\HyperField;
+use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
@@ -22,9 +23,7 @@ class LinkFieldLifecycle
 
     public static function validateUploads(LinkCollectionInterface $links, ElementInterface $owner): void
     {
-        $request = Craft::$app->getRequest();
-
-        if ($request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
+        if (!CpInputContext::isEditorRequest()) {
             return;
         }
 
@@ -126,10 +125,8 @@ class LinkFieldLifecycle
 
     private static function _assertUploadsAllowed(array $pending): void
     {
-        $request = Craft::$app->getRequest();
-
         // The web installer saves project config elements before any user exists.
-        if (!$pending || $request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
+        if (!$pending || !CpInputContext::isEditorRequest()) {
             return;
         }
 

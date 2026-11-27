@@ -10,7 +10,14 @@ use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use Tests\Support\CpActionRequest;
 use Tests\Support\Fixtures\HyperFixtureFactory as F;
+use Tests\Support\SaveFieldValueJob;
+use verbb\hyper\helpers\CpInputContext;
 use verbb\hyper\links\Url;
+use yii\base\Event;
+use yii\queue\ExecEvent;
+use yii\queue\Queue;
+use yii\queue\cli\Queue as CliQueue;
+use yii\queue\cli\WorkerEvent;
 use yii\web\ForbiddenHttpException;
 
 beforeEach(function() {
@@ -356,6 +363,73 @@ it('rejects inaccessible selections before saving an owner while permitting visi
         expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false)))->toBeTrue();
     } finally {
         Craft::$app->fields->deleteField($related);
+    }
+});
+
+it('saves queue jobs run by a control-panel request without applying that user\'s selection checks', function(?string $runner) {
+    $f = $this->cpFixture;
+    $field = $f['field'];
+    $field->setLinkTypes([F::linkTypeConfig(new Url()), F::linkTypeConfig(\verbb\hyper\links\Entry::class)]);
+    expect(Craft::$app->fields->saveField($field))->toBeTrue();
+    $user = $runner ? $f['users'][$runner] : null;
+    $private = $f['otherOwner'];
+    $otherPrivate = F::plainEntry($private->getSection(), 'Other private owner');
+    $queue = Craft::$app->getQueue();
+    $load = fn() => Entry::find()->id($f['owner']->id)->status(null)->one();
+    $linked = fn() => array_map(fn($link) => $link->getElement(null)?->id, $load()->getFieldValue($field->handle)->getLinks());
+    $push = fn(Entry $target) => $queue->push(new SaveFieldValueJob([
+        'elementId' => $f['owner']->id,
+        'fieldHandle' => $field->handle,
+        'value' => [F::entryLinkPayload($target)],
+    ]));
+    $editorSave = function(Entry $target) use ($user, $load, $field): bool {
+        $owner = $load();
+        $owner->setFieldValue($field->handle, [F::entryLinkPayload($target)]);
+
+        return CpActionRequest::asUser($user, fn() => Craft::$app->elements->saveElement($owner, false));
+    };
+    $skip = fn(ExecEvent $event) => $event->handled = true;
+    $jobIds = [];
+
+    try {
+        expect(CpActionRequest::asUser($user, fn() => Craft::$app->elements->canView($private)))->toBeFalse();
+
+        // Craft's web runner executes jobs inside the CP request that loaded the page, as that user.
+        $jobIds[] = $push($private);
+        CpActionRequest::asUser($user, fn() => $queue->executeJob(end($jobIds)));
+        expect($linked())->toBe([$private->id]);
+
+        // The same user's own save is still checked once the job is done.
+        expect(fn() => $editorSave($otherPrivate))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+
+        // A job another handler skips never finishes, and must not exempt later saves either.
+        Event::on(Queue::class, Queue::EVENT_BEFORE_EXEC, $skip);
+        $jobIds[] = $push($otherPrivate);
+        CpActionRequest::asUser($user, fn() => $queue->executeJob(end($jobIds)));
+        Event::off(Queue::class, Queue::EVENT_BEFORE_EXEC, $skip);
+        expect($linked())->toBe([$private->id]);
+        expect(fn() => $editorSave($otherPrivate))->toThrow(ForbiddenHttpException::class, 'User is not authorized to view a selected element.');
+    } finally {
+        Event::off(Queue::class, Queue::EVENT_BEFORE_EXEC, $skip);
+
+        foreach ($jobIds as $jobId) {
+            $queue->release($jobId);
+        }
+    }
+})->with(['editor' => 'editor', 'anonymous' => null]);
+
+it('checks control-panel saves again once a queue run ends, even if a failing handler skipped a job\'s after-event', function() {
+    // A tracked job with no after-event marks the rest of the request as queue work until the run ends.
+    CpInputContext::trackQueueJob(new ExecEvent(['name' => Queue::EVENT_BEFORE_EXEC]));
+
+    try {
+        expect(CpActionRequest::asUser(null, fn() => CpInputContext::isEditorRequest()))->toBeFalse();
+
+        Craft::$app->getQueue()->trigger(CliQueue::EVENT_WORKER_STOP, new WorkerEvent());
+
+        expect(CpActionRequest::asUser(null, fn() => CpInputContext::isEditorRequest()))->toBeTrue();
+    } finally {
+        CpInputContext::resetQueueJobs();
     }
 });
 
