@@ -5,6 +5,10 @@ use craft\gql\GqlEntityRegistry;
 
 use GraphQL\Type\Definition\ScalarType;
 
+/**
+ * Returns link custom attributes as structured data.
+ * It's named `HyperArrayType` in the schema, so it can't clash with another plugin's `ArrayType` scalar.
+ */
 class ArrayType extends ScalarType
 {
     // Static Methods
@@ -12,12 +16,12 @@ class ArrayType extends ScalarType
 
     public static function getType()
     {
-        return GqlEntityRegistry::getEntity(self::getName()) ?: GqlEntityRegistry::createEntity(self::getName(), new self());
+        return GqlEntityRegistry::getOrCreate(self::getName(), fn() => new self(['name' => self::getName()]));
     }
 
     public static function getName(): string
     {
-        return 'ArrayType';
+        return 'HyperArrayType';
     }
 
 

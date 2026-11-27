@@ -73,9 +73,9 @@ The `class` attribute for the link.
 ::: reference
 #### `customAttributes`
 
-**Type:** `ArrayType`
+**Type:** `HyperArrayType`
 
-The custom attributes for the link, as a JSON value. `ArrayType` is a scalar, so it doesn’t take a nested selection.
+The custom attributes for the link, as a JSON value. `HyperArrayType` is a scalar, so it doesn’t take a nested selection.
 :::
 
 ::: reference
@@ -294,6 +294,6 @@ resourceLinks(empty: null) {
 }
 ```
 
-### The `ArrayType` Scalar
+### The `HyperArrayType` Scalar
 
-`ArrayType` is a JSON scalar used by `customAttributes`. Request the field name on its own, and your client receives the attributes as structured data.
+`HyperArrayType` is a JSON scalar used by `customAttributes`. Request the field name on its own, and your client receives the attributes as structured data.

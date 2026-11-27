@@ -5,6 +5,7 @@
 ### Changed
 
 - Clearing a link in a Hyper field, or leaving an added link blank, now stores nothing, as Craft’s Link field does. The field counts as empty in `:empty:` queries, the “is empty” filter and validation, and a cleared link no longer counts towards the minimum number of links or requires Link Text. Blank links saved before updating are removed the next time their element is saved.
+- GraphQL `customAttributes` on Hyper links now always returns structured data, as documented. On sites with Vizy installed, it returned a JSON string. Its scalar type is now named `HyperArrayType`, so add it to any code-generator scalar mappings.
 
 ### Fixed
 
@@ -27,6 +28,7 @@
 - Fixed links with no Link Text showing the “e.g. Read more” placeholder as their text when the site’s language differs from the language their link type was set up in, and `getText()` ignoring the default text passed to it for those links.
 - Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
 - Fixed draft conflict protection not applying to Hyper fields in Matrix nested entries edited in a slideout through the entry’s draft, which let a later save overwrite another editor’s published changes.
+- Fixed GraphQL queries selecting `customAttributes` on Hyper links returning an error when Craft’s `lazyGqlTypes` setting is enabled.
 
 ## 3.1.0 - 2026-11-24
 
