@@ -24,6 +24,7 @@ use craft\base\EagerLoadingFieldInterface;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\base\FieldInterface;
 use craft\base\MergeableFieldInterface;
 use craft\base\PreviewableFieldInterface;
 use craft\base\ThumbableFieldInterface;
@@ -784,6 +785,30 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         parent::afterElementSave($element, $isNew);
+    }
+
+    public function canMergeInto(FieldInterface $persistingField, ?string &$reason): bool
+    {
+        // Craft compares column types by default, and Hyper's inherited text type would let it merge with
+        // Plain Text, Email or Dropdown fields, which can't read Hyper's stored links.
+        if (!$persistingField instanceof self) {
+            $reason = Craft::t('hyper', 'Hyper fields can only be merged into other Hyper fields.');
+
+            return false;
+        }
+
+        return parent::canMergeInto($persistingField, $reason);
+    }
+
+    public function canMergeFrom(FieldInterface $outgoingField, ?string &$reason): bool
+    {
+        if (!$outgoingField instanceof self) {
+            $reason = Craft::t('hyper', 'Only Hyper fields can be merged into Hyper fields.');
+
+            return false;
+        }
+
+        return parent::canMergeFrom($outgoingField, $reason);
     }
 
     public function getLinkTypeByHandle(?string $handle): ?LinkInterface
