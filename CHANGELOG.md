@@ -9,46 +9,46 @@
 ### Changed
 
 - Clearing a link in a Hyper field, or leaving an added link blank, now stores nothing, as Craft’s Link field does. The field counts as empty in `:empty:` queries, the “is empty” filter and validation, and a cleared link no longer counts towards the minimum number of links or requires Link Text. Blank links saved before updating are removed the next time their element is saved.
-- GraphQL `customAttributes` on Hyper links now always returns structured data, as documented. On sites with Vizy installed, it returned a JSON string. Its scalar type is now named `HyperArrayType`, so add it to any code-generator scalar mappings.
-- Twig properties such as `link.text`, `link.target` and `link.type`, and others that Hyper or a link type defines, now always return Hyper’s link values when a custom field in the link’s layout has the same handle, as GraphQL and link filters already do. Read such a field with `link.getFieldValue('text')`.
 - Searchable Hyper fields now index each link’s text, aria-label and title attribute, its URL, email address, phone number or embed URL and title, and the searchable fields inside the link. Link type handles, link UIDs, element IDs, the new-window setting, classes, URL suffixes, custom attributes, other embed details, fields inside links that aren’t marked searchable and array values stored by custom link types are no longer indexed. Building search keywords no longer looks up each linked element. Run `craft resave/entries --update-search-index` (and the equivalent for other element types), or use **Utilities → Search Indexes**, to update existing search indexes.
-- GraphQL queries now count Hyper fields, fields on linked elements that run once per link, and relational fields inside links towards Craft’s `maxGraphqlComplexity` limit, the same way Craft counts its own relation fields. Schemas with a complexity limit may reject large Hyper queries that they previously allowed.
-- GraphQL requests authenticated as a user, with a personal access token or OAuth on Craft 5.12 or later, now return `null` for links to entries and assets that user can’t view, matching Craft’s Entries and Assets fields.
+- Twig properties such as `link.text`, `link.target` and `link.type`, and others that Hyper or a link type defines, now always return Hyper’s link values when a custom field in the link’s layout has the same handle, as GraphQL and link filters already do. Read such a field with `link.getFieldValue('text')`.
 - Link rendering, `getLinkAttributes()` and GraphQL `customAttributes` now leave out Custom Attributes named `html` or `text`, and apply the same URL scheme rules to `formaction` and `action` as to `href`.
-- The `hyper/content/modify` console command now re-saves Hyper field values stored in an older format using the current format when run with `--dry-run=0`, and its dry run reports how many values it would re-save, as documented. Previously it reported and changed nothing. `--include-nested=0` on it and on `hyper/content/sync-relations`, and `includeNested: false` in `ModifyOptions`, now skip links in Matrix nested entries and Neo blocks.
+- GraphQL requests authenticated as a user, with a personal access token or OAuth on Craft 5.12 or later, now return `null` for links to entries and assets that user can’t view, matching Craft’s Entries and Assets fields.
+- GraphQL queries now count Hyper fields, fields on linked elements that run once per link, and relational fields inside links towards Craft’s `maxGraphqlComplexity` limit, the same way Craft counts its own relation fields. Schemas with a complexity limit may reject large Hyper queries that they previously allowed.
+- GraphQL `customAttributes` on Hyper links now always returns structured data, as documented. On sites with Vizy installed, it returned a JSON string. Its scalar type is now named `HyperArrayType`, so add it to any code-generator scalar mappings.
 - `craft.hyper.getRelatedElements()` and `getRelatedElementsQuery()` now find the elements linking to the canonical element when given a draft or revision, as Craft’s `relatedTo` does, so Live Preview, previews and share links list the same results as the live page. Previously they found nothing.
 - Craft’s `fields/merge` command no longer merges Hyper fields with Plain Text, Email, Dropdown or other non-Hyper fields. Merging them left the links empty, or broke the control panel and templates that output the field.
+- The `hyper/content/modify` console command now re-saves Hyper field values stored in an older format using the current format when run with `--dry-run=0`, and its dry run reports how many values it would re-save, as documented. Previously it reported and changed nothing. `--include-nested=0` on it and on `hyper/content/sync-relations`, and `includeNested: false` in `ModifyOptions`, now skip links in Matrix nested entries and Neo blocks.
 
 ### Fixed
 
-- Fixed editors being unable to save, autosave, create drafts of or revert an element, or update its conditional link fields, when a Hyper field already links to an element they don't have permission to view.
-- Fixed relation rebuilds, upgrades and content migrations failing when Neo blocks remained after applying a draft, or when other plugins' elements were missing their element record.
-- Fixed the Craft Link content migration skipping links saved on Craft 5.3 and 5.4, which made them disappear after migrating.
-- Fixed the oEmbed content migration turning Craft Link content saved on Craft 5.3 and 5.4 into empty links when it ran before the Craft Link content migration.
-- Fixed clearing a Hyper field with `modifyRaw()` and `Change::replace(null)` leaving its relations behind, and the `hyper/content/sync-relations` command being unable to remove them.
-- Fixed Hyper fields with all their links removed still matching `:notempty:` queries and the “has a value” filter, and not matching `:empty:` or “is empty”.
-- Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
+- Fixed editors being unable to save, autosave, create drafts of or revert an element, or update its conditional link fields, when a Hyper field already links to an element they don’t have permission to view.
+- Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
 - Fixed Matrix and Neo fields inside links causing errors or losing their content after a nested field, entry type or Neo block type handle was renamed. Existing content is updated to support renames when updating.
+- Fixed content changes and migrations corrupting the whole Vizy field when they updated a Hyper link inside a Vizy 3 block.
+- Fixed Hyper links to an asset disappearing when the asset was replaced by moving another file with the same name into its folder and choosing “Replace it”. Element links in Hyper fields now follow Craft’s element merges, including in drafts, revisions and nested entries, as Craft’s relation fields do.
+- Fixed reverse relations and draft conflict checks losing track of a Hyper field’s owners after it was merged into another Hyper field with Craft’s `fields/merge` or `fields/auto-merge` command.
+- Fixed Hyper fields set to **Not translatable** keeping the original site’s page for links to entries that were scheduled, expired or disabled when the link was saved, so other sites still linked to it once the entry went live. Links saved earlier are updated on the other sites the next time the field is edited.
+- Fixed element links in Hyper fields inside Vizy blocks linking to the edited site’s page on every site, instead of each site’s own translation. Links saved earlier are updated on the other sites the next time the Vizy field is edited.
+- Fixed draft conflict protection not applying to Hyper fields in Matrix nested entries edited in a slideout through the entry’s draft, which let a later save overwrite another editor’s published changes.
+- Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
 - Fixed reverse relations missing entries created in the control panel on sites other than the one they were created on, and links in their Matrix, Neo and Content Block fields.
+- Fixed saving or resaving elements deleting and re-creating the relations of Hyper fields whose links hadn’t changed.
 - Fixed reverse-relation queries slowing down sharply for elements linked from thousands of owners.
 - Fixed front-end requests that load thousands of elements with a Hyper field slowing down sharply, even when the template doesn’t output any links.
 - Fixed front-end requests on multi-site installs loading extra copies of linked elements for every site that any link on the page points to.
-- Fixed saving or resaving elements deleting and re-creating the relations of Hyper fields whose links hadn’t changed.
 - Fixed the relation rebuild when updating, the `hyper/content/sync-relations` command and plugin content migrations running out of memory when reading element content on large sites.
-- Fixed links on a built-in link type switching to a custom link type of the same kind after upgrading from Hyper 2, when the custom type was sorted first.
+- Fixed clearing a Hyper field with `modifyRaw()` and `Change::replace(null)` leaving its relations behind, and the `hyper/content/sync-relations` command being unable to remove them.
+- Fixed Hyper fields with all their links removed still matching `:notempty:` queries and the “has a value” filter, and not matching `:empty:` or “is empty”.
 - Fixed switching off a Lightswitch, or clearing Checkboxes, Multi-select or Dropdown fields, inside a link reverting to the field’s default value when saved.
 - Fixed empty Number cells in new Table rows inside a link breaking the link’s fields in the control panel and in templates.
 - Fixed deleting Table rows inside a link causing an error when saving, and reordered Table rows inside a link reverting to their original order.
-- Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
 - Fixed links with no Link Text showing the “e.g. Read more” placeholder as their text when the site’s language differs from the language their link type was set up in, and `getText()` ignoring the default text passed to it for those links.
-- Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
-- Fixed draft conflict protection not applying to Hyper fields in Matrix nested entries edited in a slideout through the entry’s draft, which let a later save overwrite another editor’s published changes.
 - Fixed GraphQL queries selecting `customAttributes` on Hyper links returning an error when Craft’s `lazyGqlTypes` setting is enabled.
+- Fixed relation rebuilds, upgrades and content migrations failing when Neo blocks remained after applying a draft, or when other plugins’ elements were missing their element record.
+- Fixed the Craft Link content migration skipping links saved on Craft 5.3 and 5.4, which made them disappear after migrating.
+- Fixed the oEmbed content migration turning Craft Link content saved on Craft 5.3 and 5.4 into empty links when it ran before the Craft Link content migration.
+- Fixed links on a built-in link type switching to a custom link type of the same kind after upgrading from Hyper 2, when the custom type was sorted first.
 - Fixed the Link (Flipbox) migration not appearing under **Hyper → Settings → Migrations** on Craft 5, where Flipbox Link can’t be installed. It now appears while Flipbox Link fields remain to be migrated.
-- Fixed reverse relations and draft conflict checks losing track of a Hyper field’s owners after it was merged into another Hyper field with Craft’s `fields/merge` or `fields/auto-merge` command.
-- Fixed Hyper links to an asset disappearing when the asset was replaced by moving another file with the same name into its folder and choosing “Replace it”. Element links in Hyper fields now follow Craft’s element merges, including in drafts, revisions and nested entries, as Craft’s relation fields do.
-- Fixed Hyper fields set to **Not translatable** keeping the original site’s page for links to entries that were scheduled, expired or disabled when the link was saved, so other sites still linked to it once the entry went live. Links saved earlier are updated on the other sites the next time the field is edited.
-- Fixed element links in Hyper fields inside Vizy blocks linking to the edited site’s page on every site, instead of each site’s own translation. Links saved earlier are updated on the other sites the next time the Vizy field is edited.
 
 ## 3.1.0 - 2026-11-24
 
