@@ -26,6 +26,7 @@
 - Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
 - Fixed links with no Link Text showing the “e.g. Read more” placeholder as their text when the site’s language differs from the language their link type was set up in, and `getText()` ignoring the default text passed to it for those links.
 - Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
+- Fixed draft conflict protection not applying to Hyper fields in Matrix nested entries edited in a slideout through the entry’s draft, which let a later save overwrite another editor’s published changes.
 
 ## 3.1.0 - 2026-11-24
 

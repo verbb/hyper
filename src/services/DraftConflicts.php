@@ -41,7 +41,13 @@ class DraftConflicts
     {
         $draft = $event->element;
 
-        if (!$draft->getIsDraft()) {
+        // Matrix children edited through an owner's draft merge as derivatives, not drafts.
+        if (!$draft->getIsDraft() && !($draft instanceof NestedElementInterface && $draft->getIsDerivative())) {
+            return;
+        }
+
+        // Most merged nested elements have no Hyper field, so skip loading their other sites.
+        if (!self::_fields($draft)) {
             return;
         }
 
@@ -94,6 +100,12 @@ class DraftConflicts
 
     public static function validateCanonicalSave(HyperField $field, ElementInterface $element): bool
     {
+        // Craft publishes a Matrix child edited through its owner's draft by copying the child's derivative
+        // over it, without an apply-draft event. Check that copy against the baseline of the child's draft.
+        if ($element->updatingFromDerivative && $element->duplicateOf instanceof NestedElementInterface) {
+            return self::_validateDerivativeUpdate($field, $element, $element->duplicateOf);
+        }
+
         $request = Craft::$app->getRequest();
 
         if (!$element->id || !$element::hasDrafts() || !$element->getIsCanonical() || $element->getIsDraft() || $element->getIsRevision() || $element instanceof LinkInterface || $element->propagating || $element->duplicateOf || $request->getIsConsoleRequest() || !$request->getIsCpRequest()) {
@@ -265,9 +277,41 @@ class DraftConflicts
         });
     }
 
+    private static function _validateDerivativeUpdate(HyperField $field, ElementInterface $element, ElementInterface $derivative): bool
+    {
+        // Drafts are checked when they're applied, and a child without a stored baseline can't be verified.
+        if ($derivative->getIsCanonical() || $derivative->getIsDraft() || $derivative->getIsRevision() || !$row = self::_row($field, $derivative)) {
+            return true;
+        }
+
+        $current = $element::find()->id($element->id)->siteId($element->siteId)->status(null)->trashed(null)->ignorePlaceholders()->one();
+
+        if (!$current || !self::_hasField($field, $current)) {
+            return true;
+        }
+
+        $publishedHash = self::_hash($field, $current);
+        $proposedHash = self::_hash($field, $element);
+
+        if ($publishedHash === $proposedHash || self::_matchesBaseline($row['baseline'], $field, $current, $publishedHash) || self::_matchesLegacyBaseline($row['baseline'], $field, $current)) {
+            return true;
+        }
+
+        // A child edit that left this field alone must not roll back newer published content.
+        if (self::_matchesBaseline($row['baseline'], $field, $element, $proposedHash) || !$derivative->isFieldModified($field->handle)) {
+            $field->copyValue($current, $element);
+
+            return true;
+        }
+
+        $element->addError($field->handle, Craft::t('hyper', 'This field changed in the current entry while you were editing. Your draft is saved. Copy your changes, discard this draft, then reopen the current entry and reapply your changes.'));
+
+        return false;
+    }
+
     private static function _localizedDrafts(ElementInterface $draft): array
     {
-        return $draft::find()->id($draft->id)->site('*')->drafts(true)->provisionalDrafts(null)->status(null)->all();
+        return $draft::find()->id($draft->id)->site('*')->drafts($draft->getIsDraft())->provisionalDrafts(null)->status(null)->all();
     }
 
     private static function _fields(ElementInterface $element): array
