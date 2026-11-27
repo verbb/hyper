@@ -12,6 +12,7 @@ use craft\gql\base\InterfaceType as BaseInterfaceType;
 use craft\gql\GqlEntityRegistry;
 use craft\gql\interfaces\Element;
 use craft\helpers\Json;
+use craft\services\Gql as GqlService;
 
 use GraphQL\Type\Definition\InterfaceType;
 use GraphQL\Type\Definition\Type;
@@ -69,6 +70,8 @@ class LinkInterface extends BaseInterfaceType
                 'description' => 'The element (if provided) for the link.',
                 'type' => Element::getType(),
                 'resolve' => [LinkedElement::class, 'resolve'],
+                // Targets are batched, but fields Craft would eager-load on them (25 or more) query once per link.
+                'complexity' => static fn($childComplexity) => $childComplexity + ($childComplexity >= GqlService::GRAPHQL_COMPLEXITY_EAGER_LOAD ? GqlService::GRAPHQL_COMPLEXITY_NPLUS1 : GqlService::GRAPHQL_COMPLEXITY_SIMPLE_FIELD),
             ],
             'isElement' => [
                 'name' => 'isElement',

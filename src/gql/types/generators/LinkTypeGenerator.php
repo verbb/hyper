@@ -9,12 +9,17 @@ use verbb\hyper\gql\types\LinkType;
 use verbb\hyper\links\MissingLink;
 
 use Craft;
+use craft\base\EagerLoadingFieldInterface;
+use craft\base\FieldInterface;
 use craft\errors\GqlException;
 use craft\gql\base\Generator;
 use craft\gql\base\GeneratorInterface;
 use craft\gql\base\ObjectType;
 use craft\gql\base\SingleGeneratorInterface;
 use craft\gql\GqlEntityRegistry;
+use craft\services\Gql as GqlService;
+
+use GraphQL\Type\Definition\Type;
 
 class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleGeneratorInterface
 {
@@ -73,6 +78,7 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
         } catch (GqlException $e) {
             Craft::warning("Could not get the active GraphQL schema: {$e->getMessage()}", __METHOD__);
             Craft::$app->getErrorHandler()->logException($e);
+
             return [];
         }
 
@@ -81,11 +87,33 @@ class LinkTypeGenerator extends Generator implements GeneratorInterface, SingleG
         if ($fieldLayout = $context->getFieldLayout()) {
             foreach ($fieldLayout->getCustomFields() as $contentField) {
                 if ($contentField->includeInGqlSchema($schema)) {
-                    $contentFieldGqlTypes[$contentField->handle] = $contentField->getContentGqlType();
+                    $contentFieldGqlTypes[$contentField->handle] = self::_getContentFieldDefinition($contentField);
                 }
             }
         }
 
         return $contentFieldGqlTypes;
+    }
+
+    private static function _getContentFieldDefinition(FieldInterface $field): mixed
+    {
+        $definition = $field->getContentGqlType();
+
+        // Link layouts aren't eager-loaded, so a field Craft would eager-load runs its queries once per link.
+        if (!$field instanceof EagerLoadingFieldInterface) {
+            return $definition;
+        }
+
+        if ($definition instanceof Type) {
+            $definition = ['name' => $field->handle, 'type' => $definition];
+        }
+
+        if (is_array($definition)) {
+            // Add to the field's own score so its argument costs, such as `relatedTo`, still count.
+            $fieldComplexity = $definition['complexity'] ?? null;
+            $definition['complexity'] = static fn($childComplexity, $args = []) => ($fieldComplexity ? $fieldComplexity($childComplexity, $args) : $childComplexity) + GqlService::GRAPHQL_COMPLEXITY_NPLUS1;
+        }
+
+        return $definition;
     }
 }

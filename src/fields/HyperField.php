@@ -951,6 +951,8 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return [
             'name' => $this->handle,
             'type' => Type::nonNull(Type::listOf(GqlLinkInterface::getType($this))),
+            // Links and their targets load in one batch per request, so score them like Craft's eager-loaded fields.
+            'complexity' => Gql::eagerLoadComplexity(),
             'args' => [
                 'empty' => [
                     'type' => Type::boolean(),
