@@ -81,9 +81,11 @@ it('rolls content back on index failure and reconciles unchanged content', funct
     $f = F::hyperField();
     $s = F::entrySection($f);
     $a = F::plainEntry($s, 'A');
+    $b = F::plainEntry($s, 'B');
     $owner = F::plainEntry($s, 'Owner', [$f->handle => [['handle' => 'entry', 'linkValue' => [$a->id]]]]);
-    // Exercise an actual storage failure, independent of single-row/batch insertion.
-    $transform = fn() => new LinkCollection($f, [['handle' => 'entry', 'linkValue' => [$a->id], 'linkText' => 'Changed']]);
+    // Exercise an actual storage failure, independent of single-row/batch insertion. The new target
+    // changes the index, since an unchanged index is not rewritten.
+    $transform = fn() => new LinkCollection($f, [['handle' => 'entry', 'linkValue' => [$b->id], 'linkText' => 'Changed']]);
     \Tests\Support\FailingRelationWrites::install('hyper_content_test_fail');
     try {
         expect(fn() => Hyper::$plugin->content->modify($f, $transform, new ModifyOptions(elementIds: [$owner->id])))->toThrow(\yii\db\Exception::class);

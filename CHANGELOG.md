@@ -22,6 +22,7 @@
 - Fixed Matrix and Neo fields inside links causing errors or losing their content after a nested field, entry type or Neo block type handle was renamed. Existing content is updated to support renames when updating.
 - Fixed reverse relations missing entries created in the control panel on sites other than the one they were created on, and links in their Matrix, Neo and Content Block fields.
 - Fixed reverse-relation queries slowing down sharply for elements linked from thousands of owners.
+- Fixed saving or resaving elements deleting and re-creating the relations of Hyper fields whose links hadn’t changed.
 - Fixed the relation rebuild when updating, the `hyper/content/sync-relations` command and plugin content migrations running out of memory when reading element content on large sites.
 - Fixed links on a built-in link type switching to a custom link type of the same kind after upgrading from Hyper 2, when the custom type was sorted first.
 - Fixed switching off a Lightswitch, or clearing Checkboxes, Multi-select or Dropdown fields, inside a link reverting to the field’s default value when saved.

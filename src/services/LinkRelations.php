@@ -19,6 +19,7 @@ use craft\elements\Entry;
 use craft\events\DraftEvent;
 use craft\helpers\Db;
 use craft\helpers\ElementHelper;
+use craft\helpers\Json;
 
 use Throwable;
 
@@ -100,9 +101,32 @@ class LinkRelations extends Component
             ));
         }
 
-        $transaction = Craft::$app->getDb()->beginTransaction();
+        $db = Craft::$app->getDb();
+        $transaction = $db->beginTransaction();
 
         try {
+            // Element saves run in a transaction, and a plain read there can return an older snapshot
+            // than a concurrent save of this element committed. A locking read returns the current rows
+            // and holds them until the outer transaction ends, so a concurrent save can't skip its write.
+            $command = (new Query())
+                ->select(['sortOrder', 'linkTypeHandle', 'targetId', 'targetSiteId', 'targetType'])
+                ->from(LinkRelationRecord::tableName())
+                ->where([
+                    'fieldId' => $field->id,
+                    'ownerId' => $element->id,
+                    'ownerSiteId' => $element->siteId,
+                ])
+                ->createCommand($db);
+            $storedRows = $db->createCommand($command->getSql() . ' FOR UPDATE', $command->params)->queryAll();
+
+            // Saves that leave the links as they were, resaves included, keep the stored rows, as Craft
+            // does for its own relations. The index is rewritten only when it no longer matches.
+            if ($this->_relationRowKeys($storedRows) === $this->_relationRowKeys($rows)) {
+                $transaction->commit();
+
+                return true;
+            }
+
             LinkRelationRecord::deleteAll([
                 'fieldId' => $field->id,
                 'ownerId' => $element->id,
@@ -112,7 +136,7 @@ class LinkRelations extends Component
             // This is a derived index with no per-record lifecycle. Batch its writes;
             // Craft adds timestamps/UIDs, and the transaction retains the old index on failure.
             foreach (array_chunk($rows, 500) as $batch) {
-                Craft::$app->getDb()->createCommand()->batchInsert(
+                $db->createCommand()->batchInsert(
                     LinkRelationRecord::tableName(),
                     array_keys($batch[0]),
                     array_map('array_values', $batch),
@@ -623,6 +647,22 @@ class LinkRelations extends Component
             'targetSiteId' => $link->linkSiteId ? (int)$link->linkSiteId : (int)$owner->siteId,
             'targetType' => $link::elementType(),
         ];
+    }
+
+    private function _relationRowKeys(array $rows): array
+    {
+        // Database drivers can return integers as strings, so compare normalized values in a fixed order.
+        $keys = array_map(static fn(array $row): string => Json::encode([
+            (int)$row['sortOrder'],
+            (string)$row['linkTypeHandle'],
+            $row['targetId'] !== null ? (int)$row['targetId'] : null,
+            $row['targetSiteId'] !== null ? (int)$row['targetSiteId'] : null,
+            $row['targetType'] !== null ? (string)$row['targetType'] : null,
+        ]), $rows);
+
+        sort($keys);
+
+        return $keys;
     }
 
     private function _elementCacheKey(int $targetId, ?int $targetSiteId): string
