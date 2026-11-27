@@ -9,6 +9,7 @@
 - Twig properties such as `link.text`, `link.target` and `link.type`, and others that Hyper or a link type defines, now always return Hyper’s link values when a custom field in the link’s layout has the same handle, as GraphQL and link filters already do. Read such a field with `link.getFieldValue('text')`.
 - Searchable Hyper fields now index each link’s text, aria-label and title attribute, its URL, email address, phone number or embed URL and title, and the searchable fields inside the link. Link type handles, link UIDs, element IDs, the new-window setting, classes, URL suffixes, custom attributes, other embed details, fields inside links that aren’t marked searchable and array values stored by custom link types are no longer indexed. Building search keywords no longer looks up each linked element. Run `craft resave/entries --update-search-index` (and the equivalent for other element types), or use **Utilities → Search Indexes**, to update existing search indexes.
 - GraphQL queries now count Hyper fields, fields on linked elements that run once per link, and relational fields inside links towards Craft’s `maxGraphqlComplexity` limit, the same way Craft counts its own relation fields. Schemas with a complexity limit may reject large Hyper queries that they previously allowed.
+- GraphQL requests authenticated as a user, with a personal access token or OAuth on Craft 5.12 or later, now return `null` for links to entries and assets that user can’t view, matching Craft’s Entries and Assets fields.
 
 ### Fixed
 

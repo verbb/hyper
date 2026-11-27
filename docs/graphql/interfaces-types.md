@@ -91,7 +91,7 @@ The text entered in the Link Text field, with no fallbacks. This is null when th
 
 **Type:** `ElementInterface`
 
-The linked element for element-based links, such as an entry or asset. Use a fragment on the element’s own type, such as `... on pages_Entry`, to select its fields. The active schema must allow access to that element.
+The linked element for element-based links, such as an entry or asset. Use a fragment on the element’s own type, such as `... on pages_Entry`, to select its fields. The active schema must allow access to that element and, for requests authenticated as a user, that user must be able to view it.
 :::
 
 ::: reference

@@ -3,7 +3,9 @@ namespace verbb\hyper\gql\resolvers;
 
 use verbb\hyper\base\LinkInterface;
 
+use Craft;
 use craft\base\ElementInterface;
+use craft\elements\Asset;
 use craft\elements\Entry;
 use craft\elements\User;
 use craft\gql\GqlEntityRegistry;
@@ -38,7 +40,15 @@ class LinkedElement
             $scope = $element->sectionId ? 'sections' : 'nestedentryfields';
             $uid = $element->sectionId ? $element->getSection()?->uid : $element->getField()?->uid;
 
-            return $uid && in_array($uid, $allowed[$scope] ?? [], true) ? $element : null;
+            if (!$uid || !in_array($uid, $allowed[$scope] ?? [], true)) {
+                return null;
+            }
+
+            return self::_isViewableBySchemaUser($element) ? $element : null;
+        }
+
+        if ($element instanceof Asset) {
+            return self::_isViewableBySchemaUser($element) ? $element : null;
         }
 
         if ($element instanceof User) {
@@ -80,5 +90,14 @@ class LinkedElement
         } catch (Throwable) {
             return false;
         }
+    }
+
+    private static function _isViewableBySchemaUser(ElementInterface $element): bool
+    {
+        // Craft 5.12+ limits entries and assets for user-authenticated schemas to those the user can view, and
+        // decides nested entries through their owner. Token and public schemas have no user, so they aren't filtered.
+        $user = method_exists(Gql::class, 'getSchemaUser') ? Gql::getSchemaUser() : null;
+
+        return !$user || Craft::$app->getElements()->canView($element, $user);
     }
 }
