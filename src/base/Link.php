@@ -183,6 +183,37 @@ abstract class Link extends Element implements LinkInterface
         return (string)$linkValue !== '' ? (string)$linkValue : null;
     }
 
+    /**
+     * Default layouts store the `e.g. Read more` hint translated into the language active when they
+     * were created, so it is matched in every language Hyper or the sites translate it into, not only
+     * the current request's language.
+     */
+    private static function _isStockLinkTextPlaceholder(string $placeholder): bool
+    {
+        $source = 'e.g. Read more';
+
+        if ($placeholder === $source || $placeholder === Craft::t('hyper', $source)) {
+            return true;
+        }
+
+        // Shipped translation folders don't change at runtime, but sites can, so their languages are read on each call.
+        self::$_translationLanguages ??= array_map('basename', glob(dirname(__DIR__) . '/translations/*', GLOB_ONLYDIR) ?: []);
+
+        $languages = self::$_translationLanguages;
+
+        foreach (Craft::$app->getSites()->getAllSites(true) as $site) {
+            $languages[] = $site->language;
+        }
+
+        foreach (array_unique($languages) as $language) {
+            if ($placeholder === Craft::t('hyper', $source, [], $language)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     // Constants
     // =========================================================================
@@ -218,6 +249,7 @@ abstract class Link extends Element implements LinkInterface
     private ?FieldLayout $_fieldLayout = null;
     private bool $_hydratingFromInstance = false;
     private ?ElementInterface $_owner = null;
+    private static ?array $_translationLanguages = null;
 
 
     // Public Methods
@@ -776,21 +808,27 @@ abstract class Link extends Element implements LinkInterface
             return null;
         }
 
-        $defaultText = $defaultText ?? Craft::t('hyper', 'Read more');
-
-        // Use the placeholder of the `linkText` field as fallback
-        if ($fieldLayout = $this->getFieldLayout()) {
-            if ($fieldLayout->isFieldIncluded('linkText')) {
-                $defaultText = $fieldLayout->getField('linkText')->placeholder ?? $defaultText;
-            }
-
-            // Swap the plugin default `e.g. Read more` to just `Read nore`;
-            $defaultText = $defaultText === Craft::t('hyper', 'e.g. Read more') ? Craft::t('hyper', 'Read more') : $defaultText;
-        }
-
         $text = $this->getLinkText();
 
-        return $text !== null && $text !== '' ? $text : ($defaultText !== '' ? $defaultText : null);
+        if ($text !== null && $text !== '') {
+            return $text;
+        }
+
+        $defaultText = $defaultText ?? Craft::t('hyper', 'Read more');
+
+        // An author-set placeholder on the `linkText` field is the fallback label. The stock
+        // `e.g. Read more` hint is not, so the caller's default (or "Read more") applies instead.
+        $fieldLayout = $this->getFieldLayout();
+
+        if ($fieldLayout && $fieldLayout->isFieldIncluded('linkText')) {
+            $placeholder = $fieldLayout->getField('linkText')->placeholder;
+
+            if ($placeholder !== null && !self::_isStockLinkTextPlaceholder($placeholder)) {
+                $defaultText = $placeholder;
+            }
+        }
+
+        return $defaultText !== '' ? $defaultText : null;
     }
 
     public function getTarget(): ?string

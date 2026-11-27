@@ -95,3 +95,62 @@ it('retains generated Site and Embed labels without a configured default', funct
 
     expect($link->getLinkText())->toBe($class === \verbb\hyper\links\Site::class ? $site->name : 'Provider label');
 })->with([\verbb\hyper\links\Site::class, \verbb\hyper\links\Embed::class]);
+
+function linkTextInLanguage(string $language, callable $callback): mixed
+{
+    $original = Craft::$app->language;
+    Craft::$app->language = $language;
+
+    try {
+        return $callback();
+    } finally {
+        Craft::$app->language = $original;
+    }
+}
+
+function unlabelledUrlLink(\craft\models\FieldLayout $layout): Url
+{
+    $link = Hyper::$plugin->getLinks()->createLink(Url::class);
+    $link->setFieldLayout($layout);
+    $link->linkValue = 'https://example.test/unlabelled';
+    $link->linkText = null;
+
+    return $link;
+}
+
+it('never renders the stock Link Text placeholder, whatever language the layout was created in', function(string $layoutLanguage, string $renderLanguage, string $expected) {
+    $layout = linkTextInLanguage($layoutLanguage, fn() => Url::getDefaultFieldLayout());
+    $link = unlabelledUrlLink($layout);
+
+    linkTextInLanguage($renderLanguage, function() use ($link, $expected): void {
+        expect($link->getText())->toBe($expected);
+        expect($link->getText('Visit us'))->toBe('Visit us');
+        expect((string)$link->getLink())->toBe('<a href="https://example.test/unlabelled">' . $expected . '</a>');
+    });
+})->with([
+    'English layout on English site' => ['en-US', 'en-US', 'Read more'],
+    'English layout on French site' => ['en-US', 'fr', 'En savoir plus'],
+    'English layout on German site' => ['en-US', 'de', 'Mehr lesen'],
+    'English layout on Dutch site' => ['en-US', 'nl', 'Read more'],
+    'French layout on English site' => ['fr', 'en-US', 'Read more'],
+    'German layout on French site' => ['de', 'fr', 'En savoir plus'],
+    'French layout on French site' => ['fr', 'fr', 'En savoir plus'],
+]);
+
+it('keeps authored text, layout defaults and custom placeholders ahead of the plugin fallback', function(string $renderLanguage) {
+    $custom = Url::getDefaultFieldLayout();
+    $custom->getField('linkText')->placeholder = 'Find out more';
+
+    $configured = Url::getDefaultFieldLayout();
+    $configured->getField('linkText')->defaultValue = 'Configured label';
+
+    $authored = unlabelledUrlLink(Url::getDefaultFieldLayout());
+    $authored->linkText = 'Authored label';
+
+    linkTextInLanguage($renderLanguage, function() use ($custom, $configured, $authored): void {
+        expect(unlabelledUrlLink($custom)->getText())->toBe('Find out more');
+        expect(unlabelledUrlLink($custom)->getText('Visit us'))->toBe('Find out more');
+        expect(unlabelledUrlLink($configured)->getText('Visit us'))->toBe('Configured label');
+        expect($authored->getText('Visit us'))->toBe('Authored label');
+    });
+})->with(['en-US', 'fr']);

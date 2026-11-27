@@ -24,6 +24,7 @@
 - Fixed empty Number cells in new Table rows inside a link breaking the link’s fields in the control panel and in templates.
 - Fixed deleting Table rows inside a link causing an error when saving, and reordered Table rows inside a link reverting to their original order.
 - Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
+- Fixed links with no Link Text showing the “e.g. Read more” placeholder as their text when the site’s language differs from the language their link type was set up in, and `getText()` ignoring the default text passed to it for those links.
 
 ## 3.1.0 - 2026-11-24
 
