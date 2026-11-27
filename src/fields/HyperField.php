@@ -15,6 +15,7 @@ use verbb\hyper\links as linkTypes;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
 use verbb\hyper\models\LinkTypeDefinition;
+use verbb\hyper\records\LinkRelation;
 use verbb\hyper\services\LinkFieldLifecycle;
 use verbb\hyper\services\Links;
 use verbb\hyper\services\LinkTypeConfigs;
@@ -36,6 +37,7 @@ use craft\fields\Matrix;
 use craft\helpers\App;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Cp;
+use craft\helpers\Db;
 use craft\helpers\Gql;
 use craft\helpers\Html;
 use craft\helpers\Json;
@@ -809,6 +811,17 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         return parent::canMergeFrom($outgoingField, $reason);
+    }
+
+    public function afterMergeFrom(FieldInterface $outgoingField): void
+    {
+        // Merged layouts keep their content but now point at this field. Move Hyper's own indexes too,
+        // as Craft does for its relations, so reverse relations and draft baselines survive the outgoing
+        // field being deleted. Owners are re-indexed in full the next time they're saved.
+        Db::update(LinkRelation::tableName(), ['fieldId' => $this->id], ['fieldId' => $outgoingField->id]);
+        Db::update('{{%hyper_draft_baselines}}', ['fieldId' => $this->id], ['fieldId' => $outgoingField->id], updateTimestamp: false);
+
+        parent::afterMergeFrom($outgoingField);
     }
 
     public function getLinkTypeByHandle(?string $handle): ?LinkInterface
