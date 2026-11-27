@@ -32,6 +32,8 @@ use craft\models\FieldLayoutTab;
 
 use Twig\Markup;
 
+use ReflectionMethod;
+
 abstract class Link extends Element implements LinkInterface
 {
     // Static Methods
@@ -276,6 +278,24 @@ abstract class Link extends Element implements LinkInterface
         }
 
         return get_object_vars($this);
+    }
+
+    public function __isset($name): bool
+    {
+        if ($getter = $this->_shadowedNativeGetter($name)) {
+            return $this->$getter() !== null;
+        }
+
+        return parent::__isset($name);
+    }
+
+    public function __get($name)
+    {
+        if ($getter = $this->_shadowedNativeGetter($name)) {
+            return $this->$getter();
+        }
+
+        return parent::__get($name);
     }
 
     public function count(): int|bool
@@ -1061,6 +1081,21 @@ abstract class Link extends Element implements LinkInterface
 
     // Private Methods
     // =========================================================================
+
+    private function _shadowedNativeGetter(string $name): ?string
+    {
+        $getter = 'get' . $name;
+
+        if (!method_exists($this, $getter) || $this->fieldByHandle($name) === null) {
+            return null;
+        }
+
+        // Craft reads layout fields before getters, so a field with the handle `text` would replace the
+        // link's own value. Hyper's getters win, as in GraphQL and filters; `getFieldValue()` reads the field.
+        $method = new ReflectionMethod($this, $getter);
+
+        return is_a($method->class, self::class, true) && $method->getNumberOfRequiredParameters() === 0 ? $getter : null;
+    }
 
     private function _isNativeFieldVisible(string $attribute): bool
     {

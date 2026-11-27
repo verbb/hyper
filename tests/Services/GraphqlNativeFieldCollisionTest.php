@@ -55,3 +55,47 @@ it('keeps native GraphQL fields authoritative while retaining colliding custom v
     'different GraphQL type' => [Number::class, 42],
     'same GraphQL type' => [PlainText::class, 'Custom description'],
 ]);
+
+it('resolves custom GraphQL fields whose handles match link getters outside the interface', function() {
+    $custom = new PlainText(['name' => 'Custom getter', 'handle' => F::handle('hyperGetter')]);
+    expect(Craft::$app->fields->saveField($custom))->toBeTrue();
+    $handles = ['linkType', 'resolvedNewWindow', 'ariaLabel', 'summary'];
+    $url = new Url();
+    $layout = Url::getDefaultFieldLayout();
+    $tab = $layout->getTabs()[0];
+    $tab->setElements([...$tab->getElements(), ...array_map(
+        fn(string $handle) => new CustomField($custom, ['uid' => StringHelper::UUID(), 'handle' => $handle]),
+        $handles,
+    )]);
+    $url->setFieldLayout($layout);
+    $field = F::hyperFieldWithLinkTypes([F::linkTypeConfig($url)]);
+    $section = F::entrySection($field);
+    $owner = F::plainEntry($section, 'Custom getter fields', [$field->handle => [[
+        'handle' => 'url', 'linkValue' => 'https://example.test/native', 'ariaLabel' => 'Native aria',
+        'fields' => array_combine($handles, array_map(fn(string $handle) => 'Custom ' . $handle, $handles)),
+    ]]]);
+    $entryType = $section->getEntryTypes()[0]->handle . '_Entry';
+    $linkType = $field->handle . '_Url_LinkType';
+    $schema = new GqlSchema(['uid' => StringHelper::UUID(), 'name' => 'Custom getter fields', 'scope' => ['sections.' . $section->uid . ':read']]);
+    $original = Craft::$app->gql;
+    $original->flushCaches();
+    $gql = new \craft\services\Gql();
+    Craft::$app->set('gql', $gql);
+    try {
+        $query = '{ entries(id: ' . $owner->id . ') { ... on ' . $entryType . ' { ' . $field->handle . ' { ... on ' . $linkType . ' { ' . implode(' ', $handles) . ' } } } } }';
+        $result = $gql->executeQuery($schema, $query, debugMode: true);
+        expect($result['errors'] ?? [])->toBe([], json_encode($result));
+
+        // Interface names keep Hyper's value. Other custom fields return their own value, even when a link getter shares the handle.
+        expect($result['data']['entries'][0][$field->handle][0])->toBe([
+            'linkType' => 'Custom linkType',
+            'resolvedNewWindow' => 'Custom resolvedNewWindow',
+            'ariaLabel' => 'Native aria',
+            'summary' => 'Custom summary',
+        ]);
+    } finally {
+        $gql->flushCaches();
+        Craft::$app->set('gql', $original);
+        $original->flushCaches();
+    }
+});

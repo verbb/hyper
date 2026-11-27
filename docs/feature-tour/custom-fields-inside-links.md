@@ -25,6 +25,10 @@ In the entry’s Twig template, access the custom field through the link. This e
 
 Check that the saved summary appears below the correct link. Fields on a selected destination are separate: `link.summary` reads the summary inside the link, while `link.getElement().summary` would read a field on the destination element.
 
+In Twig, a property that Hyper defines on links always returns Hyper’s value, even when a custom field in the layout has the same handle. This covers the names listed in [Link](/reference/link), such as `text`, `target` and `type`, and any other value with a `get` method on the link or its link type, such as `element`, `html` or `linkSite`. Read the custom field with `link.getFieldValue('text')`, or give it a unique handle in the layout. Properties that Craft defines on every element, such as `metadata`, still return the custom field, as they do on entries.
+
+In GraphQL, only the names in `HyperLinkInterface` return Hyper’s values. Any other custom field returns its own value under its handle. See [GraphQL interfaces and types](/graphql/interfaces-types#concrete-link-types-and-custom-fields).
+
 ## Filter by Custom Fields
 
 To show only featured resources, add a Lightswitch field with the handle `featured` to the same link layouts. Enable it on the links to include, save the entry, and use this in the entry template:

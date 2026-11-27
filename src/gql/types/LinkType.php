@@ -27,8 +27,11 @@ class LinkType extends ObjectType
 
     protected function resolve(mixed $source, array $arguments, mixed $context, ResolveInfo $resolveInfo): mixed
     {
-        // Element property access prefers custom fields; native GraphQL values must retain their getters.
-        return match ($resolveInfo->fieldName) {
+        // Native GraphQL values use their getters. Link property access prefers Hyper's getters over
+        // custom fields, so a content field outside the interface is read through `getFieldValue()`.
+        $fieldName = $resolveInfo->fieldName;
+
+        return match ($fieldName) {
             'link' => $source->getLink(),
             'linkText' => $source->getLinkText(),
             'linkUrl' => $source->getLinkUrl(),
@@ -38,7 +41,9 @@ class LinkType extends ObjectType
             'url' => $source->getUrl(),
             'urlPrefix' => $source->getUrlPrefix(),
             'linkUri' => $source->getLinkUri(),
-            default => $source[$resolveInfo->fieldName],
+            default => !LinkInterface::getType()->hasField($fieldName) && $source->getFieldLayout()?->getFieldByHandle($fieldName)
+                ? $source->getFieldValue($fieldName)
+                : $source[$fieldName],
         };
     }
 }
