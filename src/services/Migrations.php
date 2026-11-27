@@ -91,6 +91,8 @@ class Migrations extends Component
                     'flipbox\\craft\\link\\fields\\Link',
                     'flipbox\\link\\fields\\Link',
                 ],
+                // No Flipbox Link release installs on Craft 5, so its fields show the migration instead.
+                showInNavWithFields: true,
             ),
             'craft-link' => $this->_sourceInfo(
                 id: 'craft-link',
@@ -179,6 +181,7 @@ class Migrations extends Component
         array $steps,
         ?bool $readyOverride = null,
         ?array $oldFieldTypeClasses = null,
+        bool $showInNavWithFields = false,
     ): array {
         $installed = $pluginHandle
             ? Hyper::$plugin->getService()->isPluginInstalledAndEnabled($pluginHandle)
@@ -190,7 +193,7 @@ class Migrations extends Component
 
         // Content conversion runs after fields have changed, including on other environments.
         // Native Craft Link is always available; its menu must survive the field step too.
-        $showInNav = $installed;
+        $showInNav = $installed || ($showInNavWithFields && $fieldCount > 0);
 
         return [
             'id' => $id,

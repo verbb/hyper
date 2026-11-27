@@ -1,7 +1,7 @@
 # Migrating from Link
 If your existing site has links from [Link](https://github.com/flipboxfactory/craft-link), you can convert its fields and saved links to Hyper.
 
-To migrate your link fields and content, install Hyper, and navigate to **Hyper** → **Settings** → **Migrations** → **Link**. You'll need to have Link installed and enabled for this setting to appear.
+To migrate your link fields and content, install Hyper, and navigate to **Hyper** → **Settings** → **Migrations** → **Link (Flipbox)**. This setting appears while your site has Link fields that haven't been migrated to Hyper, so you don't need the Link plugin installed.
 
 Hyper's migrations will automatically take a database backup before the migration begins. If you encounter any errors during the migration, you **must** restore the backup before the migration, before running again.
 
@@ -29,6 +29,8 @@ You can also trigger this via a console command:
 
 ## Content Migration
 Next, we'll migrate your content. Click the **Migrate Content** button to begin the migration process. The next screen will show you the result of the migration and what errors or exceptions were encountered.
+
+Once your fields have been migrated, the **Link (Flipbox)** setting no longer appears under **Migrations**, including on environments that received the field changes through Project Config. To migrate content there, go to `hyper/settings/migrate/link` in the control panel, or run the console command below.
 
 This step can be re-run on any environment (like staging and production) safely, as Hyper will detect any content that's already been migrated over and skip it.
 

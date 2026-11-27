@@ -22,3 +22,44 @@ it('keeps native Craft Link content migration discoverable after converting its 
     expect(Hyper::$plugin->getMigrations()->getSource('craft-link')['fieldCount'])->toBe(0);
     expect($navigation->getSettingsNavItems())->toHaveKey('migrate-craft-link');
 });
+
+it('shows the Flipbox Link migration when its fields exist without the plugin', function(string $type) {
+    $db = Craft::$app->getDb();
+    $insert = function(string $fieldType, string $prefix) use ($db): int {
+        $db->createCommand()->insert('{{%fields}}', [
+            'name' => 'Uninstalled plugin field',
+            'handle' => F::handle($prefix),
+            'context' => 'global',
+            'type' => $fieldType,
+            'settings' => '{}',
+            'dateCreated' => craft\helpers\Db::prepareDateForDb(new DateTime()),
+            'dateUpdated' => craft\helpers\Db::prepareDateForDb(new DateTime()),
+            'uid' => craft\helpers\StringHelper::UUID(),
+        ])->execute();
+
+        return (int)$db->getLastInsertID();
+    };
+    $navigation = new HyperVariable();
+    expect(Craft::$app->getPlugins()->isPluginInstalled('link'))->toBeFalse();
+    expect($navigation->getSettingsNavItems())->not->toHaveKey('migrate-link');
+    $fieldIds = [];
+
+    try {
+        $fieldIds[] = $insert($type, 'flipboxLink');
+        // Other plugin sources still need their plugin installed.
+        $fieldIds[] = $insert('presseddigital\\linkit\\fields\\LinkitField', 'linkit');
+        $items = $navigation->getSettingsNavItems();
+
+        expect($items)->toHaveKey('migrate-link');
+        expect($items['migrate-link']['url'])->toContain('hyper/settings/migrate/link');
+        expect($items)->not->toHaveKey('migrate-linkit');
+        expect(Hyper::$plugin->getMigrations()->getSource('linkit')['fieldCount'])->toBe(1);
+    } finally {
+        $db->createCommand()->delete('{{%fields}}', ['id' => $fieldIds])->execute();
+    }
+
+    expect($navigation->getSettingsNavItems())->not->toHaveKey('migrate-link');
+})->with([
+    'current namespace' => 'flipbox\\craft\\link\\fields\\Link',
+    'pre-1.0 namespace' => 'flipbox\\link\\fields\\Link',
+]);

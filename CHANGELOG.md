@@ -36,6 +36,7 @@
 - Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
 - Fixed draft conflict protection not applying to Hyper fields in Matrix nested entries edited in a slideout through the entry’s draft, which let a later save overwrite another editor’s published changes.
 - Fixed GraphQL queries selecting `customAttributes` on Hyper links returning an error when Craft’s `lazyGqlTypes` setting is enabled.
+- Fixed the Link (Flipbox) migration not appearing under **Hyper → Settings → Migrations** on Craft 5, where Flipbox Link can’t be installed. It now appears while Flipbox Link fields remain to be migrated.
 
 ## 3.1.0 - 2026-11-24
 
