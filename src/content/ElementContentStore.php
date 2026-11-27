@@ -1,6 +1,9 @@
 <?php
 namespace verbb\hyper\content;
 
+use verbb\hyper\content\locators\MatrixNestedFieldLocator;
+use verbb\hyper\content\locators\NeoNestedFieldLocator;
+use verbb\hyper\content\locators\SuperTableNestedFieldLocator;
 use verbb\hyper\content\locators\VizyNestedFieldLocator;
 use verbb\hyper\fields\HyperField;
 
@@ -233,6 +236,10 @@ class ElementContentStore
 
         $this->_applyContentQueryFilters($query, $options);
 
+        if (!$options->includeNested) {
+            $this->_excludeNestedElements($query, $field);
+        }
+
         foreach (self::eachRowById($query, $this->_db) as $row) {
             if (!Json::isJsonObject($row['content'])) {
                 continue;
@@ -392,6 +399,41 @@ class ElementContentStore
                 new Expression('CAST([[content]] AS ' . ($this->_db->getDriverName() === 'pgsql' ? 'TEXT' : 'CHAR') . ')'),
                 $options->contentContains,
             ]);
+        }
+    }
+
+    private function _excludeNestedElements(Query $query, FieldInterface $field): void
+    {
+        if (!$field instanceof HyperField) {
+            return;
+        }
+
+        // Matrix entries and Neo and Super Table blocks are elements with their own content,
+        // so their values are found alongside top-level ones. Skip those owned by such a field.
+        $hostFieldIds = [];
+
+        foreach ((new NestedFieldPlacementFinder($this))->findPlacements($field) as $placement) {
+            $table = match (true) {
+                $placement->locator instanceof MatrixNestedFieldLocator => '{{%entries}}',
+                $placement->locator instanceof NeoNestedFieldLocator => '{{%neoblocks}}',
+                $placement->locator instanceof SuperTableNestedFieldLocator => '{{%supertableblocks}}',
+                default => null,
+            };
+
+            if ($table) {
+                $hostFieldIds[$table][] = $placement->hostField->id;
+            }
+        }
+
+        foreach ($hostFieldIds as $table => $fieldIds) {
+            if ($this->_db->getTableSchema($table) === null) {
+                continue;
+            }
+
+            $query->andWhere(['not in', 'elementId', (new Query())
+                ->select(['id'])
+                ->from($table)
+                ->where(['fieldId' => array_values(array_unique($fieldIds))])]);
         }
     }
 

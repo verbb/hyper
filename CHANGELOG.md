@@ -11,6 +11,7 @@
 - GraphQL queries now count Hyper fields, fields on linked elements that run once per link, and relational fields inside links towards Craft’s `maxGraphqlComplexity` limit, the same way Craft counts its own relation fields. Schemas with a complexity limit may reject large Hyper queries that they previously allowed.
 - GraphQL requests authenticated as a user, with a personal access token or OAuth on Craft 5.12 or later, now return `null` for links to entries and assets that user can’t view, matching Craft’s Entries and Assets fields.
 - Link rendering, `getLinkAttributes()` and GraphQL `customAttributes` now leave out Custom Attributes named `html` or `text`, and apply the same URL scheme rules to `formaction` and `action` as to `href`.
+- The `hyper/content/modify` console command now re-saves Hyper field values stored in an older format using the current format when run with `--dry-run=0`, and its dry run reports how many values it would re-save, as documented. Previously it reported and changed nothing. `--include-nested=0` on it and on `hyper/content/sync-relations`, and `includeNested: false` in `ModifyOptions`, now skip links in Matrix nested entries and Neo blocks.
 
 ### Fixed
 

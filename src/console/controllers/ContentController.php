@@ -1,6 +1,8 @@
 <?php
 namespace verbb\hyper\console\controllers;
 
+use verbb\hyper\content\ContentRef;
+use verbb\hyper\content\ElementContentStore;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\Hyper;
@@ -8,6 +10,7 @@ use verbb\hyper\models\LinkCollection;
 
 use Craft;
 use craft\helpers\Console;
+use craft\helpers\Json;
 
 use yii\console\Controller;
 use yii\console\ExitCode;
@@ -101,6 +104,7 @@ class ContentController extends Controller
             includeNested: (bool)$this->includeNested,
             elementIds: $elementIds,
             contentContains: $this->contentContains,
+            persistTransformedValues: true,
         );
 
         $this->stdout(sprintf(
@@ -110,9 +114,11 @@ class ContentController extends Controller
             $options->dryRun ? ' [dry run]' : '',
         ));
 
+        // Links are left as they are. A copy is returned only for values stored in an older
+        // format, so that just those are re-saved in the current one.
         $result = Hyper::$plugin->getContent()->modify(
             $field,
-            static fn(LinkCollection $collection): LinkCollection => $collection,
+            static fn(LinkCollection $collection, ContentRef $ref): LinkCollection => self::_isStoredInCurrentFormat($ref->value, $collection) ? $collection : clone $collection,
             $options,
         );
 
@@ -181,5 +187,29 @@ class ContentController extends Controller
         $this->stdout(sprintf("Owners reconciled: %d\n", $synced), Console::FG_GREEN);
 
         return ExitCode::OK;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    private static function _isStoredInCurrentFormat(mixed $stored, LinkCollection $collection): bool
+    {
+        // MySQL reorders the keys of stored JSON objects, so key order is not a difference.
+        return Json::encode(self::_sortKeys(ElementContentStore::decodeStored($stored)))
+            === Json::encode(self::_sortKeys($collection->serializeValues()));
+    }
+
+    private static function _sortKeys(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map(self::_sortKeys(...), $value);
     }
 }
