@@ -359,37 +359,38 @@ class LinkRelations extends Component
         $withPaths = array_values(array_unique($withPaths));
 
         foreach ($grouped as $elementType => $targets) {
-            $ids = array_values(array_unique(array_column($targets, 'targetId')));
+            // Each row names its target's site. Asking for every ID on every target site loaded a copy
+            // of each target per site once one link pointed elsewhere, so query each site's targets on
+            // their own, as Craft's eager loading does. Rows without a site keep the current site.
+            $idsBySite = [];
 
-            if (!$ids) {
-                continue;
+            foreach ($targets as $target) {
+                $idsBySite[$target['targetSiteId'] ?: ''][$target['targetId']] = $target['targetId'];
             }
 
-            $siteIds = array_values(array_unique(array_filter(array_column($targets, 'targetSiteId'))));
+            foreach ($idsBySite as $siteId => $ids) {
+                $query = $elementType::find()
+                    ->id(array_values($ids))
+                    ->status(null);
 
-            $query = $elementType::find()
-                ->id($ids)
-                ->status(null);
-
-            if (count($siteIds) === 1) {
-                $query->siteId($siteIds[0]);
-            } elseif ($siteIds) {
-                $query->siteId($siteIds);
-            }
-
-            if ($withPaths !== []) {
-                $query->with($withPaths);
-            }
-
-            $loadingTargets = $this->_loadingTargets;
-            $this->_loadingTargets = true;
-
-            try {
-                foreach ($query->all() as $element) {
-                    $this->_hydratedElements[$this->_elementCacheKey($element->id, $element->siteId)] = $element;
+                if ($siteId !== '') {
+                    $query->siteId($siteId);
                 }
-            } finally {
-                $this->_loadingTargets = $loadingTargets;
+
+                if ($withPaths !== []) {
+                    $query->with($withPaths);
+                }
+
+                $loadingTargets = $this->_loadingTargets;
+                $this->_loadingTargets = true;
+
+                try {
+                    foreach ($query->all() as $element) {
+                        $this->_hydratedElements[$this->_elementCacheKey($element->id, $element->siteId)] = $element;
+                    }
+                } finally {
+                    $this->_loadingTargets = $loadingTargets;
+                }
             }
         }
     }
