@@ -32,7 +32,8 @@ function contentModifyController(HyperField $field, bool $dryRun, bool $includeN
 
 /**
  * A top-level owner and a Matrix entry nested in it, both storing the field in Hyper 2's serialised shape,
- * plus an entry saved in the current format. Its revision holds a fourth copy of the field.
+ * plus an entry saved in the current format. The current entry's revision and the copy of the nested entry
+ * in the owner's revision hold two more copies of the field, both in the current format.
  */
 function contentModifyFixture(): array
 {
@@ -41,7 +42,21 @@ function contentModifyFixture(): array
     $section = F::entrySection($field);
     F::attachFieldToSection($section, $matrix['matrix']);
     $target = F::plainEntry($section, 'Modify target');
-    $owner = F::entryWithMatrixHyperLink($section, $matrix['matrix'], $matrix['hyperField'], $matrix['blockEntryType'], [F::urlLinkPayload('https://example.test/nested')]);
+
+    // Save the owner with its Matrix content in one go, so it always gets exactly one revision. Saving it
+    // empty first and then again (as `entryWithMatrixHyperLink()` does) only adds a second revision, with a
+    // copy of the nested entry, when the two saves land in different seconds.
+    $owner = F::plainEntry($section, 'Matrix Hyper owner', [
+        $matrix['matrix']->handle => [
+            'entries' => [
+                'new1' => [
+                    'type' => $matrix['blockEntryType']->handle,
+                    'fields' => [$matrix['hyperField']->handle => [F::urlLinkPayload('https://example.test/nested')]],
+                ],
+            ],
+            'sortOrder' => ['new1'],
+        ],
+    ]);
     $current = F::entryWithLinks($section, [F::urlLinkPayload('https://example.test/current', 'Current'), F::entryLinkPayload($target)]);
     $nestedId = (int)Entry::find()->ownerId($owner->id)->fieldId($matrix['matrix']->id)->status(null)->ids()[0];
     $legacy = [
@@ -85,13 +100,13 @@ it('modify reports and re-saves stored links that are not in the current format'
 
     $dryRun = contentModifyController($field, true, true);
     expect($dryRun->actionModify())->toBe(0);
-    expect($dryRun->output)->toContain("Matched: 4\nWould modify / modified: 2");
+    expect($dryRun->output)->toContain("Matched: 5\nWould modify / modified: 2");
     expect(contentModifyStored($f['owner']->id, $field)[0])->toHaveKey('type');
     expect(contentModifyRelationOwners($field))->toBe([]);
 
     $write = contentModifyController($field, false, true);
     expect($write->actionModify())->toBe(0);
-    expect($write->output)->toContain("Matched: 4\nWould modify / modified: 2");
+    expect($write->output)->toContain("Matched: 5\nWould modify / modified: 2");
 
     foreach ([$f['owner']->id, $f['nestedId']] as $elementId) {
         $stored = contentModifyStored($elementId, $field);
@@ -110,7 +125,7 @@ it('modify reports and re-saves stored links that are not in the current format'
 
     $again = contentModifyController($field, true, true);
     $again->actionModify();
-    expect($again->output)->toContain("Matched: 4\nWould modify / modified: 0");
+    expect($again->output)->toContain("Matched: 5\nWould modify / modified: 0");
 });
 
 it('modify and sync-relations skip Matrix nested entries when nested content is excluded', function() {
@@ -119,7 +134,7 @@ it('modify and sync-relations skip Matrix nested entries when nested content is 
 
     $withNested = contentModifyController($field, true, true);
     $withNested->actionModify();
-    expect($withNested->output)->toContain("Matched: 4\nWould modify / modified: 2");
+    expect($withNested->output)->toContain("Matched: 5\nWould modify / modified: 2");
 
     $withoutNested = contentModifyController($field, true, false);
     $withoutNested->actionModify();
