@@ -135,23 +135,24 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         return $values;
     }
 
-    private static function _recursiveImplode(array $array, string $glue = ',', bool $include_keys = false, bool $trim_all = false): string
+    /**
+     * Returns the stored values an editor would search for. Element links store IDs and
+     * Site links a site UID, so they have none.
+     */
+    private static function _linkValueKeywords(Link $link): array
     {
-        $glued_string = '';
+        if ($link->isElement() || $link instanceof linkTypes\Site) {
+            return [];
+        }
 
-        // Recursively iterates array and adds key/value to glued string
-        array_walk_recursive($array, function($value, $key) use ($glue, $include_keys, &$glued_string) {
-            $include_keys && $glued_string .= $key . $glue;
-            $glued_string .= $value . $glue;
-        });
+        $linkValue = $link->linkValue;
 
-        // Removes last $glue from string
-        $glue !== '' && $glued_string = substr($glued_string, 0, -strlen($glue));
+        // Embeds store their fetched provider data. Keep the entered URL and the title editors see on the card.
+        if ($link instanceof linkTypes\Embed) {
+            return is_array($linkValue) ? [$linkValue['url'] ?? null, $linkValue['title'] ?? null] : [$linkValue];
+        }
 
-        // Trim ALL whitespace
-        $trim_all && $glued_string = preg_replace("/(\s)/ixsm", '', $glued_string);
-
-        return (string)$glued_string;
+        return [$linkValue];
     }
 
     /**
@@ -1503,16 +1504,35 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
     protected function searchKeywords(mixed $value, ElementInterface $element): string
     {
-        $keywords = parent::searchKeywords($value, $element);
-
-        if ($value instanceof LinkCollection) {
-            $values = $value->serializeValues();
-            unset($values['type'], $values['handle'], $values['newWindow']);
-
-            $keywords = trim(self::_recursiveImplode($values, ' '));
+        if (!$value instanceof LinkCollection) {
+            return parent::searchKeywords($value, $element);
         }
 
-        return $keywords;
+        $keywords = [];
+
+        // Index what editors entered or see, not the stored payload. Stored links are read
+        // directly so destinations aren't resolved for keywords that never use them.
+        foreach ($value->getLinks() as $link) {
+            if (!$link instanceof Link) {
+                continue;
+            }
+
+            $keywords[] = $link->linkText;
+            $keywords[] = $link->ariaLabel;
+            $keywords[] = $link->linkTitle;
+            array_push($keywords, ...self::_linkValueKeywords($link));
+
+            // Follow Craft's nested fields: only searchable layout fields add keywords.
+            foreach ($link->getCustomFields() as $layoutField) {
+                if ($layoutField->searchable) {
+                    $keywords[] = $layoutField->getSearchKeywords($link->getFieldValue($layoutField->handle), $link);
+                }
+            }
+        }
+
+        $keywords = array_filter($keywords, fn($keyword) => is_scalar($keyword) && !is_bool($keyword) && (string)$keyword !== '');
+
+        return trim(StringHelper::toString($keywords, ' '));
     }
 
 
