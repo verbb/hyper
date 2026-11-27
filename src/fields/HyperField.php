@@ -610,6 +610,10 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
     public function serializeValue(mixed $value, ElementInterface $element = null): mixed
     {
         if ($value instanceof LinkCollection) {
+            if ($element) {
+                $value = Hyper::$plugin->getMultisiteLinks()->localizeEmbeddedValue($this, $value, $element);
+            }
+
             $value = $value->serializeValues($element);
             $value = self::_preserveScalarLinkValues($value);
 

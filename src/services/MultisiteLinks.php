@@ -102,6 +102,63 @@ class MultisiteLinks extends Component
         return false;
     }
 
+    public function localizeEmbeddedValue(HyperField $field, LinkCollection $collection, ElementInterface $element): LinkCollection
+    {
+        if (!class_exists(\verbb\vizy\elements\Block::class) || !$element instanceof \verbb\vizy\elements\Block) {
+            return $collection;
+        }
+
+        // Find the element that owns the outermost Vizy block, and the field that block holds.
+        $block = $element;
+        $inner = $field;
+
+        while (($owner = $block->getOwner()) instanceof \verbb\vizy\elements\Block) {
+            $inner = $this->_vizyFieldForBlock($owner, $block);
+
+            if (!$inner) {
+                return $collection;
+            }
+
+            $block = $owner;
+        }
+
+        // Only propagation from another site copies the document. Duplicates, such as drafts, keep each site's own content.
+        if (
+            !$owner instanceof ElementInterface ||
+            !$owner->propagating ||
+            !isset($owner->propagatingFrom) ||
+            isset($owner->duplicateOf) ||
+            $owner->propagatingFrom->siteId === $owner->siteId
+        ) {
+            return $collection;
+        }
+
+        $from = $owner->propagatingFrom;
+        $vizyField = $this->_vizyFieldForBlock($owner, $block);
+
+        if (!$vizyField) {
+            return $collection;
+        }
+
+        // Craft copies the whole Vizy document to a new site, and the edited document to sites that share
+        // it. No Hyper hook runs for that copy, so localize when it is serialized for the destination site.
+        $copied = $owner->isNewForSite || $owner->propagateAll || (
+            $from->isFieldDirty($vizyField->handle) &&
+            $vizyField->getTranslationKey($owner) === $vizyField->getTranslationKey($from)
+        );
+
+        // A shared Vizy field restores each site's own content for its translatable fields.
+        $restored = !$owner->isNewForSite &&
+            $vizyField->translationMethod === Field::TRANSLATION_METHOD_NONE &&
+            $inner->translationMethod !== Field::TRANSLATION_METHOD_NONE;
+
+        if (!$copied || $restored) {
+            return $collection;
+        }
+
+        return $this->localizeLinkCollection($field, $collection, $element, $from->siteId);
+    }
+
     public function localizeLinkCollection(
         HyperField $field,
         LinkCollectionInterface $collection,
@@ -339,5 +396,28 @@ class MultisiteLinks extends Component
     private function _serializeLinks(LinkCollectionInterface $collection): string
     {
         return json_encode($collection->serializeValues());
+    }
+
+    private function _vizyFieldForBlock(ElementInterface $owner, \verbb\vizy\elements\Block $block): ?\verbb\vizy\fields\VizyField
+    {
+        $layoutUid = $block->getFieldLayout()?->uid;
+
+        if (!$layoutUid) {
+            return null;
+        }
+
+        foreach ($owner->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+            if (!$field instanceof \verbb\vizy\fields\VizyField) {
+                continue;
+            }
+
+            foreach ($field->getBlockTypes() as $blockType) {
+                if ($blockType->getFieldLayout()?->uid === $layoutUid) {
+                    return $field;
+                }
+            }
+        }
+
+        return null;
     }
 }
