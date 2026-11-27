@@ -35,7 +35,7 @@ Vizy blocks are embedded content rather than independently persisted element own
 
 | Parameter | Required | Description |
 | --- | --- | --- |
-| `relatedTo.targetElement` | Yes | The target element, including its site context. |
+| `relatedTo.targetElement` | Yes | The target element, including its site context. Drafts and revisions resolve to their canonical element. |
 | `relatedTo.field` | Yes | Handle of the Hyper field on the owners. |
 | `elementType` | No | Owner element class. Defaults to `craft\elements\Entry`. |
 | `site` | No | Site for the owners. Defaults to the current site. |

@@ -432,13 +432,15 @@ class LinkRelations extends Component
 
         // Recorded owner/site pairs stay in a subquery. Loading them first and inlining one
         // condition per owner made every query grow with the number of incoming links.
+        // Rows only store canonical targets, so a draft or revision (such as the entry in Live
+        // Preview or a share link) matches through its canonical ID, as Craft's `relatedTo` does.
         $ownerPairs = (new Query())
             ->select(['ownerId', 'ownerSiteId'])
             ->from(['{{%hyper_links}}'])
             ->where([
                 'fieldId' => $hyperField->id,
                 'targetType' => $targetType,
-                'targetId' => $targetElement->id,
+                'targetId' => $targetElement->getCanonicalId(),
                 'targetSiteId' => $targetElement->siteId,
             ]);
 
