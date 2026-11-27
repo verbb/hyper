@@ -75,7 +75,7 @@ The `class` attribute for the link.
 
 **Type:** `HyperArrayType`
 
-The custom attributes for the link, as a JSON value. `HyperArrayType` is a scalar, so it doesn’t take a nested selection.
+The custom attributes for the link, as a JSON object of attribute names and values. Like [getCustomAttributes()](/reference/link#getcustomattributes) in Twig, it leaves out attributes that Hyper doesn’t render. `HyperArrayType` is a scalar, so it doesn’t take a nested selection.
 :::
 
 ::: reference

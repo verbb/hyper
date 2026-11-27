@@ -133,7 +133,7 @@ The value for the link’s `class` attribute.
 
 **Type:** `array`
 
-The extra HTML attributes for the link, as name and value pairs. Hyper validates the attribute names.
+The Custom Attributes rows as they were saved, each with an `attribute` and a `value` key. These rows aren’t validated, so build markup from [getCustomAttributes()](#getcustomattributes) or [getLinkAttributes()](#getlinkattributes) instead.
 :::
 
 
@@ -181,6 +181,14 @@ Passed classes are added to saved classes. Other passed attributes override save
 **Returns:** `Twig\Markup|array`
 
 Returns the link’s attributes as an array, or as Twig markup containing the attribute string when `$asString` is `true`. Use it to build your own anchor or button.
+:::
+
+::: reference
+### `getCustomAttributes()`
+
+**Returns:** `array`
+
+Returns the link’s Custom Attributes as attribute names and values, as `getLink()` and `getLinkAttributes()` render them. Invalid names and event-handler attributes such as `onclick` are left out, as are `href`, `xlink:href` and `ping` values whose URL scheme isn’t allowed. The saved rows are unchanged, and stay available as `customAttributes`.
 :::
 
 ::: reference

@@ -63,7 +63,7 @@ These field layout elements ship with Hyper. Add them per link type under the Hy
 | **Aria Label** | `ariaLabel` | `ariaLabel` | HTML `aria-label` attribute. **Not** in the default layout — add via the field layout designer. |
 | **Classes** | `classes` | `classes` | HTML `class` attribute. |
 | **Url Suffix** | `urlSuffix` | `urlSuffix` | Appended to resolved URL (`?query`, `#fragment`, path segments). |
-| **Custom Attributes** | `customAttributes` | `customAttributes` | HTML attribute name/value pairs. Invalid names and event-handler attributes are rejected. |
+| **Custom Attributes** | `customAttributes` | `getCustomAttributes()`, `customAttributes` | HTML attribute name/value pairs. `getCustomAttributes()` and rendered links leave out invalid names and event-handler attributes. `customAttributes` holds the saved rows unvalidated. |
 | **New Window** | `newWindow` | `newWindow`, `target` | Lightswitch in the layout. **Not** in the default layout (same as ARIA Label). When added, the header icon is hidden for that link type. Field setting **Enable New Window in Header** must still be on. |
 | **Embed Preview** | — | — | CP-only preview for Embed link types. |
 
