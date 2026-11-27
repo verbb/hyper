@@ -26,7 +26,7 @@ Element link types can expose a site menu in their selector. When enabled, this 
 
 Custom relation fields inside the link use the owning entry's site unless the custom field explicitly selects another target site. Choosing a different site for the link's main destination does not change those custom fields. For example, a French entry can link to an English article while a related Entry field inside that link still resolves French content.
 
-During propagation to another site, Hyper attempts to resolve localised element links in that destination site. If it finds an eligible translated element, it uses that element and site. If no eligible translation exists, it retains the source reference; it does not create or publish the missing translation. Check links on each site when the same destination is not published everywhere.
+During propagation to another site, Hyper attempts to resolve localised element links in that destination site. If it finds a translated element that’s enabled for that site, it uses that element and site, even when the destination is scheduled, expired or disabled overall, because those settings apply to every site. If the translation is missing or disabled for that site, Hyper keeps the source reference. It doesn't create or publish the missing translation. Check links on each site when the same destination is not published everywhere.
 
 A URL link remains the address the editor entered. Hyper cannot infer a translated equivalent of an arbitrary external or relative URL.
 

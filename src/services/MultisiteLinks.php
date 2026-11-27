@@ -10,7 +10,6 @@ use verbb\hyper\models\LinkCollectionInterface;
 
 use Craft;
 use craft\base\Component;
-use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\db\ElementQueryInterface;
@@ -311,13 +310,18 @@ class MultisiteLinks extends Component
             return $payload;
         }
 
+        // Publication dates and the overall Enabled setting are shared by every site, so the source
+        // reference is no more available than its translation. Only a copy switched off for the
+        // destination site keeps the source reference. Rendering still checks the status.
         $element = $this->resolveElement(
             $elementType,
             $referenceId,
             $targetSiteId,
-            Element::STATUS_ENABLED,
-            // Keep each type's normal lookup rules, including live status for entries.
-            fn(ElementQueryInterface $query, mixed $status) => $link->modifyElementQuery($query, $status),
+            null,
+            function(ElementQueryInterface $query, mixed $status) use ($link): void {
+                $link->modifyElementQuery($query, $status);
+                $query->andWhere(['elements_sites.enabled' => true]);
+            },
         );
 
         if ($element) {

@@ -40,6 +40,7 @@
 - Fixed the Link (Flipbox) migration not appearing under **Hyper → Settings → Migrations** on Craft 5, where Flipbox Link can’t be installed. It now appears while Flipbox Link fields remain to be migrated.
 - Fixed reverse relations and draft conflict checks losing track of a Hyper field’s owners after it was merged into another Hyper field with Craft’s `fields/merge` or `fields/auto-merge` command.
 - Fixed Hyper links to an asset disappearing when the asset was replaced by moving another file with the same name into its folder and choosing “Replace it”. Element links in Hyper fields now follow Craft’s element merges, including in drafts, revisions and nested entries, as Craft’s relation fields do.
+- Fixed Hyper fields set to **Not translatable** keeping the original site’s page for links to entries that were scheduled, expired or disabled when the link was saved, so other sites still linked to it once the entry went live. Links saved earlier are updated on the other sites the next time the field is edited.
 
 ## 3.1.0 - 2026-11-24
 

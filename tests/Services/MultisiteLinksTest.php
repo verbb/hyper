@@ -453,3 +453,49 @@ it('syncs links on nested Matrix entries only when the setting is on', function(
     $texts = array_map(fn($link) => $link->getCustomLinkText(), $reload($secondary)->getFieldValue($field->handle)->getLinks());
     expect($texts)->toBe($sync ? ['Un', 'Two'] : ['Un']);
 })->with([true, false]);
+
+it('localizes shared links to targets that are scheduled, expired or switched off everywhere', function(string $state, bool $localized) {
+    [$primary, $secondary] = HyperFixtureFactory::ensureSites(2);
+    $field = HyperFixtureFactory::hyperField(['translationMethod' => Field::TRANSLATION_METHOD_NONE]);
+    $section = HyperFixtureFactory::translatableEntrySection($field, 2);
+    $target = HyperFixtureFactory::localizedEntryPair($section, $primary, $secondary, 'Unpublished target')['primary'];
+    $reload = fn(int $id, $site) => Entry::find()->id($id)->siteId($site->id)->status(null)->one();
+
+    // Publication dates and the overall Enabled setting are shared by every site.
+    $target = $reload($target->id, $primary);
+    match ($state) {
+        'pending' => $target->postDate = new DateTime('+30 days'),
+        'expired' => [$target->postDate = new DateTime('-2 days'), $target->expiryDate = new DateTime('-1 day')],
+        'disabled' => $target->enabled = false,
+        'disabled for the destination site' => $target->setEnabledForSite([$primary->id => true, $secondary->id => false]),
+    };
+    expect(Craft::$app->elements->saveElement($target))->toBeTrue();
+
+    // Linked from an existing owner, as in the control panel, which records the selected site.
+    $owner = HyperFixtureFactory::plainEntry($section, 'Owner', [], $primary);
+    $owner->setFieldValue($field->handle, [HyperFixtureFactory::entryLinkPayload($target) + ['linkSiteId' => $primary->id]]);
+    expect(Craft::$app->elements->saveElement($owner))->toBeTrue();
+
+    $expectedSiteId = $localized ? $secondary->id : $primary->id;
+    $link = $reload($owner->id, $secondary)->getFieldValue($field->handle)->getLinks()[0];
+    expect($link->linkSiteId)->toBe($expectedSiteId);
+    $indexed = (new \craft\db\Query())->select('targetSiteId')->from('{{%hyper_links}}')
+        ->where(['ownerId' => $owner->id, 'ownerSiteId' => $secondary->id, 'fieldId' => $field->id])->column();
+    expect(array_map('intval', $indexed))->toBe([$expectedSiteId]);
+
+    // Once the target is published, the destination site links to its own copy.
+    $target = $reload($target->id, $primary);
+    $target->postDate = new DateTime('-1 hour');
+    $target->expiryDate = null;
+    $target->enabled = true;
+    expect(Craft::$app->elements->saveElement($target))->toBeTrue();
+    Hyper::$plugin->getLinkRelations()->resetRequestState();
+    $link = $reload($owner->id, $secondary)->getFieldValue($field->handle)->getLinks()[0];
+    expect($link->getElement()?->siteId)->toBe($expectedSiteId);
+})->with([
+    'pending' => ['pending', true],
+    'expired' => ['expired', true],
+    'disabled' => ['disabled', true],
+    // A copy switched off for one site keeps the documented fallback to the source reference.
+    'disabled for the destination site' => ['disabled for the destination site', false],
+]);
