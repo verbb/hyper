@@ -195,9 +195,19 @@ class DraftConflicts
                     continue;
                 }
 
-                $baseline = self::_row($field, $localized)['baseline'] ?? null;
+                $row = self::_row($field, $localized);
+                $baseline = $row['baseline'] ?? null;
                 $current = self::_hash($field, $canonical);
                 $proposed = self::_hash($field, $localized);
+
+                // A field added to the layout after the draft was created has no baseline. If the current
+                // entry has never stored it either, the draft started from the same empty value.
+                // Read the current entry through its own layout, which can differ when the draft changes entry type.
+                $canonicalField = $canonical->getFieldLayout()?->getFieldByHandle($field->handle);
+
+                if (!$row && $canonicalField instanceof HyperField && self::_storedValue($canonicalField, $canonical) === null) {
+                    $baseline = $current;
+                }
 
                 if ($current === $proposed || self::_matchesBaseline($baseline, $field, $canonical, $current) || self::_matchesLegacyBaseline($baseline, $field, $canonical)) {
                     continue;
@@ -319,13 +329,7 @@ class DraftConflicts
             return false;
         }
 
-        $content = (new Query())
-            ->select(['content'])
-            ->from(Table::ELEMENTS_SITES)
-            ->where(['elementId' => $current->id, 'siteId' => $current->siteId])
-            ->scalar();
-        $content = is_string($content) ? Json::decodeIfJson($content) : $content;
-        $stored = is_array($content) ? ($content[$field->layoutElement->uid] ?? null) : null;
+        $stored = self::_storedValue($field, $current);
 
         if ($stored === null) {
             return false;
@@ -345,6 +349,18 @@ class DraftConflicts
 
         // 3.0.0–3.0.7 combined both, and 3.1.0 resolved the handles alone.
         return $links->withFirstOfClassLegacyHandles($matches) || ($hasDisabledType && $links->withFirstOfClassLegacyHandles($disabledUnsupported));
+    }
+
+    private static function _storedValue(HyperField $field, ElementInterface $element): mixed
+    {
+        $content = (new Query())
+            ->select(['content'])
+            ->from(Table::ELEMENTS_SITES)
+            ->where(['elementId' => $element->id, 'siteId' => $element->siteId])
+            ->scalar();
+        $content = is_string($content) ? Json::decodeIfJson($content) : $content;
+
+        return is_array($content) ? ($content[$field->layoutElement->uid] ?? null) : null;
     }
 
     private static function _hasCustomTypeFirst(HyperField $field): bool

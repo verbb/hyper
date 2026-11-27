@@ -25,6 +25,7 @@
 - Fixed deleting Table rows inside a link causing an error when saving, and reordered Table rows inside a link reverting to their original order.
 - Fixed resaves, Feed Me imports and other queue jobs run from the control panel skipping elements whose Hyper fields link to something the signed-in user can’t view.
 - Fixed links with no Link Text showing the “e.g. Read more” placeholder as their text when the site’s language differs from the language their link type was set up in, and `getText()` ignoring the default text passed to it for those links.
+- Fixed drafts created before a Hyper field was added to their entry type failing to apply once that field was filled in.
 
 ## 3.1.0 - 2026-11-24
 

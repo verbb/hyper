@@ -613,3 +613,60 @@ it('saves an entry directly after changing to an entry type with a Hyper field t
     expect($published->typeId)->toBe($hyperType->id)
         ->and($published->getFieldValue($field->handle)->getUrl())->toBe('/type-change-save');
 });
+
+function hyperFieldAddedAfterDraftFixture(): array
+{
+    $section = F::entrySection();
+    $owner = F::plainEntry($section, 'Field added owner');
+    $draft = Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Before the field');
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    // The layout designer adds the field to the same layout without resaving entries.
+    F::attachFieldToEntryType(Craft::$app->entries->getEntryTypesBySectionId($section->id)[0], $field);
+
+    return [$owner, $field, Entry::find()->id($draft->id)->drafts(true)->status(null)->one()];
+}
+
+it('applies a draft created before its entry type gained a Hyper field the current entry never stored', function() {
+    [$owner, $field, $draft] = hyperFieldAddedAfterDraftFixture();
+    $draft->setFieldValue($field->handle, [F::urlLinkPayload('/added-later')]);
+    expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+    Craft::$app->drafts->applyDraft(Entry::find()->id($draft->id)->drafts(true)->status(null)->one());
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/added-later');
+});
+
+it('blocks a draft created before its entry type gained a Hyper field once the current entry stored a value', function() {
+    [$owner, $field, $draft] = hyperFieldAddedAfterDraftFixture();
+    $current = Entry::find()->id($owner->id)->one();
+    $current->setFieldValue($field->handle, [F::urlLinkPayload('/published-first')]);
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+    $draft->setFieldValue($field->handle, [F::urlLinkPayload('/draft-later')]);
+    expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+    $draft = Entry::find()->id($draft->id)->drafts(true)->status(null)->one();
+    expect(fn() => Craft::$app->drafts->applyDraft($draft))->toThrow(InvalidElementException::class, 'Your draft is saved');
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/published-first')
+        ->and(Entry::find()->id($draft->id)->drafts(true)->status(null)->one()->getFieldValue($field->handle)->getUrl())->toBe('/draft-later');
+});
+
+it('still blocks a draft that changes to another entry type sharing the Hyper field when the current entry changed since', function() {
+    $field = F::hyperField(['linkTypes' => [Url::class]]);
+    $section = F::entrySection($field);
+    $typeB = new \craft\models\EntryType(['name' => 'Shared field type', 'handle' => F::handle('sharedFieldType'), 'hasTitleField' => true]);
+    expect(Craft::$app->entries->saveEntryType($typeB))->toBeTrue();
+    F::attachFieldToEntryType($typeB, $field);
+    $section->setEntryTypes([...$section->getEntryTypes(), $typeB]);
+    expect(Craft::$app->entries->saveSection($section))->toBeTrue();
+    $owner = F::plainEntry($section, 'Type change', [$field->handle => [F::urlLinkPayload('/a')]]);
+
+    // The other type's layout gives the field a different layout UID, under which the current entry stored nothing.
+    $draft = Craft::$app->drafts->createDraft($owner, User::find()->admin()->one()->id, 'Type change');
+    $draft->setTypeId($typeB->id);
+    $draft->setFieldValue($field->handle, [F::urlLinkPayload('/draft-edit')]);
+    expect(Craft::$app->elements->saveElement($draft))->toBeTrue();
+
+    $current = Entry::find()->id($owner->id)->one();
+    $current->setFieldValue($field->handle, [F::urlLinkPayload('/newer-published')]);
+    expect(Craft::$app->elements->saveElement($current))->toBeTrue();
+
+    expect(fn() => Craft::$app->drafts->applyDraft(Entry::find()->id($draft->id)->drafts(true)->status(null)->one()))->toThrow(InvalidElementException::class);
+    expect(Entry::find()->id($owner->id)->one()->getFieldValue($field->handle)->getUrl())->toBe('/newer-published');
+});
