@@ -210,6 +210,7 @@ class Hyper extends Plugin
         Event::on(Drafts::class, Drafts::EVENT_BEFORE_APPLY_DRAFT, [DraftConflicts::class, 'apply']);
         Event::on(Drafts::class, Drafts::EVENT_AFTER_APPLY_DRAFT, [$this->getLinkRelations(), 'handleAfterApplyDraft']);
         Event::on(Elements::class, Elements::EVENT_AFTER_MERGE_CANONICAL_CHANGES, [DraftConflicts::class, 'merged']);
+        Event::on(Elements::class, Elements::EVENT_AFTER_MERGE_ELEMENTS, [$this->getContent(), 'handleAfterMergeElements']);
 
         // Hijack requests to `actions/matrix/create-entry` to handle non-saved-element owners.
         Event::on(Controller::class, Controller::EVENT_BEFORE_ACTION, function(ActionEvent $event) {

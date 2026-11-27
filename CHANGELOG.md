@@ -39,6 +39,7 @@
 - Fixed GraphQL queries selecting `customAttributes` on Hyper links returning an error when Craft’s `lazyGqlTypes` setting is enabled.
 - Fixed the Link (Flipbox) migration not appearing under **Hyper → Settings → Migrations** on Craft 5, where Flipbox Link can’t be installed. It now appears while Flipbox Link fields remain to be migrated.
 - Fixed reverse relations and draft conflict checks losing track of a Hyper field’s owners after it was merged into another Hyper field with Craft’s `fields/merge` or `fields/auto-merge` command.
+- Fixed Hyper links to an asset disappearing when the asset was replaced by moving another file with the same name into its folder and choosing “Replace it”. Element links in Hyper fields now follow Craft’s element merges, including in drafts, revisions and nested entries, as Craft’s relation fields do.
 
 ## 3.1.0 - 2026-11-24
 

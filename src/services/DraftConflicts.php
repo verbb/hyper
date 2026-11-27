@@ -60,6 +60,42 @@ class DraftConflicts
         }
     }
 
+    /**
+     * Run a write that changes canonical content outside a save, such as following an element merge. Drafts that
+     * started from a canonical value the write changes then start from its new value, so applying them doesn't
+     * report the write as a conflicting edit.
+     *
+     * @internal
+     */
+    public static function rebase(array $canonicalIds, callable $write): void
+    {
+        $rows = $canonicalIds ? (new Query())
+            ->select(['b.draftId', 'b.siteId', 'b.layoutUid', 'b.baseline', 'e.canonicalId'])
+            ->from(['b' => '{{%hyper_draft_baselines}}'])
+            ->innerJoin(['e' => Table::ELEMENTS], '[[e.id]] = [[b.draftId]]')
+            ->where(['e.canonicalId' => $canonicalIds])
+            ->all() : [];
+
+        $before = self::_canonicalHashes($rows);
+        $write();
+
+        if (!$before) {
+            return;
+        }
+
+        $after = self::_canonicalHashes($rows);
+
+        foreach ($rows as $row) {
+            $key = $row['canonicalId'] . ':' . $row['siteId'] . ':' . $row['layoutUid'];
+
+            if (isset($before[$key], $after[$key]) && $row['baseline'] === $before[$key] && $after[$key] !== $before[$key]) {
+                Craft::$app->getDb()->createCommand()->update('{{%hyper_draft_baselines}}', ['baseline' => $after[$key]], [
+                    'draftId' => $row['draftId'], 'siteId' => $row['siteId'], 'layoutUid' => $row['layoutUid'],
+                ])->execute();
+            }
+        }
+    }
+
     public static function inputToken(HyperField $field, ?ElementInterface $owner): ?string
     {
         if (!$owner?->id || !$owner::hasDrafts() || $owner instanceof LinkInterface || $owner->getIsRevision() || !$field->layoutElement?->uid) {
@@ -275,6 +311,35 @@ class DraftConflicts
                 }
             }
         });
+    }
+
+    private static function _canonicalHashes(array $rows): array
+    {
+        $hashes = [];
+
+        foreach ($rows as $row) {
+            $key = $row['canonicalId'] . ':' . $row['siteId'] . ':' . $row['layoutUid'];
+
+            if (array_key_exists($key, $hashes)) {
+                continue;
+            }
+
+            // Load each canonical afresh, so the hashes taken after the write read its new content.
+            $hashes[$key] = null;
+            $canonical = Craft::$app->getElements()->getElementById((int)$row['canonicalId'], null, (int)$row['siteId'], ['status' => null, 'trashed' => null]);
+
+            foreach ($canonical?->getFieldLayout()?->getCustomFieldElements() ?? [] as $placement) {
+                $field = $placement->uid === $row['layoutUid'] ? $placement->getField() : null;
+
+                if ($field instanceof HyperField) {
+                    $hashes[$key] = self::_hash($field, $canonical);
+
+                    break;
+                }
+            }
+        }
+
+        return array_filter($hashes);
     }
 
     private static function _validateDerivativeUpdate(HyperField $field, ElementInterface $element, ElementInterface $derivative): bool

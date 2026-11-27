@@ -2,16 +2,20 @@
 namespace verbb\hyper\services;
 
 use verbb\hyper\Hyper;
+use verbb\hyper\base\ElementLink;
 use verbb\hyper\content\adapters\HyperFieldAdapter;
+use verbb\hyper\content\Change;
 use verbb\hyper\content\ContentRef;
 use verbb\hyper\content\ElementContentStore;
 use verbb\hyper\content\ModifyOptions;
 use verbb\hyper\content\ModifyResult;
 use verbb\hyper\content\RawContentMethods;
+use verbb\hyper\content\RawJson;
 use verbb\hyper\fields\HyperField;
 use verbb\hyper\links\Site as SiteLink;
 use verbb\hyper\models\LinkCollection;
 use verbb\hyper\models\LinkInstance;
+use verbb\hyper\records\LinkRelation as LinkRelationRecord;
 use verbb\hyper\services\LinkTypeConfigs;
 
 use Craft;
@@ -29,9 +33,13 @@ use craft\elements\Tag;
 use craft\elements\User;
 use craft\elements\db\ElementQuery;
 use craft\events\DeleteSiteEvent;
+use craft\events\MergeElementsEvent;
+use craft\helpers\Db;
 use craft\helpers\ElementHelper;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
+
+use yii\db\Expression;
 
 use RuntimeException;
 use Throwable;
@@ -230,9 +238,102 @@ class Content extends Component
         $this->_pruneElementContent($siteUid);
     }
 
+    public function handleAfterMergeElements(MergeElementsEvent $event): void
+    {
+        $mergedId = (int)$event->mergedElementId;
+        $prevailingId = (int)$event->prevailingElementId;
+
+        if (!$mergedId || !$prevailingId || $mergedId === $prevailingId) {
+            return;
+        }
+
+        // Craft points relation fields at the prevailing element, on drafts, revisions and trashed elements too,
+        // then fires this event before deleting the merged element. Do the same for Hyper's element links.
+        $types = (new Query())->select(['type'])->from(Table::ELEMENTS)->where(['id' => [$mergedId, $prevailingId]])->indexBy('id')->column();
+        $elementType = $types[$mergedId] ?? null;
+        $fields = array_filter(Craft::$app->getFields()->getAllFields(false), static fn($field): bool => $field instanceof HyperField);
+
+        // Each element link type targets one element type, so a link can only follow a merge within that type.
+        if (!$elementType || $elementType !== ($types[$prevailingId] ?? null) || !$fields) {
+            return;
+        }
+
+        // One scan finds every content row that could link to the merged element, so each field's own scan,
+        // including values nested in Matrix, Neo, Vizy and other links, only reads those rows.
+        $db = Craft::$app->getDb();
+        $elementIds = (new Query())
+            ->select(['elementId'])
+            ->distinct()
+            ->from(Table::ELEMENTS_SITES)
+            ->where(['not', ['content' => null]])
+            ->andWhere(['like', new Expression('CAST([[content]] AS ' . ($db->getDriverName() === 'pgsql' ? 'TEXT' : 'CHAR') . ')'), (string)$mergedId])
+            ->column();
+
+        foreach (array_chunk(array_map('intval', $elementIds), 500) as $chunk) {
+            // Drafts are rewritten too, so rebase their conflict baselines on the rewritten canonical content.
+            DraftConflicts::rebase($chunk, function() use ($fields, $chunk, $mergedId, $prevailingId, $elementType): void {
+                foreach ($fields as $field) {
+                    $this->modifyRaw($field, function(mixed $value) use ($field, $mergedId, $prevailingId, $elementType): array {
+                        $merged = $this->_mergeElementLinks($field, $value, $mergedId, $prevailingId, $elementType);
+
+                        return $merged === $value ? Change::unchanged() : Change::replace($merged);
+                    }, new ModifyOptions(syncRelations: false, elementIds: $chunk));
+                }
+            });
+        }
+
+        // Content now matches, so move the reverse-relation index the same way Craft moves its relations.
+        Db::update(LinkRelationRecord::tableName(), ['targetId' => $prevailingId], ['targetId' => $mergedId]);
+    }
+
 
     // Private Methods
     // =========================================================================
+
+    private function _mergeElementLinks(HyperField $field, mixed $value, int $mergedId, int $prevailingId, string $elementType): mixed
+    {
+        $rows = is_string($value) ? Json::decodeIfJson($value) : $value;
+
+        if (!is_array($rows) || !array_is_list($rows)) {
+            return $value;
+        }
+
+        $isMerged = static fn(mixed $id): bool => (is_int($id) || (is_string($id) && ctype_digit($id))) && (int)$id === $mergedId;
+        $before = $rows;
+
+        foreach ($rows as &$row) {
+            if (!is_array($row) || !isset($row['linkValue'])) {
+                continue;
+            }
+
+            $linkValue = $row['linkValue'];
+            $ids = is_array($linkValue) ? $linkValue : [$linkValue];
+
+            if (!array_filter($ids, $isMerged)) {
+                continue;
+            }
+
+            // Resolve the link type as hydration does, including legacy handles, without hydrating the link.
+            $handle = LinkInstance::fromSerialized($row, $field)->linkTypeHandle;
+            $linkType = $handle !== '' ? $field->getLinkTypeByHandle($handle) : null;
+
+            if (!$linkType instanceof ElementLink || !is_a($elementType, $linkType::elementType(), true)) {
+                continue;
+            }
+
+            // Keep the stored shape (an ID list, or a legacy single ID) and its ID types.
+            $ids = array_map(static fn(mixed $id): mixed => $isMerged($id) ? (is_string($id) ? (string)$prevailingId : $prevailingId) : $id, $ids);
+            $row['linkValue'] = is_array($linkValue) ? array_values(array_unique($ids, SORT_REGULAR)) : $ids[0];
+        }
+
+        unset($row);
+
+        if ($rows === $before) {
+            return $value;
+        }
+
+        return is_string($value) ? RawJson::encode(RawJson::preserve($value, $rows)) : $rows;
+    }
 
     private function _pruneHyperFieldSettings(string $siteUid): void
     {
