@@ -188,7 +188,7 @@ Returns the link’s attributes as an array, or as Twig markup containing the at
 
 **Returns:** `array`
 
-Returns the link’s Custom Attributes as attribute names and values, as `getLink()` and `getLinkAttributes()` render them. Invalid names and event-handler attributes such as `onclick` are left out, as are `href`, `xlink:href` and `ping` values whose URL scheme isn’t allowed. The saved rows are unchanged, and stay available as `customAttributes`.
+Returns the link’s Custom Attributes as attribute names and values, as `getLink()` and `getLinkAttributes()` render them. Invalid names and event-handler attributes such as `onclick` are left out, as are `href`, `xlink:href`, `ping`, `formaction` and `action` values whose URL scheme isn’t allowed. Rows named `html` or `text` are left out too, so passing the attributes to Craft’s `tag()` function keeps the label your template supplies. The saved rows are unchanged, and stay available as `customAttributes`.
 :::
 
 ::: reference

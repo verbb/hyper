@@ -902,6 +902,14 @@ abstract class Link extends Element implements LinkInterface
                 continue;
             }
 
+            $lowerName = strtolower($name);
+
+            // Craft's `tag()` function reads `html` as raw content and `text` as the label, so author
+            // rows with these names would replace the template's label. Template-supplied values still apply.
+            if (in_array($lowerName, ['html', 'text'], true)) {
+                continue;
+            }
+
             $attributeValue = $value['value'] ?? '';
 
             // Author values come from text cells. Yii expands structured data/aria
@@ -910,9 +918,10 @@ abstract class Link extends Element implements LinkInterface
                 continue;
             }
 
-            // Author attributes can override the native destination. Enforce the same
-            // policy here; caller-supplied template attributes remain explicitly trusted.
-            if (in_array(strtolower($name), ['href', 'xlink:href', 'ping'], true)) {
+            // Author attributes can override the native destination, or set one for a button or
+            // form built from these attributes. Enforce the same policy here; caller-supplied
+            // template attributes remain explicitly trusted.
+            if (in_array($lowerName, ['href', 'xlink:href', 'ping', 'formaction', 'action'], true)) {
                 $extra = Hyper::$plugin?->getSettings()->allowedUriSchemes ?? [];
 
                 if (!is_string($attributeValue) || !UrlSafety::isAllowedUrl($attributeValue, $extra)) {
@@ -922,7 +931,7 @@ abstract class Link extends Element implements LinkInterface
 
             // A blank download filename still enables downloading. Keep its
             // stored value textual so editable-table resaves preserve that intent.
-            if (strtolower($name) === 'download' && $attributeValue === '') {
+            if ($lowerName === 'download' && $attributeValue === '') {
                 $attributeValue = true;
             }
 
