@@ -15,6 +15,7 @@ use craft\helpers\Json;
 use yii\db\Connection;
 use yii\db\Expression;
 
+use Generator;
 use RuntimeException;
 
 class ElementContentStore
@@ -33,6 +34,32 @@ class ElementContentStore
         }
 
         return $stored;
+    }
+
+    /**
+     * Iterate a query's rows in pages ordered by its `id` column, which the query must select.
+     *
+     * @internal
+     */
+    public static function eachRowById(Query $query, Connection $db, int $batchSize = 100): Generator
+    {
+        // MySQL buffers a whole result set in PHP memory, which each() can't avoid. Paging keeps large
+        // content scans, such as migrations and relation rebuilds, within the memory limit.
+        $after = 0;
+
+        do {
+            $rows = (clone $query)
+                ->andWhere(['>', 'id', $after])
+                ->orderBy(['id' => SORT_ASC])
+                ->limit($batchSize)
+                ->all($db);
+
+            foreach ($rows as $row) {
+                $after = (int)$row['id'];
+
+                yield $row;
+            }
+        } while (count($rows) === $batchSize);
     }
 
 
@@ -206,7 +233,7 @@ class ElementContentStore
 
         $this->_applyContentQueryFilters($query, $options);
 
-        foreach ($query->each(db: $this->_db) as $row) {
+        foreach (self::eachRowById($query, $this->_db) as $row) {
             if (!Json::isJsonObject($row['content'])) {
                 continue;
             }
@@ -274,7 +301,7 @@ class ElementContentStore
 
         $this->_applyContentQueryFilters($query, $options);
 
-        foreach ($query->each(db: $this->_db) as $row) {
+        foreach (self::eachRowById($query, $this->_db) as $row) {
             if (!Json::isJsonObject($row['content'])) {
                 continue;
             }

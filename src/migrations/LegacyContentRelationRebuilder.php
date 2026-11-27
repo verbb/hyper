@@ -69,6 +69,7 @@ class LegacyContentRelationRebuilder
 
             $query = (new Query())
                 ->select([
+                    'id',
                     'elementId',
                     'siteId',
                     'value' => $column,
@@ -77,7 +78,7 @@ class LegacyContentRelationRebuilder
                 ->where(['not', [$column => null]])
                 ->andWhere(['<>', $column, '']);
 
-            foreach ($query->each(db: $this->_db) as $row) {
+            foreach (ElementContentStore::eachRowById($query, $this->_db) as $row) {
                 $ownerId = (int)$row['elementId'];
                 $ownerSiteId = (int)$row['siteId'];
 
