@@ -3,7 +3,7 @@ Hyper 3 is a major release with storage, performance, and API changes. Use this 
 
 Coming from Hyper 1 on Craft 4? Follow [Upgrading from v1](/get-started/upgrading-from-v1) for the direct upgrade, then review the changes below.
 
-Update the `verbb/hyper` requirement to `^3.0` and run `php craft up`. Hyper rebuilds its link relations during the update, so links don't need resaving. The update also adds a Default Link Type Config to your project config, which you commit and deploy with your code changes.
+Update the `verbb/hyper` requirement to `^3.0` and run `php craft up`. Hyper rebuilds its link relations during the update, so links don't need resaving. Embed links need their metadata fetched again with a console command, as described in [Embed Links Need Refreshing](#embed-links-need-refreshing). The update also adds a Default Link Type Config to your project config, which you commit and deploy with your code changes.
 
 ## Breaking Changes
 
@@ -35,11 +35,26 @@ return [
 
 The legacy flat format is rejected because it would send the same credentials to every embed request. Origins must use HTTPS and match the scheme, hostname and port exactly; subdomains do not inherit headers.
 
+### Embed Links Need Refreshing
+
+Hyper 3 only renders an Embed link’s HTML from metadata that Hyper fetched and signed, so stored embed HTML can’t be altered before it reaches your pages. Hyper 2 saved embed metadata without a signature. After updating, `link.getHtml()` and `link.getIframeSrc()` return null for those links, as do the `html` and `iframeSrc` fields in GraphQL, and templates that fall back to a plain link show that link in place of the player. The URL, title and other metadata still load. The next time an element with these links is saved, including by a resave or by propagation to another site, Hyper removes the old embed HTML from its stored data.
+
+After running `php craft up`, fetch the metadata again with the `hyper/content/refresh-embeds` console command. Run it without options first. This dry run lists the links that need refreshing without contacting any provider. Then run it with `--dry-run=0` to fetch and save the metadata:
+
+```shell
+php craft hyper/content/refresh-embeds
+php craft hyper/content/refresh-embeds --dry-run=0
+```
+
+Hyper fetches each URL once, applying the link type’s allowed domains and your `embedHeaders` setting, and saves the signed result on every element, draft and revision that uses it. The command reports any link it couldn’t fetch, such as a video the provider no longer serves, and that link stays a plain link. The command updates content, so run it in each environment after updating. [Console Commands](/developers/console-commands) lists the options for limiting it to one field or to particular elements.
+
+Check a page that shows an embed, then run the dry run again. It should report no links left to refresh, apart from any that failed.
+
 ### Link Content Shape
 
 Saved link content now identifies its link type with a stable **`linkTypeHandle`** only. Hyper 2 saved a PHP class name in `type` alongside a `handle`. Hyper 3 reads these older values when loading existing content, but new saves identify the type with `linkTypeHandle`.
 
-This only affects you if you read the raw field content JSON directly or depend on the class name in `type` — normal Twig and PHP model access is unchanged.
+This only affects you if you read the raw field content JSON directly or depend on the class name in `type`. The new shape doesn't change how Twig and PHP read links. Embed links do need refreshing for a separate reason, described in [Embed Links Need Refreshing](#embed-links-need-refreshing).
 
 A stored URL link — `type` is gone in v3 and `handle` becomes `linkTypeHandle`:
 

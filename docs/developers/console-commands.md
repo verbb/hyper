@@ -120,7 +120,7 @@ php craft hyper/migrate/entrify-categories
 
 ## Content
 
-These commands work on content already stored in a Hyper field. Both are dry runs unless you pass `--dry-run=0`.
+These commands work on content already stored in a Hyper field. Each is a dry run unless you pass `--dry-run=0`.
 
 ::: reference
 ### `hyper/content/modify`
@@ -157,6 +157,28 @@ Rebuilds Hyper’s relation rows for a field from the link data saved on each ow
 ```shell
 php craft hyper/content/sync-relations --field=navLinks
 php craft hyper/content/sync-relations --field=navLinks --dry-run=0
+```
+:::
+
+::: reference
+### `hyper/content/refresh-embeds`
+
+Fetches the metadata of Embed links again and saves it, for links whose stored embed data Hyper didn’t fetch itself. Embed links only render their embed HTML from metadata that Hyper fetched and signed, so links saved with only a URL, or with metadata your own code wrote without `Embed::prepareEmbedData()`, render as plain links until they’re refreshed. Run it after upgrading, as the [upgrade guide](/get-started/upgrading-from-v2#embed-links-need-refreshing) describes. Links that Hyper fetched already are left as they are, and links of an Embed link type that’s disabled on the field are refreshed too.
+
+The dry run lists the links it would refresh without contacting any provider. With `--dry-run=0`, Hyper fetches each URL once, applying the link type’s allowed domains, and saves the result on every element, draft and revision that uses it. If a fetch fails, the command reports the error and carries on with the other links, so you can run it again later for the ones that failed.
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `--field` | The handle of a Hyper field to process. | Every Hyper field with an Embed link type |
+| `--dry-run` | Set to `0` to fetch and save the metadata. By default the command only lists the links it would refresh. | `1` |
+| `--include-nested` | Set to `0` to skip instances of the field inside Matrix, Neo, Super Table and Vizy fields. | `1` |
+| `--element-ids` | A comma-separated list of owner element IDs to limit the command to. | All owners |
+| `--content-contains` | Only process owners whose stored link data contains this text. | |
+
+```shell
+php craft hyper/content/refresh-embeds
+php craft hyper/content/refresh-embeds --dry-run=0
+php craft hyper/content/refresh-embeds --field=videos --element-ids=12,48 --dry-run=0
 ```
 :::
 

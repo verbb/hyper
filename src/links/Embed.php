@@ -55,7 +55,8 @@ class Embed extends Link
         }
 
         try {
-            $client = new EmbedClient($allowedDomains ?? $settings->embedAllowedDomains, $settings->getEmbedClientSettings(), $settings->embedHeaders);
+            // Resolved through Craft's container so tests can route requests to a local server.
+            $client = Craft::createObject(EmbedClient::class, [$allowedDomains ?? $settings->embedAllowedDomains, $settings->getEmbedClientSettings(), $settings->embedHeaders]);
             $crawler = new Crawler($client);
 
             $embed = new \Embed\Embed($crawler);
@@ -393,6 +394,15 @@ class Embed extends Link
         unset($data[self::SIGNATURE_KEY]);
 
         return $data;
+    }
+
+    /**
+     * Whether the stored metadata carries a valid Hyper signature for an allowed URL.
+     * Metadata without one, such as data saved by Hyper 1 and 2, never renders its code.
+     */
+    public function hasTrustedEmbedData(): bool
+    {
+        return is_array($this->linkValue) && $this->_trustedEmbedData($this->linkValue) !== null;
     }
 
     public function getSerializedValues(): array

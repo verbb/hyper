@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Added the `hyper/content/refresh-embeds` console command, which fetches the metadata of Embed links saved by Hyper 1 or 2 again so they render their embed HTML. Until then, these links render as plain links. See [Upgrading from v2](https://verbb.io/craft-plugins/hyper/docs/v3/get-started/upgrading-from-v2#embed-links-need-refreshing).
+
 ### Changed
 
 - Clearing a link in a Hyper field, or leaving an added link blank, now stores nothing, as Craft’s Link field does. The field counts as empty in `:empty:` queries, the “is empty” filter and validation, and a cleared link no longer counts towards the minimum number of links or requires Link Text. Blank links saved before updating are removed the next time their element is saved.

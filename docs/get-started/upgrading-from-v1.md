@@ -8,7 +8,7 @@ Try the upgrade on a copy of your site before updating production. Keep a backup
 
 Start from the latest Craft 4 and Hyper 1 releases. Follow Craft’s [Craft 5 upgrade guide](https://craftcms.com/docs/5.x/upgrade.html) for the required preparation, dependency changes and deployment steps. Hyper requires Craft 5.9 or later and PHP 8.2 or later. Update other plugins to compatible Craft 5 versions too, including any that contain Hyper fields, such as Neo, Super Table and Vizy.
 
-Read [Upgrading from v2](/get-started/upgrading-from-v2) for Hyper 3’s template, configuration and API changes. Those changes also apply when you skip Hyper 2. Pay particular attention to links using environment variables or Craft aliases, Passive labels, custom link types and GraphQL fragments.
+Read [Upgrading from v2](/get-started/upgrading-from-v2) for Hyper 3’s template, configuration and API changes. Those changes also apply when you skip Hyper 2. Pay particular attention to links using environment variables or Craft aliases, Embed links, Passive labels, custom link types and GraphQL fragments.
 
 ## Upgrade Craft and Hyper Together
 
