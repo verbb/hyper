@@ -181,26 +181,33 @@ class LinkRelations extends Component
             return [];
         }
 
-        $query = (new Query())
-            ->from(['{{%hyper_links}}'])
-            ->orderBy(['sortOrder' => SORT_ASC]);
+        // One OR term per owner made the query slow down sharply on large listings, and PostgreSQL
+        // expands a row-value IN into the same OR list. Grouping owners by site (and by field when a
+        // caller scopes one) gives one `ownerSiteId = ? AND ownerId IN (…)` term per group, and a
+        // listing's owners usually share a site, so request priming sends a single IN list.
+        $groups = [];
 
-        $conditions = array_map(static function(array $owner): array {
-            $condition = [
-                'ownerId' => $owner['ownerId'],
-                'ownerSiteId' => $owner['ownerSiteId'],
-            ];
+        foreach ($owners as $owner) {
+            $siteId = (int)$owner['ownerSiteId'];
+            $fieldId = empty($owner['fieldId']) ? null : (int)$owner['fieldId'];
+            $key = $siteId . ':' . $fieldId;
 
-            if (!empty($owner['fieldId'])) {
-                $condition['fieldId'] = $owner['fieldId'];
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['ownerSiteId' => $siteId];
+
+                if ($fieldId) {
+                    $groups[$key]['fieldId'] = $fieldId;
+                }
             }
 
-            return $condition;
-        }, $owners);
+            $groups[$key]['ownerId'][] = (int)$owner['ownerId'];
+        }
 
-        $query->where(array_merge(['or'], $conditions));
-
-        return $query->all();
+        return (new Query())
+            ->from(['{{%hyper_links}}'])
+            ->where(['or', ...array_values($groups)])
+            ->orderBy(['sortOrder' => SORT_ASC])
+            ->all();
     }
 
     public function registerOwner(int $ownerId, int $ownerSiteId): void
