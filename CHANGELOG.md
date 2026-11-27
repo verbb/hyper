@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Clearing a link in a Hyper field, or leaving an added link blank, now stores nothing, as Craft’s Link field does. The field counts as empty in `:empty:` queries, the “is empty” filter and validation, and a cleared link no longer counts towards the minimum number of links or requires Link Text. Blank links saved before updating are removed the next time their element is saved.
+
 ### Fixed
 
 - Fixed editors being unable to save, autosave, create drafts of or revert an element, or update its conditional link fields, when a Hyper field already links to an element they don't have permission to view.

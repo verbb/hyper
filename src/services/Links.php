@@ -12,6 +12,7 @@ use verbb\hyper\models\LinkInstance;
 use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
+use craft\base\Field;
 use craft\errors\MissingComponentException;
 use craft\events\RegisterComponentTypesEvent;
 use craft\helpers\ArrayHelper;
@@ -55,6 +56,7 @@ class Links extends Component
 
     private bool $_disabledTypesUnsupported = false;
     private bool $_firstOfClassLegacyHandles = false;
+    private bool $_clearedLinksKept = false;
 
 
     // Public Methods
@@ -92,6 +94,23 @@ class Links extends Component
             return $callback();
         } finally {
             $this->_firstOfClassLegacyHandles = $previous;
+        }
+    }
+
+    /**
+     * Run a callback with cleared links kept when serializing, as releases before 3.2.0 did.
+     *
+     * @internal Recomputes fingerprints that those releases recorded for draft conflict checks.
+     */
+    public function withClearedLinksKept(callable $callback): mixed
+    {
+        $previous = $this->_clearedLinksKept;
+        $this->_clearedLinksKept = true;
+
+        try {
+            return $callback();
+        } finally {
+            $this->_clearedLinksKept = $previous;
         }
     }
 
@@ -308,6 +327,32 @@ class Links extends Component
         }
 
         return !$instance->hasLinkValue() && !$instance->hasMeaningfulAttributes();
+    }
+
+    /**
+     * Whether a link was cleared: it has no destination and nothing an editor entered. Saving drops it.
+     *
+     * @internal
+     */
+    public function isLinkCleared(HyperField $field, LinkInterface $link): bool
+    {
+        if ($this->_clearedLinksKept || !$link instanceof Link || $link instanceof linkTypes\MissingLink) {
+            return false;
+        }
+
+        // A synced list keeps the same links on every site, including a deliberately blank translation.
+        if ($field->multipleLinks && $field->syncLinksAcrossSites && $field->translationMethod === Field::TRANSLATION_METHOD_SITE) {
+            return false;
+        }
+
+        $instance = $link->toInstance();
+
+        // The CP posts every link's new window toggle, so a choice matching the field default isn't content.
+        if ($instance->newWindow === ($field->newWindow && $field->defaultNewWindow)) {
+            $instance->newWindow = null;
+        }
+
+        return $link::isInstanceEmpty($instance);
     }
 
 

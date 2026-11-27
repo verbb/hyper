@@ -305,6 +305,13 @@ class DraftConflicts
             return false;
         }
 
+        $links = Hyper::$plugin->getLinks();
+
+        // Releases before 3.2.0 also fingerprinted cleared links, which saving now drops.
+        if ($links->withClearedLinksKept(static fn(): bool => $baseline === self::_hash($field, $current) || $baseline === self::_hash($field, $current, true))) {
+            return true;
+        }
+
         $hasDisabledType = (bool)array_filter($field->getLinkTypes(), static fn(LinkInterface $type): bool => !$type->enabled);
         $hasCustomTypeFirst = self::_hasCustomTypeFirst($field);
 
@@ -324,8 +331,8 @@ class DraftConflicts
             return false;
         }
 
-        $links = Hyper::$plugin->getLinks();
-        $matches = static fn(): bool => $baseline === self::_hash($field, $current, false, $stored) || $baseline === self::_hash($field, $current, true, $stored);
+        $exact = static fn(): bool => $baseline === self::_hash($field, $current, false, $stored) || $baseline === self::_hash($field, $current, true, $stored);
+        $matches = static fn(): bool => $exact() || $links->withClearedLinksKept($exact);
         $disabledUnsupported = static fn(): bool => $links->withDisabledTypesUnsupported($matches);
 
         if ($hasDisabledType && $disabledUnsupported()) {
@@ -362,7 +369,17 @@ class DraftConflicts
         $value = $field->serializeValueForDb($links, $element);
 
         if (!$includeIdentity) {
-            foreach (array_values($links->getLinks()) as $index => $link) {
+            $dropped = count($value) !== count($links->getLinks());
+            $index = -1;
+
+            foreach (array_values($links->getLinks()) as $link) {
+                // Saving drops cleared links. When it has, pair each stored value with its own link.
+                if ($dropped && ($value[$index + 1]['uid'] ?? null) !== $link->uid) {
+                    continue;
+                }
+
+                $index++;
+
                 // Legacy IDs are random on each read, then become ordinary IDs after
                 // a browser round trip or save. Compare content independently of both.
                 unset($value[$index]['uid']);

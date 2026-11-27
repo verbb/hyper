@@ -440,8 +440,11 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
         // Craft also uses this check to skip content on first save/propagation.
         // Template emptiness must never erase labels, fields or unavailable types.
+        $links = Hyper::$plugin->getLinks();
+
         foreach ($value->getLinks() as $link) {
-            if ($link instanceof linkTypes\MissingLink || !$link::isInstanceEmpty($link->toInstance())) {
+            // A synced list keeps cleared links, so emptiness there is still judged on the link alone.
+            if ($link instanceof linkTypes\MissingLink || (!$link::isInstanceEmpty($link->toInstance()) && !$links->isLinkCleared($this, $link))) {
                 return false;
             }
         }
@@ -617,6 +620,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         $value = $this->normalizeValue($value, $element);
         $serialized = $this->serializeValue($value, $element);
         $storedFields = null;
+        $links = Hyper::$plugin->getLinks();
 
         foreach (array_values($value->getLinks()) as $index => $link) {
             $stored = null;
@@ -630,12 +634,19 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
 
             $fields = \verbb\hyper\services\EmbeddedFields::serialize($link, $stored);
 
+            // Store nothing for a link the editor cleared, as Craft's Link field does, unless it keeps unreadable rows.
+            if ($links->isLinkCleared($this, $link) && !array_filter($fields, static fn(mixed $field): bool => $field !== null && $field !== '' && $field !== [])) {
+                unset($serialized[$index]);
+
+                continue;
+            }
+
             if ($fields !== []) {
                 $serialized[$index]['fields'] = [...($serialized[$index]['fields'] ?? []), ...$fields];
             }
         }
 
-        return $serialized;
+        return array_values($serialized);
     }
 
     public function getElementConditionRuleType(): array|string|null
@@ -982,8 +993,15 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
         }
 
         $links = $element->getFieldValue($this->handle);
+        $kept = [];
 
         foreach ($links->getLinks() as $i => $link) {
+            // Saving drops cleared links, so only the links it keeps are validated and counted.
+            if (Hyper::$plugin->getLinks()->isLinkCleared($this, $link)) {
+                continue;
+            }
+
+            $kept[] = $link;
             $link->setScenario($scenario);
 
             // Set a flag whether the Hyper field itself is required
@@ -1009,7 +1027,7 @@ class HyperField extends Field implements ThumbableFieldInterface, MergeableFiel
                 'skipOnEmpty' => false,
             ]);
 
-            if (!$arrayValidator->validate($links->getLinks(), $error)) {
+            if (!$arrayValidator->validate($kept, $error)) {
                 $element->addError($this->handle, $error);
             }
         }
